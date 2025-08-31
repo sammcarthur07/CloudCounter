@@ -106,6 +106,8 @@ data class SessionStats(
     val previousGapMs: Long? = null,
 
     val lastConeSmokerName: String? = null,
+    val lastJointSmokerName: String? = null,
+    val lastBowlSmokerName: String? = null,
     val conesSinceLastBowl: Int = 0,
 
     // Rounds tracking

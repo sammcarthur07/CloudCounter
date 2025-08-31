@@ -272,7 +272,8 @@ class MainActivity : AppCompatActivity() {
     private val intervalsList = mutableListOf<Long>()
     private var isAutoMode = true  // true = auto, false = sticky
     private var initialRoundsSet = 0  // Store the initial rounds when session starts
-    private var currentRoomName: String? = null   //
+    private var currentRoomName: String? = null
+    private var pendingActivityType: ActivityType? = null  // Store activity type when showing no session popup   //
     private var isUpdatingRoundsLocally = false
     private var localRoundsUpdateTime = 0L
     // Cached latest room snapshot so notifications can reflect remote activity immediately
@@ -2208,7 +2209,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun startLocalSession() {
-        Log.d(TAG, "🏠 Starting local-only session")
+        Log.d(TAG, "🏠 Starting local-only session, pendingActivityType=$pendingActivityType")
 
         // Check if we have at least one smoker
         if (smokers.isEmpty()) {
@@ -2237,6 +2238,13 @@ class MainActivity : AppCompatActivity() {
                     currentShareCode = null
                     currentRoomName = null
                     sessionStatsVM.clearRoomInfo()
+                    
+                    // Log pending activity if there is one
+                    pendingActivityType?.let { type ->
+                        Log.d(TAG, "🏠 Logging pending activity: $type")
+                        logHitSafe(type)
+                        pendingActivityType = null
+                    }
 
                     // Save session state
                     saveSessionToPrefs()
@@ -2259,6 +2267,16 @@ class MainActivity : AppCompatActivity() {
 
         Toast.makeText(this, "Local session started", Toast.LENGTH_SHORT).show()
         Log.d(TAG, "🏠 Local session started successfully")
+        
+        // Log pending activity if there is one
+        pendingActivityType?.let { type ->
+            Log.d(TAG, "🏠 Logging pending activity: $type")
+            lifecycleScope.launch {
+                delay(100) // Small delay to ensure session is fully started
+                logHitSafe(type)
+            }
+            pendingActivityType = null
+        }
     }
 
 
@@ -3570,6 +3588,16 @@ class MainActivity : AppCompatActivity() {
                     "Created room: ${room.name} (Code: ${room.shareCode})"
                 }
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+
+                // Log pending activity if there is one
+                pendingActivityType?.let { type ->
+                    Log.d(TAG, "🏠 Logging pending activity after room creation: $type")
+                    lifecycleScope.launch {
+                        delay(100) // Small delay to ensure room is fully set up
+                        logHitSafe(type)
+                    }
+                    pendingActivityType = null
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "🏠 Failed to create room", e)
                 e.printStackTrace()
@@ -3730,6 +3758,16 @@ class MainActivity : AppCompatActivity() {
                             "Joined room: $shareCode"
                         }
                         Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+
+                        // Log pending activity if there is one
+                        pendingActivityType?.let { type ->
+                            Log.d(TAG, "🏠 Logging pending activity after joining room: $type")
+                            lifecycleScope.launch {
+                                delay(100) // Small delay to ensure room is fully joined
+                                logHitSafe(type)
+                            }
+                            pendingActivityType = null
+                        }
                     }
                 },
                 onFailure = { error: Throwable ->  // Explicitly specify the type
@@ -4523,6 +4561,8 @@ class MainActivity : AppCompatActivity() {
                     },
                     participantCount = roomStats.participantCount,
                     lastConeSmokerName = roomStats.lastConeSmokerName,
+                    lastJointSmokerName = roomStats.lastJointSmokerName,
+                    lastBowlSmokerName = roomStats.lastBowlSmokerName,
                     conesSinceLastBowl = roomStats.conesSinceLastBowl,
                     lastGapMs = lastGapMs,
                     previousGapMs = previousGapMs
@@ -5859,6 +5899,11 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "🎯 PayerStashOwnerId: '$payerStashOwnerId'")
         Log.d(TAG, "🎯 Auto mode: $isAutoMode")
         Log.d(TAG, "🎯 Activity type: $type")
+        Log.d(TAG, "🎯🔴 DEBUG: sessionActive = $sessionActive")
+        Log.d(TAG, "🎯🔴 DEBUG: activitiesTimestamps.size = ${activitiesTimestamps.size}")
+        Log.d(TAG, "🎯🔴 DEBUG: smokers.size = ${smokers.size}")
+        Log.d(TAG, "🎯🔴 DEBUG: currentShareCode = $currentShareCode")
+        Log.d(TAG, "🎯🔴 DEBUG: selectedSmoker = ${selectedSmoker.name}")
 
         // Only update session-related data if session is active
         if (sessionActive) {
@@ -5964,19 +6009,30 @@ class MainActivity : AppCompatActivity() {
                 }, 500)
             }
 
-            // CRITICAL: Only advance smoker for NON-BOWL activities
-            if (isAutoMode && smokers.isNotEmpty() && currentShareCode == null && type != ActivityType.BOWL) {
-                withContext(Dispatchers.Main) {
-                    Log.d(TAG, "🎯 Advancing to next smoker after ${selectedSmoker.name} (local session, type: $type)")
-                    moveToNextActiveSmoker()
-                }
-            } else if (isAutoMode && currentShareCode != null && type != ActivityType.BOWL) {
-                Log.d(TAG, "🎯 NOT advancing smoker (will be handled by room sync)")
-            } else {
-                Log.d(TAG, "🎯 NOT advancing smoker (autoMode: $isAutoMode, type: $type, isBowl: ${type == ActivityType.BOWL})")
-            }
-
             sessionStatsVM.refreshTimer()
+        }
+
+        // CRITICAL FIX: Move auto-advance logic outside sessionActive block
+        // This ensures first activity also triggers auto-advance
+        Log.d(TAG, "🎯🔴 DEBUG AUTO-ADVANCE CHECK:")
+        Log.d(TAG, "🎯🔴   - isAutoMode = $isAutoMode")
+        Log.d(TAG, "🎯🔴   - smokers.isNotEmpty() = ${smokers.isNotEmpty()}")
+        Log.d(TAG, "🎯🔴   - currentShareCode = $currentShareCode")
+        Log.d(TAG, "🎯🔴   - type = $type")
+        Log.d(TAG, "🎯🔴   - type != ActivityType.BOWL = ${type != ActivityType.BOWL}")
+        Log.d(TAG, "🎯🔴   - type == ActivityType.CONE = ${type == ActivityType.CONE}")
+        Log.d(TAG, "🎯🔴   - SHOULD ADVANCE? = ${isAutoMode && smokers.isNotEmpty() && currentShareCode == null && type != ActivityType.BOWL}")
+        
+        if (isAutoMode && smokers.isNotEmpty() && currentShareCode == null && type != ActivityType.BOWL) {
+            withContext(Dispatchers.Main) {
+                Log.d(TAG, "🎯🟢 ADVANCING to next smoker after ${selectedSmoker.name} (local session, type: $type)")
+                moveToNextActiveSmoker()
+                Log.d(TAG, "🎯🟢 ADVANCE COMPLETE")
+            }
+        } else if (isAutoMode && currentShareCode != null && type != ActivityType.BOWL) {
+            Log.d(TAG, "🎯🟡 NOT advancing smoker (will be handled by room sync)")
+        } else {
+            Log.d(TAG, "🎯🔴 NOT advancing smoker (autoMode: $isAutoMode, type: $type, isBowl: ${type == ActivityType.BOWL})")
         }
 
         // STASH TRACKING
@@ -6096,8 +6152,10 @@ class MainActivity : AppCompatActivity() {
             var totalJoints = 0
             var totalBowls = 0
 
-            // Track last cone info and cones since bowl
+            // Track last smoker info for each activity type
             var lastConeSmokerName: String? = null
+            var lastJointSmokerName: String? = null
+            var lastBowlSmokerName: String? = null
             var lastConeTimestamp: Long = 0L
             var lastBowlTimestamp: Long = 0L
             var conesSinceLastBowl = 0
@@ -6182,6 +6240,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Find last cone and its smoker
+            Log.d(TAG, "🔍🔴 DEBUG: Finding last activities for name display")
+            Log.d(TAG, "🔍🔴   - coneLogs.size = ${coneLogs.size}")
+            Log.d(TAG, "🔍🔴   - allSessionActivities.size = ${allSessionActivities.size}")
+            
             val lastCone = coneLogs.lastOrNull()
             if (lastCone != null) {
                 lastConeTimestamp = lastCone.timestamp
@@ -6189,15 +6251,37 @@ class MainActivity : AppCompatActivity() {
                     repo.getSmokerById(lastCone.smokerId)
                 }
                 lastConeSmokerName = coneSmoker?.name
+                Log.d(TAG, "🔍🟢 Found last CONE smoker: $lastConeSmokerName")
+            } else {
+                Log.d(TAG, "🔍🔴 No CONE found in session")
+            }
+
+            // Find last joint and its smoker
+            val jointLogs = allSessionActivities.filter { it.type == ActivityType.JOINT }
+            Log.d(TAG, "🔍🔴   - jointLogs.size = ${jointLogs.size}")
+            val lastJoint = jointLogs.lastOrNull()
+            if (lastJoint != null) {
+                val jointSmoker = withContext(Dispatchers.IO) {
+                    repo.getSmokerById(lastJoint.smokerId)
+                }
+                lastJointSmokerName = jointSmoker?.name
+                Log.d(TAG, "🔍🟢 Found last JOINT smoker: $lastJointSmokerName")
+            } else {
+                Log.d(TAG, "🔍🔴 No JOINT found in session")
             }
 
             // Find last bowl and count cones since
-            val lastBowl = allSessionActivities
-                .filter { it.type == ActivityType.BOWL }
-                .maxByOrNull { it.timestamp }
+            val bowlLogs = allSessionActivities.filter { it.type == ActivityType.BOWL }
+            Log.d(TAG, "🔍🔴   - bowlLogs.size = ${bowlLogs.size}")
+            val lastBowl = bowlLogs.maxByOrNull { it.timestamp }
 
             if (lastBowl != null) {
                 lastBowlTimestamp = lastBowl.timestamp
+                val bowlSmoker = withContext(Dispatchers.IO) {
+                    repo.getSmokerById(lastBowl.smokerId)
+                }
+                lastBowlSmokerName = bowlSmoker?.name
+                Log.d(TAG, "🔍🟢 Found last BOWL smoker: $lastBowlSmokerName")
                 conesSinceLastBowl = allSessionActivities
                     .filter { it.type == ActivityType.CONE && it.timestamp > lastBowlTimestamp }
                     .size
@@ -6253,6 +6337,11 @@ class MainActivity : AppCompatActivity() {
                 0L
             }
 
+            Log.d(TAG, "🔍🔴 DEBUG: Creating GroupStats with:")
+            Log.d(TAG, "🔍🔴   - lastConeSmokerName = $lastConeSmokerName")
+            Log.d(TAG, "🔍🔴   - lastJointSmokerName = $lastJointSmokerName")
+            Log.d(TAG, "🔍🔴   - lastBowlSmokerName = $lastBowlSmokerName")
+            
             val groupStats = GroupStats(
                 totalCones = totalCones,
                 totalJoints = totalJoints,
@@ -6266,6 +6355,8 @@ class MainActivity : AppCompatActivity() {
                 hitsInCurrentRound = hitsThisRound,
                 participantCount = perSmokerList.size,
                 lastConeSmokerName = lastConeSmokerName,
+                lastJointSmokerName = lastJointSmokerName,
+                lastBowlSmokerName = lastBowlSmokerName,
                 conesSinceLastBowl = conesSinceLastBowl,
                 lastGapMs = lastGapMs,  // Gap between last two activities of ANY type
                 previousGapMs = previousGapMs  // Gap before that
@@ -6274,6 +6365,7 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 Log.d(TAG, "🔍 === FINAL STATS SUMMARY ===")
                 Log.d(TAG, "🔍 Total activities: ${allSessionActivities.size}")
+                Log.d(TAG, "🔍🔴 Last smoker names - Cone: $lastConeSmokerName, Joint: $lastJointSmokerName, Bowl: $lastBowlSmokerName")
                 Log.d(TAG, "🔍 Last gap (any type): ${lastGapMs?.let { "${it / 1000}s" } ?: "N/A"}")
                 Log.d(TAG, "🔍 Previous gap (any type): ${previousGapMs?.let { "${it / 1000}s" } ?: "N/A"}")
                 Log.d(TAG, "🔍 Longest cone gap: ${longestConeGapMs / 1000}s")
@@ -6518,6 +6610,9 @@ class MainActivity : AppCompatActivity() {
 
         if (!sessionActive) {
             Log.w(TAG, "🎯 WARNING: Activity logged without active session!")
+
+            // Store the pending activity type
+            pendingActivityType = type
 
             // If no cloud smokers, show the new popup directly
             if (!hasCloudSmokers) {
@@ -9359,6 +9454,7 @@ class MainActivity : AppCompatActivity() {
 
         dialog.setOnDismissListener {
             currentDialog = null
+            pendingActivityType = null
             Log.d(TAG, "🎯 No active session dialog dismissed for type: $type")
         }
 

@@ -21,6 +21,8 @@ data class GroupStats(
     val hitsInCurrentRound: Int = 0,
     val participantCount: Int = 0,
     val lastConeSmokerName: String? = null,
+    val lastJointSmokerName: String? = null,
+    val lastBowlSmokerName: String? = null,
     val conesSinceLastBowl: Int = 0,
     val lastGapMs: Long? = null,
     val previousGapMs: Long? = null
@@ -220,6 +222,8 @@ class SessionStatsViewModel : ViewModel() {
             },
             participantCount = roomStats.participantCount,
             lastConeSmokerName = roomStats.lastConeSmokerName,
+            lastJointSmokerName = roomStats.lastJointSmokerName,
+            lastBowlSmokerName = roomStats.lastBowlSmokerName,
             conesSinceLastBowl = roomStats.conesSinceLastBowl
         )
         _groupStats.postValue(groupStats)
@@ -363,6 +367,13 @@ class SessionStatsViewModel : ViewModel() {
     ) {
         Log.d(TAG, "📦 APPLY_LOCAL_STATS: Applying ${groupStats.totalCones} cones from ${perSmoker.size} smokers")
         Log.d(TAG, "📦 APPLY_LOCAL_STATS: sessionStart=$sessionStart, will activate=${sessionStart > 0}")
+        Log.d(TAG, "📦🔴 DEBUG: Received GroupStats with:")
+        Log.d(TAG, "📦🔴   - lastConeSmokerName = ${groupStats.lastConeSmokerName}")
+        Log.d(TAG, "📦🔴   - lastJointSmokerName = ${groupStats.lastJointSmokerName}")
+        Log.d(TAG, "📦🔴   - lastBowlSmokerName = ${groupStats.lastBowlSmokerName}")
+        Log.d(TAG, "📦🔴   - totalCones = ${groupStats.totalCones}")
+        Log.d(TAG, "📦🔴   - totalJoints = ${groupStats.totalJoints}")
+        Log.d(TAG, "📦🔴   - totalBowls = ${groupStats.totalBowls}")
 
         this.sessionStartTime = sessionStart
         val shouldActivate = sessionStart > 0
@@ -370,10 +381,12 @@ class SessionStatsViewModel : ViewModel() {
 
         _elapsedTimeSec.value = if (sessionStart > 0) (System.currentTimeMillis() - sessionStart) / 1000 else 0L
         _perSmokerStats.value = perSmoker
-        _groupStats.value = groupStats.copy(
-            lastConeSmokerName = lastConeSmokerName,
-            conesSinceLastBowl = conesSinceLastBowl
-        )
+        // FIX: Use the groupStats directly since it already has all the names
+        _groupStats.value = groupStats
+        Log.d(TAG, "📦🔴 DEBUG: After setting _groupStats.value:")
+        Log.d(TAG, "📦🔴   - cone name = ${_groupStats.value?.lastConeSmokerName}")
+        Log.d(TAG, "📦🔴   - joint name = ${_groupStats.value?.lastJointSmokerName}")
+        Log.d(TAG, "📦🔴   - bowl name = ${_groupStats.value?.lastBowlSmokerName}")
 
         Log.d(TAG, "📦 APPLY_LOCAL_STATS: Applied - isActive=${_isSessionActive.value}, elapsed=${_elapsedTimeSec.value}")
     }
