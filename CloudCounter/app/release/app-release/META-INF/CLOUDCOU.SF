@@ -1,0 +1,3340 @@
+Signature-Version: 1.0
+Created-By: Signflinger
+SHA-256-Digest-Manifest: 8+YsNkv4m4YZQL9LDuFd7cSRO/jtGFPYnETDpM4auTw=
+
+Name: BUNDLE-METADATA/com.android.tools.build.gradle/app-metadata.prop
+ erties
+SHA-256-Digest: OO6yVIImOBmO78BzH79EBJV+1oVdcxvh8FSLI/XHdFI=
+
+Name: BUNDLE-METADATA/com.android.tools.build.libraries/dependencies.p
+ b
+SHA-256-Digest: mUzTEnavM0bZGdVOqh3UlPLYzYLjuUqkmZ6D7JsE6Xo=
+
+Name: BUNDLE-METADATA/com.android.tools.build.profiles/baseline.prof
+SHA-256-Digest: 8W9UmN1KRDqzvOWUxb7nDIj6FXr+QEubS0K/q+1Pk4M=
+
+Name: BUNDLE-METADATA/com.android.tools.build.profiles/baseline.profm
+SHA-256-Digest: ZIUintufCw1sgiAuV3hBnD+Zz/+/yoweMILz7l6IGEo=
+
+Name: BUNDLE-METADATA/com.android.tools/d8.json
+SHA-256-Digest: pcP/yW+jOZKK+2rpGnNRjsC3PZWTrE7oLbNsjEkp07I=
+
+Name: BundleConfig.pb
+SHA-256-Digest: +r9xC2EEHNH7bsjGk/BlTpOi7NQhRvhTWbAnrLOuTV4=
+
+Name: base/dex/classes.dex
+SHA-256-Digest: DgJj2ljqylhikUGIIEJ57Ml/KjuOGuxvTNTjlawYS1U=
+
+Name: base/dex/classes2.dex
+SHA-256-Digest: OwcHicuEtjY60OCjwo8ndAWJvz5yATxdHSHYbQm0JS4=
+
+Name: base/dex/classes3.dex
+SHA-256-Digest: SM1P8lNrvWjwyinLJeEMqxe55Rcud0D6RFAOVtwL1W4=
+
+Name: base/manifest/AndroidManifest.xml
+SHA-256-Digest: yuPPc+xJMIMgaBiuygHAbXE480+wWyE24AZFBcHp7Mo=
+
+Name: base/res/anim-v21/design_bottom_sheet_slide_in.xml
+SHA-256-Digest: GlVZVTp/MAtYbUSQ0e7hMfVPtcO4ql/twDnLU2/GpnQ=
+
+Name: base/res/anim-v21/design_bottom_sheet_slide_out.xml
+SHA-256-Digest: e8ytpI52YQetGw2XPNAU92bVR+GTG9MHG7dt1ftpyvI=
+
+Name: base/res/anim-v21/fragment_fast_out_extra_slow_in.xml
+SHA-256-Digest: jS4uyqNlbcrZhNtn8U31F2m/lpBVY3ruQE7hUwExG/U=
+
+Name: base/res/anim-v21/m3_bottom_sheet_slide_in.xml
+SHA-256-Digest: Ka2Dt9WMroDKGg3O6fye23k6RRwcciatqN+5LHBqlGc=
+
+Name: base/res/anim-v21/m3_bottom_sheet_slide_out.xml
+SHA-256-Digest: Aolr8fJFi9x0r+/M5M5mVoZfJjT3fuuSxQ/o6PUeIak=
+
+Name: base/res/anim-v21/m3_side_sheet_enter_from_left.xml
+SHA-256-Digest: EpdZztGi69lw4Nb4dLUmrMXB8H/t9Ct4szcRBCoX1Xk=
+
+Name: base/res/anim-v21/m3_side_sheet_enter_from_right.xml
+SHA-256-Digest: uQPUAUT77WWS2S6Dbjnm9FYQoAEtDmQjWmHWW3/Yfuw=
+
+Name: base/res/anim-v21/m3_side_sheet_exit_to_left.xml
+SHA-256-Digest: /NUzp/2R9UhK3jYglCPRY7ItxP1vFajsb52gnhpQX6k=
+
+Name: base/res/anim-v21/m3_side_sheet_exit_to_right.xml
+SHA-256-Digest: rw6Frh6u6HAom7a0/KTd2cdelsInzrNZBRrvtBcmVVw=
+
+Name: base/res/anim-v21/mtrl_bottom_sheet_slide_in.xml
+SHA-256-Digest: lv+aUKS4KdzAEPe4Q0egoDvDvgxxa+xGRENTbgKuECc=
+
+Name: base/res/anim-v21/mtrl_bottom_sheet_slide_out.xml
+SHA-256-Digest: CLRQmawCaus6KvwRoDO3Co48LMacGBZy7XEQkbE5Wiw=
+
+Name: base/res/anim/abc_fade_in.xml
+SHA-256-Digest: GRpGjSI3kQ0eVlaK4x1Kmu5Tuw3VHxZXs9XBAYNKS9g=
+
+Name: base/res/anim/abc_fade_out.xml
+SHA-256-Digest: insedlGUNzBIgC9ps5rJEzlSYKsPMLjN57X+wDyDwds=
+
+Name: base/res/anim/abc_grow_fade_in_from_bottom.xml
+SHA-256-Digest: SaCL055su/drrFuIUJsvekESEV2ZIBXU3W8R18hbv0A=
+
+Name: base/res/anim/abc_popup_enter.xml
+SHA-256-Digest: DdhuG/llaj87D1QtWW31BpQznJWWp8Juk/cUe0K5uZY=
+
+Name: base/res/anim/abc_popup_exit.xml
+SHA-256-Digest: soGQOIkRBlSfJBkpdOtWS68PycANdy06PGkEoKc6IKE=
+
+Name: base/res/anim/abc_shrink_fade_out_from_bottom.xml
+SHA-256-Digest: MCGiZvoRy64vCZ204GW6phN6/VW1QdLRfBx/1/0d9D8=
+
+Name: base/res/anim/abc_slide_in_bottom.xml
+SHA-256-Digest: Uj/J82txcudWGx6Mpx36iYMunGsCqSanGAfqoZgkLLQ=
+
+Name: base/res/anim/abc_slide_in_top.xml
+SHA-256-Digest: Jer05itrKuwBlqA7odiNyA20SMQF35M8JECWLjS48Ac=
+
+Name: base/res/anim/abc_slide_out_bottom.xml
+SHA-256-Digest: cdLU9Xu3Y++pcO5al9Moz5dqWb8MXxPv02M/5QFxvBQ=
+
+Name: base/res/anim/abc_slide_out_top.xml
+SHA-256-Digest: 6tGxhbsYrx7FuQFAAdmHvdMbZ3KGbDTBNdQhh4FO5QY=
+
+Name: base/res/anim/abc_tooltip_enter.xml
+SHA-256-Digest: Yb2QPViULtVv52HNvYX0Amwv59PkQxTVoRt2g2Wss7I=
+
+Name: base/res/anim/abc_tooltip_exit.xml
+SHA-256-Digest: BwbLyuOp1+O0C+8PRmz+X0mfd+gd4kEAdB9MqaNfZ70=
+
+Name: base/res/anim/btn_checkbox_to_checked_box_inner_merged_animation
+ .xml
+SHA-256-Digest: ok8nFF7UiWH5rAZn0cnkJGX3uSSWoJfC74aDl7r6eOM=
+
+Name: base/res/anim/btn_checkbox_to_checked_box_outer_merged_animation
+ .xml
+SHA-256-Digest: zbYGt2xcRZwmMs4RT8K0p8ie2T3/OdhAfyC3i/kMAlo=
+
+Name: base/res/anim/btn_checkbox_to_checked_icon_null_animation.xml
+SHA-256-Digest: iIjaynMV3FY3DiJOKl/yVsBVefvN7H6c1uuc3lhqPi4=
+
+Name: base/res/anim/btn_checkbox_to_unchecked_box_inner_merged_animati
+ on.xml
+SHA-256-Digest: Uj3H+HJRkXTU8HntX3VybXyW0HFOrBJ43M+ehvM0a/0=
+
+Name: base/res/anim/btn_checkbox_to_unchecked_check_path_merged_animat
+ ion.xml
+SHA-256-Digest: 3CZG6MAYs1KxJ8wL5YkdJHLnamskxak0OOX4aUOl5dc=
+
+Name: base/res/anim/btn_checkbox_to_unchecked_icon_null_animation.xml
+SHA-256-Digest: nqGbnDVzoD2knEZ+wPT5S2gTyo64Nzc7PvrPX6TJQ9s=
+
+Name: base/res/anim/btn_radio_to_off_mtrl_dot_group_animation.xml
+SHA-256-Digest: 37YOgUXOu9OUgZ8j6mgio0BUQKWbjcuXt6B34PzAOoA=
+
+Name: base/res/anim/btn_radio_to_off_mtrl_ring_outer_animation.xml
+SHA-256-Digest: VkjYSBHIPYTc1/LUCepiu5vQelEHKPwH6kF+rvkGz3Y=
+
+Name: base/res/anim/btn_radio_to_off_mtrl_ring_outer_path_animation.xm
+ l
+SHA-256-Digest: 9EpL/gNWwx9+gqOaLuttZFUjxECDoFCNL9XyrNzbxx4=
+
+Name: base/res/anim/btn_radio_to_on_mtrl_dot_group_animation.xml
+SHA-256-Digest: /bNO5Nh8cKELzz6I3iEB9BrQGiXGmTplcOUaX8ncoL4=
+
+Name: base/res/anim/btn_radio_to_on_mtrl_ring_outer_animation.xml
+SHA-256-Digest: vPqfdBXcIWn9eHyxuvcfgiEgahgyL6SGp6Zbe/d2XWM=
+
+Name: base/res/anim/btn_radio_to_on_mtrl_ring_outer_path_animation.xml
+SHA-256-Digest: 2FncxgbXj1hBmwU6PKnNaoTJTEzm4MR57Q6lUeOjPBk=
+
+Name: base/res/anim/design_snackbar_in.xml
+SHA-256-Digest: 0mz1k5hARHAz/VPKhJQ33Lh3UrtPmjjvMHL34pnrElk=
+
+Name: base/res/anim/design_snackbar_out.xml
+SHA-256-Digest: mPrzqKi2iihirzuS+mX9Xmj2eWKZHmn8q2Ilx+IbiRc=
+
+Name: base/res/anim/linear_indeterminate_line1_head_interpolator.xml
+SHA-256-Digest: dKr3jhcKa8zLad3rXo/c7uxZqOO5O2x4gyPK/hZrBGI=
+
+Name: base/res/anim/linear_indeterminate_line1_tail_interpolator.xml
+SHA-256-Digest: ft52H1jaeCY4n2tJBUp+suEuLPDETOoxE1bqBdzCIPs=
+
+Name: base/res/anim/linear_indeterminate_line2_head_interpolator.xml
+SHA-256-Digest: LgcnGLxf+d4ndtNUi/fJzmknmcob0zhrkXKozhFExOM=
+
+Name: base/res/anim/linear_indeterminate_line2_tail_interpolator.xml
+SHA-256-Digest: Tvup75w/WXSPb1cm3r9gQV5GWQMtZ3NKbuYHAxMHNHg=
+
+Name: base/res/anim/m3_motion_fade_enter.xml
+SHA-256-Digest: MprnCR4GAlsKDNAi8HyOxSLaiRC8TBRlPXGUecknqh0=
+
+Name: base/res/anim/m3_motion_fade_exit.xml
+SHA-256-Digest: xonQzKmiTNGIVF1+f6o4Cke6vhTan9IQeug53KBSEFg=
+
+Name: base/res/anim/mtrl_card_lowers_interpolator.xml
+SHA-256-Digest: EqOQy+h0q/9BCdbbO04LrQ9vrbAhYArSIJS7rxas97s=
+
+Name: base/res/animator-v21/design_appbar_state_list_animator.xml
+SHA-256-Digest: D0eg5KV9xNYnTDif/o5EsNX9OiQYpdD3h45jSGwUhWI=
+
+Name: base/res/animator-v21/m3_appbar_state_list_animator.xml
+SHA-256-Digest: DS3ssEDDp0ZeGjR/fGQw/iQqqqFBniPQZFIZHMZhfW8=
+
+Name: base/res/animator/design_fab_hide_motion_spec.xml
+SHA-256-Digest: JbjrHNUMvPmYBKfQNWzo7q4SVPxOx4m/Ts/tWQS8NcY=
+
+Name: base/res/animator/design_fab_show_motion_spec.xml
+SHA-256-Digest: P8CPTB4AyEsjf2IzKiTMOQ47G0YaFUr3NX7OAKOSBOc=
+
+Name: base/res/animator/fragment_close_enter.xml
+SHA-256-Digest: w7az0wNRramgLQ9phwe9OnNHcR52OuKfsdQkQLs6UO0=
+
+Name: base/res/animator/fragment_close_exit.xml
+SHA-256-Digest: 029+kl2V78AbJs/4GomWiZkPYEFG9c/3dQBAjTDpxkI=
+
+Name: base/res/animator/fragment_fade_enter.xml
+SHA-256-Digest: qD/fGWbc/JybrTxOJfwlrJmAJERTBno7ABRUuRbTvwg=
+
+Name: base/res/animator/fragment_fade_exit.xml
+SHA-256-Digest: oWCQqJSXAPcXEUKs96i7OD0YG1FlYUGnw/taChYFNTI=
+
+Name: base/res/animator/fragment_open_enter.xml
+SHA-256-Digest: MC88SsEBDxjzHI4x+YNBioZtzt9ujaqAZZZJGnqpJzE=
+
+Name: base/res/animator/fragment_open_exit.xml
+SHA-256-Digest: 9bqywLxmBRsLDowTPW0i4w36V4QZjCRqx5tbPQpzaGE=
+
+Name: base/res/animator/m3_btn_elevated_btn_state_list_anim.xml
+SHA-256-Digest: lN52Gsz/A+CMEpq+EuFppPEzsS9bt/XAw8YzznlEYmo=
+
+Name: base/res/animator/m3_btn_state_list_anim.xml
+SHA-256-Digest: IhuQpuFwymmnPhOIrBOu3OOLvgdsFLiGNfFs2ggr/pc=
+
+Name: base/res/animator/m3_card_elevated_state_list_anim.xml
+SHA-256-Digest: MGCgcop3bvNoSLGz4Wo5IrG5ODcLKdACamJwogMSC5Q=
+
+Name: base/res/animator/m3_card_state_list_anim.xml
+SHA-256-Digest: BJNYwgmBi126ntKSn0cXIBvAAfOMQ/W62fWu1NLrmXY=
+
+Name: base/res/animator/m3_chip_state_list_anim.xml
+SHA-256-Digest: BAzFfAMlgUU8iYGoA62C2XNeuFtfjBUxrbpCV9A/9Cs=
+
+Name: base/res/animator/m3_elevated_chip_state_list_anim.xml
+SHA-256-Digest: ADOAXfqfd5XLQSy/8zWMvjStOg2sBuDUy1dtN2Pk2DI=
+
+Name: base/res/animator/m3_extended_fab_change_size_collapse_motion_sp
+ ec.xml
+SHA-256-Digest: SlNCmrVt2Ulm9JJtbUYJTcvCysz+r59vghj5TX93lMA=
+
+Name: base/res/animator/m3_extended_fab_change_size_expand_motion_spec
+ .xml
+SHA-256-Digest: Gp39xBXBBQI0Pm95I0UHhARXgPFqk1x1gwGwBjhFLto=
+
+Name: base/res/animator/m3_extended_fab_hide_motion_spec.xml
+SHA-256-Digest: 51EhJ5ktLE6bJeBjj3SKK1XnkNiTmDEjkUjt/0IRdHA=
+
+Name: base/res/animator/m3_extended_fab_show_motion_spec.xml
+SHA-256-Digest: aHI4wVb+93wThojqDzViPr8a/GgLa7bwsXVAHDsqKEo=
+
+Name: base/res/animator/m3_extended_fab_state_list_animator.xml
+SHA-256-Digest: ZoiBPLAwwMf34CDb86T4SvggNFjWl5kMxh8Uz8h2rv0=
+
+Name: base/res/animator/mtrl_btn_state_list_anim.xml
+SHA-256-Digest: HGB6sQrn+z7apR74hlAVbFKmwqcOjrZH4zWvvrk1bVw=
+
+Name: base/res/animator/mtrl_btn_unelevated_state_list_anim.xml
+SHA-256-Digest: UJyQzElNobvi+4r2iTYUS12b0E7RlRBbcX9G47gwG5g=
+
+Name: base/res/animator/mtrl_card_state_list_anim.xml
+SHA-256-Digest: BCERd/Uf7sB276rTXrIwpwinjTMxYvEkpolYY9sgcw0=
+
+Name: base/res/animator/mtrl_chip_state_list_anim.xml
+SHA-256-Digest: dQWqFdhXKUNamcLqcr0LEgh6zEvf5YUlRFwhiW1L8Ck=
+
+Name: base/res/animator/mtrl_extended_fab_change_size_collapse_motion_
+ spec.xml
+SHA-256-Digest: 82Na/MO/81ui0grbeh5nUZAhnVMBFzCNoQ299p2k6j4=
+
+Name: base/res/animator/mtrl_extended_fab_change_size_expand_motion_sp
+ ec.xml
+SHA-256-Digest: 0QkX5tCAQqKQyTM/88kfzPwiS9XW99ZohLksU8KapWw=
+
+Name: base/res/animator/mtrl_extended_fab_hide_motion_spec.xml
+SHA-256-Digest: 9eJUCtl0ObG04ut+eX0d3r5vO95ZZJjyuhdVxIR314A=
+
+Name: base/res/animator/mtrl_extended_fab_show_motion_spec.xml
+SHA-256-Digest: n6WfF/ZsalFp3aCsB5+CRyMsfi1cpOZ46uH26ZEtmXg=
+
+Name: base/res/animator/mtrl_extended_fab_state_list_animator.xml
+SHA-256-Digest: YQOwgtfNkoLTXtkxlywdm2BQy9J87LIQCKomp/vetjQ=
+
+Name: base/res/animator/mtrl_fab_hide_motion_spec.xml
+SHA-256-Digest: pud8MZY6MtiwX9ck37Bx6Rdj/KtUDlG4O6WgMlyIY+A=
+
+Name: base/res/animator/mtrl_fab_show_motion_spec.xml
+SHA-256-Digest: VId0a8XCKKKmxSywbqiGEl8MKMvdtGfc0MAXnccoEyw=
+
+Name: base/res/animator/mtrl_fab_transformation_sheet_collapse_spec.xm
+ l
+SHA-256-Digest: HY5R5xAocQirCe9VPSC5RgMYhYgsJJAwcgbkcMaPYSM=
+
+Name: base/res/animator/mtrl_fab_transformation_sheet_expand_spec.xml
+SHA-256-Digest: oc+RtqvvyPi1fczsX7MDcxcwMnCm6EVq4JLmrZ7lTcI=
+
+Name: base/res/color-night-v8/material_timepicker_button_stroke.xml
+SHA-256-Digest: EPhJFNjJAqFDovHF3yaobL+EIeYYz+sj303lcXlU0Q8=
+
+Name: base/res/color-night-v8/material_timepicker_clockface.xml
+SHA-256-Digest: sGqaGB1pUfFl71KKEogHOqxhndCG4YA2rIHyNdaeLFg=
+
+Name: base/res/color-night-v8/material_timepicker_modebutton_tint.xml
+SHA-256-Digest: hxu3SMCWmty63p6X+wms+VkUZCWrpT2AA7jQR4Hx8gM=
+
+Name: base/res/color-v21/abc_btn_colored_borderless_text_material.xml
+SHA-256-Digest: eDgOhHOh5xeAYJJZIW6IzTFH6e0Hw4qPzQ6V64kXMNY=
+
+Name: base/res/color-v23/abc_btn_colored_borderless_text_material.xml
+SHA-256-Digest: eGfWJD2drHVy9wmi/pKdeuWeyClTuCvo60iZNZ2tW/w=
+
+Name: base/res/color-v23/abc_btn_colored_text_material.xml
+SHA-256-Digest: CpopcmZeMkvr7CwFlr2c+gkZFSeuv4vCgGwvLnC2J9U=
+
+Name: base/res/color-v23/abc_color_highlight_material.xml
+SHA-256-Digest: Avl4ybejJpR3/z8AuwmSteAj6UA84T/jUvlYbZoobgs=
+
+Name: base/res/color-v23/abc_tint_btn_checkable.xml
+SHA-256-Digest: HujWpfNYfALzC1O2RsMPnqT/gII5kPjFa7UZzehuLII=
+
+Name: base/res/color-v23/abc_tint_default.xml
+SHA-256-Digest: ZBzV4uN4s/64Pmrf//JxTBMHkdY+M+atgRtOhSK7hkE=
+
+Name: base/res/color-v23/abc_tint_edittext.xml
+SHA-256-Digest: QMf5SiuFLvn/LtdELFjgLsK/6clKzb7brS7bIsL5vDU=
+
+Name: base/res/color-v23/abc_tint_seek_thumb.xml
+SHA-256-Digest: pDOP94R9UH9JXkEYMTzfjO2+eTKu75rnEG2lvEmQLOc=
+
+Name: base/res/color-v23/abc_tint_spinner.xml
+SHA-256-Digest: z4UiPWsrV+bV6vhvUOKpnYttaO8LsuHVUUgnui2lsF0=
+
+Name: base/res/color-v23/abc_tint_switch_track.xml
+SHA-256-Digest: o+1EqrTB/f2oeHGFnLDeAJP/oWffwNYhyNRQAeuN/5o=
+
+Name: base/res/color-v31/m3_dynamic_dark_default_color_primary_text.xm
+ l
+SHA-256-Digest: 5ArgnQaNx5zhVHSH1BsSVDFdSGrBabyER/7g+xRZPOM=
+
+Name: base/res/color-v31/m3_dynamic_dark_default_color_secondary_text.
+ xml
+SHA-256-Digest: B3xW0cn0b/NmqtGHWPI3Ng1jJAPhjxRxrf2rBgT/4B8=
+
+Name: base/res/color-v31/m3_dynamic_dark_highlighted_text.xml
+SHA-256-Digest: 0nV+U3zXx5+9hPKi4wLfkIKhfHigOaZ/UNgxxvS44m4=
+
+Name: base/res/color-v31/m3_dynamic_dark_hint_foreground.xml
+SHA-256-Digest: hHIxbWwhRgMdAtbiVw97qy02e5+JSl+/4yg6/z0HaCw=
+
+Name: base/res/color-v31/m3_dynamic_dark_primary_text_disable_only.xml
+SHA-256-Digest: tPB0B6ZsWKs8BdGpfMFe4esKf4PEAo4GCslQ94JyLnE=
+
+Name: base/res/color-v31/m3_dynamic_default_color_primary_text.xml
+SHA-256-Digest: trxcCQguYL/wn0so9PbRlYwx52OBDmPlhVuY3pFWRUk=
+
+Name: base/res/color-v31/m3_dynamic_default_color_secondary_text.xml
+SHA-256-Digest: mrEz8pJ7mF5eL0M9lvtQShLyCaKA8dylExvMB2Z/Fq4=
+
+Name: base/res/color-v31/m3_dynamic_highlighted_text.xml
+SHA-256-Digest: JCmBeteo0dSYiLpcxQ11qaCbA5mF64YWefc0TWWLDMo=
+
+Name: base/res/color-v31/m3_dynamic_hint_foreground.xml
+SHA-256-Digest: D3LzLX0IS96ZpDVvSgtvlC4rUSBFAtHdEREgiHyMuq0=
+
+Name: base/res/color-v31/m3_dynamic_primary_text_disable_only.xml
+SHA-256-Digest: pNl7qvnSDwnK/IJwy990Tdbr0QqgrQmxn7zFyFoudck=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral12.xml
+SHA-256-Digest: S59NP4Lbtmd+x8oikCEwjLf86JYj0hfpt2yQSW8XO5s=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral17.xml
+SHA-256-Digest: Mu2lcZJCow5k5UKPLwFH+/1OmC+p38gzdt9CllwUSho=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral22.xml
+SHA-256-Digest: LJVNsrG3M7FT757HXYFSn1xVcjhpQak6VQX+bRrL39c=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral24.xml
+SHA-256-Digest: MXqKIAT0VMVcqyUmX9hXarPsu3kM7K8H0rC+SEjHpmY=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral4.xml
+SHA-256-Digest: H68DwGSAZvpK0A2b0I12/RXcEBFbbS7BkGUDe4QEIA0=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral6.xml
+SHA-256-Digest: vhA98hNPLFwGeQTUDwiFrisar7vqm+bb3Q7UbPHKxQM=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral87.xml
+SHA-256-Digest: dDrEAibUUsRZeHZjCaYvHGnVXq5ws3E9nblVeXb7PZI=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral92.xml
+SHA-256-Digest: 0+i2Qzbcorhz5rVNfGegNtu5Lrj8anEFn+3EhWptX2g=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral94.xml
+SHA-256-Digest: gR2N70ChdK1yFrDIxdm3TrssoKrG+vlnVdNfITCjAWI=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral96.xml
+SHA-256-Digest: qQcpPdVLPBkCQgD00682/KS5k5nEekZ3dSYxj2RlRH8=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral98.xml
+SHA-256-Digest: QUYSjFt6C5yKRMAHs6oZC+ctnfSwVuegoVo7Jtpe7J8=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant12.xml
+SHA-256-Digest: pNA9Rt8rxvA6aieS4EoEpZFYXOkixAdPmntBOk7gVUI=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant17.xml
+SHA-256-Digest: azRNjXuJZVxr4nZTWS5gIyXb7UDMxOhWDHp8yLDpHVQ=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant22.xml
+SHA-256-Digest: n8yLHg0C33tdCIth45fWrOsviNrTLRH0uHR+afhAsoY=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant24.xml
+SHA-256-Digest: R/B5oYnRZLCJJKkx7W2avzUXotw0RhsvkUIpEt6+gEc=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant4.xml
+SHA-256-Digest: +kMSv1wrOc3B4SdIneZxSXOTpnihuhj4I2zM34cM3N0=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant6.xml
+SHA-256-Digest: H2+1hAAQvRdwSAvq4nFqSFRaUMp8/oAkmP0eS8BUZIg=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant87.xml
+SHA-256-Digest: bCTxB5U//lUqCeboj1OQ+CyP4ZHA677QTBjFwwjcFR4=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant92.xml
+SHA-256-Digest: 9H5pJtadAESVovXg2J66NGRq35WQakWh0kAvsgVNBCU=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant94.xml
+SHA-256-Digest: JLnj9PXpRSA2ztUqEu4UA90v+ff288jvabctyjeHJnQ=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant96.xml
+SHA-256-Digest: NmITjRHCwInaQcMWVzIKRquRlFJ/zv0B1yqS+rjNTcA=
+
+Name: base/res/color-v31/m3_ref_palette_dynamic_neutral_variant98.xml
+SHA-256-Digest: gzwJ7rJ4BsEdEYQDDFG1s6YvK56LK637xIisobypS44=
+
+Name: base/res/color/abc_background_cache_hint_selector_material_dark.
+ xml
+SHA-256-Digest: Hd46AEJ3g5jN8/h42ebdwNA3yw4UULryt5LEpmNWFio=
+
+Name: base/res/color/abc_background_cache_hint_selector_material_light
+ .xml
+SHA-256-Digest: qX5kVTN4PXvxCtUeoFWhOvA+6MnEXt2MhJBXMMAjBLU=
+
+Name: base/res/color/abc_btn_colored_text_material.xml
+SHA-256-Digest: XrMNRb0wtHLWPUM2BU3MsD1m857PBiv9qpVD411Hq/E=
+
+Name: base/res/color/abc_hint_foreground_material_dark.xml
+SHA-256-Digest: UzCIxfXNqEZzutjdWXorCfchYP0KXzqe9luMb5gN99I=
+
+Name: base/res/color/abc_hint_foreground_material_light.xml
+SHA-256-Digest: S6j7+HTmIfMUfqSg1S6UD1ZQVldNAvebELhDOEDmVlQ=
+
+Name: base/res/color/abc_primary_text_disable_only_material_dark.xml
+SHA-256-Digest: ubG88jK6htCmeYdYEXcxqMXfVrxR5dIUjp6OyzDaIX0=
+
+Name: base/res/color/abc_primary_text_disable_only_material_light.xml
+SHA-256-Digest: 4EehsVlrIGzZYOEIzE/Fca9nHt7Bg/cNupBcQbzCpzw=
+
+Name: base/res/color/abc_primary_text_material_dark.xml
+SHA-256-Digest: e4XPUzuVR/O1bG9XPGR4GK7hkMlouGH1L0wlWA66UaY=
+
+Name: base/res/color/abc_primary_text_material_light.xml
+SHA-256-Digest: ORV+OCysrYxLs5ktyTVN8BOwHTL8vawBkNm4mm5ezBA=
+
+Name: base/res/color/abc_search_url_text.xml
+SHA-256-Digest: gG3GY8WuMBoWpxJqr2t5pWDgD9230EN2mig9ecRCSwQ=
+
+Name: base/res/color/abc_secondary_text_material_dark.xml
+SHA-256-Digest: jMgO4sgUCmQApsi18qVT8YucMdVR+bZ+za7NCLHqXyE=
+
+Name: base/res/color/abc_secondary_text_material_light.xml
+SHA-256-Digest: BdYrCUqlaEksKWojQKOvGjGeWzWMiU62uPQRqiWe6aY=
+
+Name: base/res/color/abc_tint_btn_checkable.xml
+SHA-256-Digest: MVQiDAxp7Wvm2ZEVPww5iyehgAN/HtEghbTHC7YijX4=
+
+Name: base/res/color/abc_tint_default.xml
+SHA-256-Digest: d1O5IhEaxgBuK5p8Xzi4OmIUtYVd5I8u+spFXTjMwNc=
+
+Name: base/res/color/abc_tint_edittext.xml
+SHA-256-Digest: 4GYhB8SqUCTpRuiWKmUnc+1wM4D1OdJnzS/MYiaIxLc=
+
+Name: base/res/color/abc_tint_seek_thumb.xml
+SHA-256-Digest: BWmUmLPsq5q864vn7q4DvaAsdLSWsh17MPj4wp6JuUg=
+
+Name: base/res/color/abc_tint_spinner.xml
+SHA-256-Digest: TIrhDz3k43uggwhuMjZ8hJvVjETC5VlveqOeosd/cAU=
+
+Name: base/res/color/abc_tint_switch_track.xml
+SHA-256-Digest: yPcjW9d07DdypkbsiZ0f9HrpO8Dm1O/nGTeBiXGfWwg=
+
+Name: base/res/color/chip_background_state.xml
+SHA-256-Digest: 456IdOP+1RANZlcsOutCYOpkZz3cLfA8PNsddt76yE4=
+
+Name: base/res/color/chip_text_color_state.xml
+SHA-256-Digest: ThIFbRQ9VvHvGlKoJYkbdTJ0mrA9Fg8+ZxAbl1GEW00=
+
+Name: base/res/color/common_google_signin_btn_text_dark.xml
+SHA-256-Digest: sIe++BTr+ouB6kw7ttKyN+bjrEp/3/G7ylNYemRL+1g=
+
+Name: base/res/color/common_google_signin_btn_text_light.xml
+SHA-256-Digest: +qKgMI1pRjZq8snf4gA6qT5eVhJurefjd5awqivInaA=
+
+Name: base/res/color/common_google_signin_btn_tint.xml
+SHA-256-Digest: j0DQBgtBKqFTwZMMQTW9kUqIazuM8LdUSya8cixO7Pw=
+
+Name: base/res/color/design_box_stroke_color.xml
+SHA-256-Digest: z/plU5p9zXW1lQNuWKmw5D5HWCrRmB3RFpEY0PAVOYM=
+
+Name: base/res/color/design_error.xml
+SHA-256-Digest: SBxtLRLvL5JU94J9gKAlwIKnpCP7dFk4z2skdaWY6rw=
+
+Name: base/res/color/design_icon_tint.xml
+SHA-256-Digest: BoDkVbPRcsoZV8N5zH5FT4L2Nf/wZmPoEylNvO1dtvs=
+
+Name: base/res/color/m3_appbar_overlay_color.xml
+SHA-256-Digest: cVlJwvTmr6SoIO6xUYB/XsMkVqZNKGY5BVe3hx3k368=
+
+Name: base/res/color/m3_assist_chip_icon_tint_color.xml
+SHA-256-Digest: VMaE4VkgVy3JhkNtX7++P2t65g57cuQUyK34bhJIswc=
+
+Name: base/res/color/m3_assist_chip_stroke_color.xml
+SHA-256-Digest: j0n9T0Z3z8SbwfZw7AsGNqoOTdI+h/S+qDXc4dmlt1Q=
+
+Name: base/res/color/m3_bottom_sheet_drag_handle_color.xml
+SHA-256-Digest: 4wLD6CPOcguSoU+iM7xOcmruYTb5Ee3uEiw81J3jOYU=
+
+Name: base/res/color/m3_button_background_color_selector.xml
+SHA-256-Digest: 12WZ2ikGSuZ1njFz7R7t4xFp0tmdrgvFblll7cUlAls=
+
+Name: base/res/color/m3_button_foreground_color_selector.xml
+SHA-256-Digest: xbjX/Yhu5OwkTQjhWI9rBrXuzXpBCkgDvpzLQQCmvtc=
+
+Name: base/res/color/m3_button_outline_color_selector.xml
+SHA-256-Digest: c3ZuV4dqZ0mcp44Vl9vehm6Ovx2gs1jD/8Ql3WNc6vU=
+
+Name: base/res/color/m3_button_ripple_color.xml
+SHA-256-Digest: yPJ7FkoXu4rVQ5jUJO3aNOW2wfbMQsK4x1Yuu1Lv3CM=
+
+Name: base/res/color/m3_button_ripple_color_selector.xml
+SHA-256-Digest: kFASutJLBOtz5kRSnFl+VWxWzbt6LOyXdw2S6l2vW7g=
+
+Name: base/res/color/m3_calendar_item_disabled_text.xml
+SHA-256-Digest: C1fgL2sJvIyQaskXJ/CcV2605o3lb/jG6yhm5+VlNMc=
+
+Name: base/res/color/m3_calendar_item_stroke_color.xml
+SHA-256-Digest: B/RJdabrq/QXFf+tFFh3wUlGKmQmvo9zGAhO6KUMuYs=
+
+Name: base/res/color/m3_card_foreground_color.xml
+SHA-256-Digest: pJQjw4Ocan1Yvhne+d1/ylSzmWVki0hifRkxahF9FHs=
+
+Name: base/res/color/m3_card_ripple_color.xml
+SHA-256-Digest: Hb6fBkXFeTE4GFCKcXzsxJH5HwsYAFbMo9YaHn2lCzU=
+
+Name: base/res/color/m3_card_stroke_color.xml
+SHA-256-Digest: ZrnwQXBwq0XDVwXytZ5m48shFaPfCe1QMrhIE9Yvg1M=
+
+Name: base/res/color/m3_checkbox_button_icon_tint.xml
+SHA-256-Digest: ZCHsud9f8VqZuEsEBI+anb7hSttJI93iW1F/16a7MN8=
+
+Name: base/res/color/m3_checkbox_button_tint.xml
+SHA-256-Digest: no/p+tzBA19Y8cruu/Vwph5utYFUQd2Yxqked6pKXuo=
+
+Name: base/res/color/m3_chip_assist_text_color.xml
+SHA-256-Digest: 3eNGmjs5R9vzeZPpkVDqnBZoKFLHI1ZUd5u/DOkxRW0=
+
+Name: base/res/color/m3_chip_background_color.xml
+SHA-256-Digest: EGSnCH0+pi3aKhc6Hz+0luXsGSTC5nJsuWEnlH3X4i4=
+
+Name: base/res/color/m3_chip_ripple_color.xml
+SHA-256-Digest: 38aNtmPCZ0tU2CV4QqqETx9aObuNFmAUkbmbwuJIPPE=
+
+Name: base/res/color/m3_chip_stroke_color.xml
+SHA-256-Digest: bjVzH54xP0teVYocWWoC1R7ykgdB0lbN0kTnZl4RM6g=
+
+Name: base/res/color/m3_chip_text_color.xml
+SHA-256-Digest: nKv7tXwJoQqNWKrEZLo6LFLWBqYihC9LcyX4gjuK7l4=
+
+Name: base/res/color/m3_dark_default_color_primary_text.xml
+SHA-256-Digest: e0mABw+yrqTZd8A7EQQo50FvLYayWjyxrsC2btRF09o=
+
+Name: base/res/color/m3_dark_default_color_secondary_text.xml
+SHA-256-Digest: k/y+EVM1QV5TmJYW1/FBQjaSpYs9/0ZfdXB4eBpYdiw=
+
+Name: base/res/color/m3_dark_highlighted_text.xml
+SHA-256-Digest: Yy1DrTws5d4bBxoCI0kkS3Cg2lQqrcntFD4wibMEy8s=
+
+Name: base/res/color/m3_dark_hint_foreground.xml
+SHA-256-Digest: sRxPp04HY28ojP3gAcjlkYSxAFiaYIsUtq5G1wtvAa0=
+
+Name: base/res/color/m3_dark_primary_text_disable_only.xml
+SHA-256-Digest: 049KlxFTHGk3VudKC6DriTPi9Fd+WgYDOjdstmAvRR0=
+
+Name: base/res/color/m3_default_color_primary_text.xml
+SHA-256-Digest: sbNBt6Dy8p6uFUHMZx3nI4QvqzDtd0wuFDs9Gb09sW0=
+
+Name: base/res/color/m3_default_color_secondary_text.xml
+SHA-256-Digest: I9r4yJtobpFr64vkAD5ycplUBvrOgj4He7O1DAdiEzc=
+
+Name: base/res/color/m3_efab_ripple_color_selector.xml
+SHA-256-Digest: mdj3iJ1PLjO7KY1lJque3dQGhXjRVunfwYN4FrHpLAA=
+
+Name: base/res/color/m3_elevated_chip_background_color.xml
+SHA-256-Digest: AAGruVhhI6/CsgfCjI08yx99FVOHLQtP0GTfbZdMngI=
+
+Name: base/res/color/m3_fab_efab_background_color_selector.xml
+SHA-256-Digest: MqDemmJV+qvvjgdhoAhzfEcEdEz1pZoDXjTXLK2Xl/U=
+
+Name: base/res/color/m3_fab_efab_foreground_color_selector.xml
+SHA-256-Digest: PTFfVAjamGDaguZ8WRA7sHtaaELb4wEZcqXSSa3U2Zg=
+
+Name: base/res/color/m3_fab_ripple_color_selector.xml
+SHA-256-Digest: rm0OET1oMAmF5oevbU0NGE5Lnriqr9RpED5+QDmg2Q4=
+
+Name: base/res/color/m3_filled_icon_button_container_color_selector.xm
+ l
+SHA-256-Digest: by38Ds2Ox6ummDBs5FQ7N1ooPAdYmQ1lhOaLWAQpWgE=
+
+Name: base/res/color/m3_highlighted_text.xml
+SHA-256-Digest: 9vMeie2bFIgmcaY5zJjfghIjODN3s7g2zgPiKHleYXg=
+
+Name: base/res/color/m3_hint_foreground.xml
+SHA-256-Digest: vG9zPFHLLFzMqCG9nIUPajpvYlCVv65kxHFmKeIMRek=
+
+Name: base/res/color/m3_icon_button_icon_color_selector.xml
+SHA-256-Digest: ufN4UZzH8vYTZZCPupI2sE0PP9NgIeKfhfjZy6nju88=
+
+Name: base/res/color/m3_navigation_bar_item_with_indicator_icon_tint.x
+ ml
+SHA-256-Digest: TehbF7c7+YjoPXw7SGrrfcFsAA7Ndd1igY09G6oxIbM=
+
+Name: base/res/color/m3_navigation_bar_item_with_indicator_label_tint.
+ xml
+SHA-256-Digest: cf7FXqrRFc2chdasFoc9gDqrLpt/9jF2n4bmw59GFB8=
+
+Name: base/res/color/m3_navigation_bar_ripple_color_selector.xml
+SHA-256-Digest: QumToJlycq0CsupSZBWqRWpN6mGNMStcIenur9nNyp8=
+
+Name: base/res/color/m3_navigation_item_background_color.xml
+SHA-256-Digest: dlbIJQh7ERH4BLJDAI8KM5kGiXRRDw+Gxx5Ht+RkV+0=
+
+Name: base/res/color/m3_navigation_item_icon_tint.xml
+SHA-256-Digest: 6YVarWeVBC2Ksc7A+Xy1LJyxLUuSasyGlcWH0oLUMkE=
+
+Name: base/res/color/m3_navigation_item_ripple_color.xml
+SHA-256-Digest: +ZBRBKpyXoS1EPNlgsueS3PcbD01jc0Ny5FqLdVk3ac=
+
+Name: base/res/color/m3_navigation_item_text_color.xml
+SHA-256-Digest: n9SpXVo2CbK4RUoAObbzqyfyoOid5a1sgWOBec23mms=
+
+Name: base/res/color/m3_navigation_rail_item_with_indicator_icon_tint.
+ xml
+SHA-256-Digest: pzJseIrRXnZRGaVhbvRJbwimTyi1XAW9DXO8gk5S1c4=
+
+Name: base/res/color/m3_navigation_rail_item_with_indicator_label_tint
+ .xml
+SHA-256-Digest: zPHiaS1ra/f0fedIanEUVvRjyH3CdXS8krBTIH8s8Pw=
+
+Name: base/res/color/m3_navigation_rail_ripple_color_selector.xml
+SHA-256-Digest: RggvSvGBblo1iTQX4tEwukRwy/+C99L9bMFiwwCVQ1Y=
+
+Name: base/res/color/m3_popupmenu_overlay_color.xml
+SHA-256-Digest: MjK+TWz0yyO5hoRd+6PGJZPH0CYiMBrbEZxWkN4ngZg=
+
+Name: base/res/color/m3_primary_text_disable_only.xml
+SHA-256-Digest: F+amN4Xtn7yaEEuNg6R2pIi7+7aHiJjBJDNMREGP1No=
+
+Name: base/res/color/m3_radiobutton_button_tint.xml
+SHA-256-Digest: ZVZG194WNUaPH9tjcBBuNfd88/GEdIzYuRLsTVu6Mws=
+
+Name: base/res/color/m3_radiobutton_ripple_tint.xml
+SHA-256-Digest: 8AmV2RlJA7EmSZqJXpENV0bG5DIi0ZmYkvW5iGKCWl0=
+
+Name: base/res/color/m3_selection_control_ripple_color_selector.xml
+SHA-256-Digest: yIuLYRpG4m/8/uafUxDmx4Jh22TMqf+kXgLkam3nwbc=
+
+Name: base/res/color/m3_simple_item_ripple_color.xml
+SHA-256-Digest: D9ZPI3VwN+doLBX6Qhrf+wG9uvNINNH3kT3Lyulw9IQ=
+
+Name: base/res/color/m3_slider_active_track_color.xml
+SHA-256-Digest: zOquN9HoGlSDmeK5QNtB5FgrEYvFmMKnw8f02PL1s/U=
+
+Name: base/res/color/m3_slider_active_track_color_legacy.xml
+SHA-256-Digest: T+UNIi5ZEkHuLaARxXwsEyzs/OjFn77dQbxUZuN+/WE=
+
+Name: base/res/color/m3_slider_halo_color_legacy.xml
+SHA-256-Digest: Wo/dstapza9n7kJXBnYV0sr2sHVkce+ynIcB2UtODvQ=
+
+Name: base/res/color/m3_slider_inactive_track_color.xml
+SHA-256-Digest: xNobQkbgpnXgjMvByhoFB7rhCevEAIVMJGxyk3TxyF4=
+
+Name: base/res/color/m3_slider_inactive_track_color_legacy.xml
+SHA-256-Digest: mFV62xUIiAajPPUK+brB5ClLkr/3WBfycXNDtD2dypg=
+
+Name: base/res/color/m3_slider_thumb_color.xml
+SHA-256-Digest: 51vnLkdQ9sWaU43ZH/xATeinbiQnI7QM89Kxh5mOk3s=
+
+Name: base/res/color/m3_slider_thumb_color_legacy.xml
+SHA-256-Digest: 99HIa/GCF5EtjSHlxF3IoxgMHXtZg27FIMgZWddphz0=
+
+Name: base/res/color/m3_switch_thumb_tint.xml
+SHA-256-Digest: hfbM5N2fqTRWPTlxwICdm2nROARcPkt/Ou39Y8hfxRI=
+
+Name: base/res/color/m3_switch_track_tint.xml
+SHA-256-Digest: X87xTuBWEwtHA6IMcT/JgIfozSvwkJergzvJjUpleB4=
+
+Name: base/res/color/m3_tabs_icon_color.xml
+SHA-256-Digest: k6UeY9/Pm28rX9i0WCg/0wrRnN0aX+83axf00+ge9KE=
+
+Name: base/res/color/m3_tabs_icon_color_secondary.xml
+SHA-256-Digest: 2fE+/7SfPv3U5D5CEUVir5N/3NvlDsrsmcfYZLROzu0=
+
+Name: base/res/color/m3_tabs_ripple_color.xml
+SHA-256-Digest: I2pDOUZaLg7CjnIAIEJPG2yp3s0sDoK+IIAlhqI6tQk=
+
+Name: base/res/color/m3_tabs_ripple_color_secondary.xml
+SHA-256-Digest: 6NYBSDoana8nroQPIZ1p+N71yVUILu8s2ki2RJAzvsg=
+
+Name: base/res/color/m3_tabs_text_color.xml
+SHA-256-Digest: GPNOfuacGKeZ8oKHO1md6e0+YxWx3QcVxYwRUcioPq4=
+
+Name: base/res/color/m3_tabs_text_color_secondary.xml
+SHA-256-Digest: /TAWYisqBq06F5HGywiS1wNYQT7saeffkfI9BuuV2iw=
+
+Name: base/res/color/m3_text_button_background_color_selector.xml
+SHA-256-Digest: KjE7V/FmwF7m6iPPyQyjwEUxvSVUbHBROwrz7irSrFk=
+
+Name: base/res/color/m3_text_button_foreground_color_selector.xml
+SHA-256-Digest: h1atxNgy1MUHulvw6mdCz6qzARMEGhykMQdVSLt28IM=
+
+Name: base/res/color/m3_text_button_ripple_color_selector.xml
+SHA-256-Digest: Ww5ma9SuqpJETXZcoBWKQq7XSWE93LjTE+gaG+x/1DI=
+
+Name: base/res/color/m3_textfield_filled_background_color.xml
+SHA-256-Digest: dZl3DgVaZn14ukqwULcjq5122lKrhAd4vAoTA/ZQffg=
+
+Name: base/res/color/m3_textfield_indicator_text_color.xml
+SHA-256-Digest: DEpoKGrnJ/VmWInLx74fMtbHuPKR3RwwJoV0EG4jsX4=
+
+Name: base/res/color/m3_textfield_input_text_color.xml
+SHA-256-Digest: STMTSnAyo6ZYH85vzfYVM4dp1krliIK+IBqMyK4E9x0=
+
+Name: base/res/color/m3_textfield_label_color.xml
+SHA-256-Digest: nEoPHKhM9S4N4RnO61kuNcEWcmKDwOaBONNVp8H9f8Q=
+
+Name: base/res/color/m3_textfield_stroke_color.xml
+SHA-256-Digest: kE1w3y0Bp+DxGALjTPlXwt8RwoxjwwY9lGwiL99I82o=
+
+Name: base/res/color/m3_timepicker_button_background_color.xml
+SHA-256-Digest: 4oa1o4vy0+F+erfdWCjSgxY2nVuEUYOKFl/++VrDoww=
+
+Name: base/res/color/m3_timepicker_button_ripple_color.xml
+SHA-256-Digest: m6vEUBtWuExMFAvpvBF/kWYXYe9JHG7QZXQLSBUUYBs=
+
+Name: base/res/color/m3_timepicker_button_text_color.xml
+SHA-256-Digest: 69sJr1OXnyhlFP0JIyUILKmwB2shLI9A8gZyJv4aJQk=
+
+Name: base/res/color/m3_timepicker_clock_text_color.xml
+SHA-256-Digest: z7zk6lTaXzpeKNw6i8nqHiSOJH5RZn0dT1gyGMbzUHU=
+
+Name: base/res/color/m3_timepicker_display_background_color.xml
+SHA-256-Digest: +XpeJBfWxOcCYYY8z0MI4QV7cT1HcX4L/NcjGWbBKos=
+
+Name: base/res/color/m3_timepicker_display_ripple_color.xml
+SHA-256-Digest: RzM0JJRjZ3bt9DyUzS/94Iu+NIBVmNERc43j5ASekc8=
+
+Name: base/res/color/m3_timepicker_display_text_color.xml
+SHA-256-Digest: MJaeQHtqi1vcuCz0UY1+GrIYJJ1xY9huBpYloECEhpE=
+
+Name: base/res/color/m3_timepicker_secondary_text_button_ripple_color.
+ xml
+SHA-256-Digest: GxwSDFByKKVl5bg9gO78ptvpdULMqUybk9fvZmInPpc=
+
+Name: base/res/color/m3_timepicker_secondary_text_button_text_color.xm
+ l
+SHA-256-Digest: iv6NFaS/qnKVPa7O12KQMmJTncKo4OqJMKo80aPgino=
+
+Name: base/res/color/m3_timepicker_time_input_stroke_color.xml
+SHA-256-Digest: fljL18zuMnqL+YvHJwn5zDPB32GldVOYRKI6yfLmAN8=
+
+Name: base/res/color/m3_tonal_button_ripple_color_selector.xml
+SHA-256-Digest: 294wNc+sMnT70wdge6YNf56d2p4cbyMxDaw66bzJcmU=
+
+Name: base/res/color/material_cursor_color.xml
+SHA-256-Digest: fGkFrrNdoQm1R4eCRoAwG5LJyXl7zs/tJaDZCTveDRQ=
+
+Name: base/res/color/material_divider_color.xml
+SHA-256-Digest: dNrRN2hPNl7yXfj4txLsc6CqCcgv1RotE6RPFSOrS0U=
+
+Name: base/res/color/material_on_background_disabled.xml
+SHA-256-Digest: VIlV9F+Ss0Yvs38kZHTG4VaX3q2+7lv5dFtTFlzjPCk=
+
+Name: base/res/color/material_on_background_emphasis_high_type.xml
+SHA-256-Digest: Htl7Ulc1aJZXst13raR5yETM6/YrL9ThtPlyt91+LO4=
+
+Name: base/res/color/material_on_background_emphasis_medium.xml
+SHA-256-Digest: XpbcBVZkm4cSKpoVWdvGnFu0RJKIsW8rYYFPSLcE1aY=
+
+Name: base/res/color/material_on_primary_disabled.xml
+SHA-256-Digest: GbgTrVaoJxiLomkHeJEh7DLh/p5eFB0EUg/4UNZqZhc=
+
+Name: base/res/color/material_on_primary_emphasis_high_type.xml
+SHA-256-Digest: 9lCxf36AQsZ1+4riBICeBJteO5FJj09d4C1A3rwOOJE=
+
+Name: base/res/color/material_on_primary_emphasis_medium.xml
+SHA-256-Digest: ZgNW7ei2ekDyIfVXZJas4GmfEyn8ltItjgLsPCkIZxg=
+
+Name: base/res/color/material_on_surface_disabled.xml
+SHA-256-Digest: Q1DJOC0kXiXH1/q1HmzsVX6NGpFdFYPx1pidKS9eYbw=
+
+Name: base/res/color/material_on_surface_emphasis_high_type.xml
+SHA-256-Digest: kXeNKi37g0RBWAEKjV8+VQTSjJY/YJqC4tyPJrf5jf4=
+
+Name: base/res/color/material_on_surface_emphasis_medium.xml
+SHA-256-Digest: CfNOXVUdW/0i9933hzw/V7rtVcoSKcSDCU5lBPEOkTo=
+
+Name: base/res/color/material_on_surface_stroke.xml
+SHA-256-Digest: mBZooFa9g7h/eKwLiWema449sBtQbcBVxVn6E3H/urc=
+
+Name: base/res/color/material_personalized__highlighted_text.xml
+SHA-256-Digest: GcKYWy6GAK0AI9zctSAYDRnRuMFmM7zajAsIvxpSddA=
+
+Name: base/res/color/material_personalized__highlighted_text_inverse.x
+ ml
+SHA-256-Digest: 6LCSc8a+8quY4zW7D3nY8B5ttblo3h93LOKYry1iA/o=
+
+Name: base/res/color/material_personalized_color_primary_text.xml
+SHA-256-Digest: ivUpHlFR8CubmpuXZVQH4Y/2lNATDTijE+1Wmzrngkg=
+
+Name: base/res/color/material_personalized_color_primary_text_inverse.
+ xml
+SHA-256-Digest: zBQNGVdYIYV/XmvPz/DFwvr3U6RpiMQRrqXcq4W0i/k=
+
+Name: base/res/color/material_personalized_color_secondary_text.xml
+SHA-256-Digest: jtwSnJPzVq2ryCDhe9ujEfUg+GNmGwI2TsERzgkHxP0=
+
+Name: base/res/color/material_personalized_color_secondary_text_invers
+ e.xml
+SHA-256-Digest: kTEhMo0g6pA4P8DZi9zSf7mthEX1x0uyIkNTqBqSAGo=
+
+Name: base/res/color/material_personalized_hint_foreground.xml
+SHA-256-Digest: s1hGq8wRBPsHPU8Z78+ZRV1mge3sttga0uKskMJe+JI=
+
+Name: base/res/color/material_personalized_hint_foreground_inverse.xml
+SHA-256-Digest: LfekIfvLEH4xj3QaTK2H4Qu8DXL8b3Tfq3rsk90KI8Y=
+
+Name: base/res/color/material_personalized_primary_inverse_text_disabl
+ e_only.xml
+SHA-256-Digest: rfomMFY8yzlM3318PDrEAoUQl8Xf7wpnxWUa+fSDHac=
+
+Name: base/res/color/material_personalized_primary_text_disable_only.x
+ ml
+SHA-256-Digest: D5s/ZLSb1JyXG7rEKpIISvGC6MREQ9IrkzJNtVuF+tU=
+
+Name: base/res/color/material_slider_active_tick_marks_color.xml
+SHA-256-Digest: ZNKaRxngkCFv3tgV+Y2mDbYuLlhCdZiABFEAtKlU8qc=
+
+Name: base/res/color/material_slider_active_track_color.xml
+SHA-256-Digest: PwHj1cb5mTGIl/t1hBLVE0oc046noGyquAoLBhBPmbo=
+
+Name: base/res/color/material_slider_halo_color.xml
+SHA-256-Digest: ioMLmnLDfPDkWGmsUyMEoxZZlY/as5VGbgPakXdQwBI=
+
+Name: base/res/color/material_slider_inactive_tick_marks_color.xml
+SHA-256-Digest: 7Zi9E2fZ5qQqG47RebExRs6wG57hERtzRV94a9hCi0k=
+
+Name: base/res/color/material_slider_inactive_track_color.xml
+SHA-256-Digest: MNjx6LFjd23rvGz+yzsfi1mmJS1gq15lTU/01XHpY6s=
+
+Name: base/res/color/material_slider_thumb_color.xml
+SHA-256-Digest: WITsavvgy+rjQORBNfYUAfkbdrVLV6f7KJVLLUU/WvY=
+
+Name: base/res/color/material_timepicker_button_background.xml
+SHA-256-Digest: O85YZe0rYP7pl+s4ouBRSbRW15aMgwtKqgnY7YsKbuM=
+
+Name: base/res/color/material_timepicker_button_stroke.xml
+SHA-256-Digest: WiJdDB+6TTRuWYRKPciE/D09xFYEeIZS8YQwn38ASAk=
+
+Name: base/res/color/material_timepicker_clock_text_color.xml
+SHA-256-Digest: 1FA6SQCFxZcQTrCehl5CNTTYJa1PUZjT5KbyowrpUjs=
+
+Name: base/res/color/material_timepicker_clockface.xml
+SHA-256-Digest: Ae17wH+g7N3uzOhCc8f1RL/V9yCcFvt0aa464ONMOFg=
+
+Name: base/res/color/material_timepicker_modebutton_tint.xml
+SHA-256-Digest: xESix06bcoqAFrYCzCe8lCiGuIGFmwgj3eqXObaE5tQ=
+
+Name: base/res/color/mtrl_btn_bg_color_selector.xml
+SHA-256-Digest: Iki9GRgVoViE9aLPaI+PABOa3/GP8b5BG4mxTRv6g50=
+
+Name: base/res/color/mtrl_btn_ripple_color.xml
+SHA-256-Digest: jaOcr8Orng8SeFg2u1RxghJoVopKxvzlp9isuEENgYc=
+
+Name: base/res/color/mtrl_btn_stroke_color_selector.xml
+SHA-256-Digest: S6p2kGpyTESdjE9ftCWAGuTJ0M0+vtjgAgBBYdDBS9c=
+
+Name: base/res/color/mtrl_btn_text_btn_bg_color_selector.xml
+SHA-256-Digest: kQUKD8BitU2VvYohckYIWcmI0TRcZYSrPCI9PxvvAzM=
+
+Name: base/res/color/mtrl_btn_text_btn_ripple_color.xml
+SHA-256-Digest: YfSrHQ2IkKXhkgR492XZwS4JjDq7mSdoXe+VAPgUDpE=
+
+Name: base/res/color/mtrl_btn_text_color_selector.xml
+SHA-256-Digest: hqRKnHqjK+Su3uB0ql2ATu1+vKip/MRVEs26yh+hdDw=
+
+Name: base/res/color/mtrl_calendar_item_stroke_color.xml
+SHA-256-Digest: PqV3yJL8B8dL85cUKSuE+rUbaSumlbb3CEwTHsaOx40=
+
+Name: base/res/color/mtrl_calendar_selected_range.xml
+SHA-256-Digest: PjWildR3tlzhezNZs7c9MMIG2H6TYskyH0GgKKsnqGI=
+
+Name: base/res/color/mtrl_card_view_foreground.xml
+SHA-256-Digest: /cJ3vVpWFoIQSkIIF1tBU7yF8st5roy7/2grNfl8cIw=
+
+Name: base/res/color/mtrl_card_view_ripple.xml
+SHA-256-Digest: mQ3pFtRByxlagNbMiCNNApEanLqNU2kIQaqGw42/JOo=
+
+Name: base/res/color/mtrl_chip_background_color.xml
+SHA-256-Digest: yUF8hmZ8uLlkKCyavJIVFD9JwKDMAtxtzfk/M2dc638=
+
+Name: base/res/color/mtrl_chip_close_icon_tint.xml
+SHA-256-Digest: UtxyGsb+YGjWuQURaP8bUe9EZuNjZ9YywnD0Ab6Su3I=
+
+Name: base/res/color/mtrl_chip_surface_color.xml
+SHA-256-Digest: kY8t1R9oa9hPYPBxoC30fJFk5dAsaEjYkXzlRKD75R4=
+
+Name: base/res/color/mtrl_chip_text_color.xml
+SHA-256-Digest: yHtW0sH7tA2HaCCYdeCqAA1lkLVkTEm7wMIXl4tk/aI=
+
+Name: base/res/color/mtrl_choice_chip_background_color.xml
+SHA-256-Digest: 4Bcp/igPX8RqxCYXKyG3jL+SlzS8kJG9IRrJJm2s5X0=
+
+Name: base/res/color/mtrl_choice_chip_ripple_color.xml
+SHA-256-Digest: KoRbreNtA2d7c4ZWWvsCAc+AzvxMsFa2PDdnOARqC7o=
+
+Name: base/res/color/mtrl_choice_chip_text_color.xml
+SHA-256-Digest: SEJlFJl/lQBfZlxZ4BKMhtBIZW7ON8kka+1RNvn1J2o=
+
+Name: base/res/color/mtrl_error.xml
+SHA-256-Digest: 19shMwE3Vr4n1CL3s8fDkgFji1qlHtU0D4WebowQ61s=
+
+Name: base/res/color/mtrl_fab_bg_color_selector.xml
+SHA-256-Digest: 3WD4w+mqH3U8O8H1hi1Q1vokD3TBNgMq0RCxeSuy9zI=
+
+Name: base/res/color/mtrl_fab_icon_text_color_selector.xml
+SHA-256-Digest: 32v9wzts0mEIjnveeDWUJd+ltz42xWTFcUxr8vucncQ=
+
+Name: base/res/color/mtrl_fab_ripple_color.xml
+SHA-256-Digest: wDihKrUhwC/mE5wHbIkTacRLvKrVRyq1E7pHMCQuaRs=
+
+Name: base/res/color/mtrl_filled_background_color.xml
+SHA-256-Digest: g11oOdjumQxZBHJPYF+2QurFv26RprydF4M9fXOQPns=
+
+Name: base/res/color/mtrl_filled_icon_tint.xml
+SHA-256-Digest: dm0A/UuxCbKq6QfmM8aT70LwG6aw1v2rMb/2fjhloOk=
+
+Name: base/res/color/mtrl_filled_stroke_color.xml
+SHA-256-Digest: pSOKO5jTz0Ye5oiTKqB5bFTIdsHMw1h1pX3H9Qe9kls=
+
+Name: base/res/color/mtrl_indicator_text_color.xml
+SHA-256-Digest: MHUQGUWlt4wQt8V9gJMcO6PpJcvohjg18b/hsAYfpJI=
+
+Name: base/res/color/mtrl_navigation_bar_colored_item_tint.xml
+SHA-256-Digest: LkR3KIbxy8gfLpk/YMlBUa9Axj+t9DBvmi0Q4smWLUw=
+
+Name: base/res/color/mtrl_navigation_bar_colored_ripple_color.xml
+SHA-256-Digest: /3BKZrNVdq/c2NnPRKs74IUCmpwmLEfQzH+B+6PRSnA=
+
+Name: base/res/color/mtrl_navigation_bar_item_tint.xml
+SHA-256-Digest: GWP1hq78xQtEhmTiGtHmVq+EjFowZsdKpo82DH2oXkc=
+
+Name: base/res/color/mtrl_navigation_bar_ripple_color.xml
+SHA-256-Digest: K+dQtbLWpcsRpMlHsUMDrMkx3dcubtzb06wZ5E2Kfh8=
+
+Name: base/res/color/mtrl_navigation_item_background_color.xml
+SHA-256-Digest: hT5LXZKIQlc0QhUT3+opn4ig+Qa/46BPV+rBZmvsX7I=
+
+Name: base/res/color/mtrl_navigation_item_icon_tint.xml
+SHA-256-Digest: Tbs+6Ho2TcBhzoJCb/C4jW1lUbTfED8g75rXY63+g9s=
+
+Name: base/res/color/mtrl_navigation_item_text_color.xml
+SHA-256-Digest: AErmO9oAo+Y/rOmDpcyVHerJXCD1mjFrkBPSajclkJ8=
+
+Name: base/res/color/mtrl_on_primary_text_btn_text_color_selector.xml
+SHA-256-Digest: A4hPypRXwuXhhZFIM1HUDkfv07GgUa5tGC5fzn+6FTw=
+
+Name: base/res/color/mtrl_on_surface_ripple_color.xml
+SHA-256-Digest: 8i7Y4OX+mm6v85U5pRNC+fS5mmsChhBWzzKbx52EEjI=
+
+Name: base/res/color/mtrl_outlined_icon_tint.xml
+SHA-256-Digest: C+mo+6mXgO1Kh/N9HaaSs97uNDeJYGP7cipnwwFqbMI=
+
+Name: base/res/color/mtrl_outlined_stroke_color.xml
+SHA-256-Digest: 9Bs1bQvMtDMGcJgnm4SpKhNae3ITdPUDpo1KD23uC5U=
+
+Name: base/res/color/mtrl_popupmenu_overlay_color.xml
+SHA-256-Digest: i1ky6gD4Gg9eWKe3SGyjjAU8mVl0DjYFLaasKTtsSoU=
+
+Name: base/res/color/mtrl_switch_thumb_icon_tint.xml
+SHA-256-Digest: 6CBEkFZ+YrZE8eH1T6tlwPCOx56YfvQ5uOIA5G5fh00=
+
+Name: base/res/color/mtrl_switch_thumb_tint.xml
+SHA-256-Digest: IZkMjZgS4bjLFaiDqDuafD7Fzm/dZKdRp+m610Yy8r8=
+
+Name: base/res/color/mtrl_switch_track_decoration_tint.xml
+SHA-256-Digest: 0MASUE0RhU+qJiSpVB2FyjTDeFDQg1vU6dxQX7wnsLs=
+
+Name: base/res/color/mtrl_switch_track_tint.xml
+SHA-256-Digest: 51phfKOzznNMeQtk64wMlsvQKErp0CSAi7H4tE7Ohus=
+
+Name: base/res/color/mtrl_tabs_colored_ripple_color.xml
+SHA-256-Digest: FzGo7fdk8dKd0kNsaXyl+r03GsUccXWczYtJH+0Bkn0=
+
+Name: base/res/color/mtrl_tabs_icon_color_selector.xml
+SHA-256-Digest: zRKds+PUfa3axd3VksmhkGv2Qz+uKVxihsJjbZ+9TTE=
+
+Name: base/res/color/mtrl_tabs_icon_color_selector_colored.xml
+SHA-256-Digest: o4QuTpHCLRr1lD4e40tU1TyJJBbyRB0iuCDoQgyEewY=
+
+Name: base/res/color/mtrl_tabs_legacy_text_color_selector.xml
+SHA-256-Digest: /b3Uav6OdEnDh40aGvQGw/Jx0l/BwNl9NPve6XjvkIs=
+
+Name: base/res/color/mtrl_tabs_ripple_color.xml
+SHA-256-Digest: Ux10eqtmNwURyp8uMA/pm/+spC+OnqZCqGvrB771pMI=
+
+Name: base/res/color/mtrl_text_btn_text_color_selector.xml
+SHA-256-Digest: mX4zOkw9JmXYnRmj5UJmolJitib7tmXqt8TlDU55jT8=
+
+Name: base/res/color/switch_thumb_material_dark.xml
+SHA-256-Digest: od9s3zjyNYfBjMC8xHG4VBVvf+D4dBG9UpbVVpUmYk0=
+
+Name: base/res/color/switch_thumb_material_light.xml
+SHA-256-Digest: ePQ5cR3ucVmcUK3pJmM12FuPdU0pWIIhvK8VSVlEyxs=
+
+Name: base/res/drawable-anydpi-v21/ic_call_answer.xml
+SHA-256-Digest: ktAVuIk4F7Zu0NVPeY64R9z8nXyart0Sy896wEEvSFU=
+
+Name: base/res/drawable-anydpi-v21/ic_call_answer_low.xml
+SHA-256-Digest: RaZaKWKZxnH057UTEkQRuvkZvIbCQlHZsPhM5eSn6MA=
+
+Name: base/res/drawable-anydpi-v21/ic_call_answer_video.xml
+SHA-256-Digest: x6GJCLS1nBIUKsGk4MdTNYf3YfrH3nEgeTcgZwvljto=
+
+Name: base/res/drawable-anydpi-v21/ic_call_answer_video_low.xml
+SHA-256-Digest: fa6bseazdZGVrdLvykAVZnnP+zja0iR/znrVKt6Kepg=
+
+Name: base/res/drawable-anydpi-v21/ic_call_decline.xml
+SHA-256-Digest: jykVxWW94bOOgk5D4+4qr5WtXuY1sa/C4yY3JlB956Q=
+
+Name: base/res/drawable-anydpi-v21/ic_call_decline_low.xml
+SHA-256-Digest: nnQuKMAypp3im0B8ubuxAD1sS1Tx6MZHd2CcfVJ1J9w=
+
+Name: base/res/drawable-anydpi-v24/$ic_launcher_foreground__0.xml
+SHA-256-Digest: V00+TMPTGmlGv0VE+hA3q13Qgxnp59Lydk7i4Q0YW3Y=
+
+Name: base/res/drawable-anydpi-v24/ic_launcher_foreground.xml
+SHA-256-Digest: rzvCnuF7qepG1561wdnOzb9ijKcOwwERd4WzzszzcII=
+
+Name: base/res/drawable-hdpi-v4/abc_ab_share_pack_mtrl_alpha.9.png
+SHA-256-Digest: 9XRhSWQHEq1ohsHAdOZIEEjcCBdKZuVbXrBoxcoLFBw=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_check_to_on_mtrl_000.png
+SHA-256-Digest: YwVreACBUTXmBof6UcW0RMLCUA1dNsZKIw2q2XWwdTk=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_check_to_on_mtrl_015.png
+SHA-256-Digest: xQNxl2V46DPfVG6xA30GomL3kpaFOUDALc8nqqCNJ6A=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_radio_to_on_mtrl_000.png
+SHA-256-Digest: 7OAjU4WGEJqSZoU5aLv9lzBOBHUA333bgbdPDrJp8AU=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_radio_to_on_mtrl_015.png
+SHA-256-Digest: oAwmlYOayEX9bid0LL9tX5GFPZD+jHPIw/rDksFoygY=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_switch_to_on_mtrl_00001.9.png
+SHA-256-Digest: /11bqp2xxVktuOMLv8TEuMeFzyHwYWk0FhlreTXrf4U=
+
+Name: base/res/drawable-hdpi-v4/abc_btn_switch_to_on_mtrl_00012.9.png
+SHA-256-Digest: kK9zpZByfvD0XytoBa2ASsTMO7AsGkxT9sEQ72j1isM=
+
+Name: base/res/drawable-hdpi-v4/abc_cab_background_top_mtrl_alpha.9.pn
+ g
+SHA-256-Digest: F/cuoyIhvGrPNzU8iBByy4WOczr59odvdbvbk12nLi4=
+
+Name: base/res/drawable-hdpi-v4/abc_ic_commit_search_api_mtrl_alpha.pn
+ g
+SHA-256-Digest: 4MEynwVvIkDWvvVB7tqymHD/+U4+TckiUQ2Jb00RSgY=
+
+Name: base/res/drawable-hdpi-v4/abc_list_divider_mtrl_alpha.9.png
+SHA-256-Digest: kKxJflQhuM4SfaTpfANQBQ49yIErqc1aApS+vEwLeM4=
+
+Name: base/res/drawable-hdpi-v4/abc_list_focused_holo.9.png
+SHA-256-Digest: W3cVFkTvQUITaN290a/8j4Lm0nuXF9yL7xOru3Bjqa4=
+
+Name: base/res/drawable-hdpi-v4/abc_list_longpressed_holo.9.png
+SHA-256-Digest: cxMNxzl+vXz3MKNLzfc3w3tsx2akafaLpRSj/dAb7rY=
+
+Name: base/res/drawable-hdpi-v4/abc_list_pressed_holo_dark.9.png
+SHA-256-Digest: KE6KkVkqQnxZSgGK/FdgacW8xGReonlL6cytTK5pxVc=
+
+Name: base/res/drawable-hdpi-v4/abc_list_pressed_holo_light.9.png
+SHA-256-Digest: ydbgeU9LlRotIBhdJSbeNtrS3+Jazk7YcYhnpiATWn4=
+
+Name: base/res/drawable-hdpi-v4/abc_list_selector_disabled_holo_dark.9
+ .png
+SHA-256-Digest: aHsGYIHJspNiipAHjkLL+bxV0yLgO8bomOxMMIDqW1U=
+
+Name: base/res/drawable-hdpi-v4/abc_list_selector_disabled_holo_light.
+ 9.png
+SHA-256-Digest: f+z8YoFL8gCGMozHOyXfTeCKKDAH1V5dFYvAGGctOAQ=
+
+Name: base/res/drawable-hdpi-v4/abc_menu_hardkey_panel_mtrl_mult.9.png
+SHA-256-Digest: rUUsimooO79qKTkyJGWY3sm6P8cJ6aMQLbXIh4rua3k=
+
+Name: base/res/drawable-hdpi-v4/abc_popup_background_mtrl_mult.9.png
+SHA-256-Digest: 3UzO5HcfAhQuAvuPkldDOWiVuRfkEU/HejZj4CV3P7g=
+
+Name: base/res/drawable-hdpi-v4/abc_scrubber_control_off_mtrl_alpha.pn
+ g
+SHA-256-Digest: rGmterUtTcA3Eun2waItlQjMTcTXLl4qrbbvDTZauAM=
+
+Name: base/res/drawable-hdpi-v4/abc_scrubber_control_to_pressed_mtrl_0
+ 00.png
+SHA-256-Digest: JbtfdLda2EjF0ZNynbzfj77/aiz+ZXcXPUxz04Jr7q4=
+
+Name: base/res/drawable-hdpi-v4/abc_scrubber_control_to_pressed_mtrl_0
+ 05.png
+SHA-256-Digest: ZJmSQNeWEwk0AgdjvO1g8OAZGg9KXzB+L4wrEnHNTrs=
+
+Name: base/res/drawable-hdpi-v4/abc_scrubber_primary_mtrl_alpha.9.png
+SHA-256-Digest: qJVDL6YWb/kQhPQM9PDxZFiZACNPhOSAnkpBEjkYlEs=
+
+Name: base/res/drawable-hdpi-v4/abc_scrubber_track_mtrl_alpha.9.png
+SHA-256-Digest: IQzmD46EfXpSE5nC7sEXuLoHAvSnOi5AbjJYR7s+Un8=
+
+Name: base/res/drawable-hdpi-v4/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: QtOA65ydouWkuz4HPgNKD29CUP/+4PG8iZ4p7as4YF0=
+
+Name: base/res/drawable-hdpi-v4/abc_switch_track_mtrl_alpha.9.png
+SHA-256-Digest: /3aqsVIqmaOtzIW6fzGnWzX1F6oA5/zM7Fx5bqPablM=
+
+Name: base/res/drawable-hdpi-v4/abc_tab_indicator_mtrl_alpha.9.png
+SHA-256-Digest: ruqhYjbCvlYHnR+BT7t8D/D2naWneU1SEWaqwIl/gBs=
+
+Name: base/res/drawable-hdpi-v4/abc_text_select_handle_left_mtrl.png
+SHA-256-Digest: xVmLMp8ptkXlXR3CynuxNRMxVc+rFZompBcXoC5vt2I=
+
+Name: base/res/drawable-hdpi-v4/abc_text_select_handle_middle_mtrl.png
+SHA-256-Digest: djTxYU34SJdPl91uTy+OIjBjMxXDjMn/oxBrOAY83hY=
+
+Name: base/res/drawable-hdpi-v4/abc_text_select_handle_right_mtrl.png
+SHA-256-Digest: VQ2muLzmDl9CW3V4vbdJqn9hdpl5sDgK0ISjjZmDxuQ=
+
+Name: base/res/drawable-hdpi-v4/abc_textfield_activated_mtrl_alpha.9.p
+ ng
+SHA-256-Digest: 1B+tWvrZRcgZRTE1ao2nQac55o/SJ+qrEwvHkTRFPDg=
+
+Name: base/res/drawable-hdpi-v4/abc_textfield_default_mtrl_alpha.9.png
+SHA-256-Digest: eXuMcxsNBZaNGXauPPAsmdC1jZkCs+xSp09kAXW38CM=
+
+Name: base/res/drawable-hdpi-v4/abc_textfield_search_activated_mtrl_al
+ pha.9.png
+SHA-256-Digest: n2dnaEa76I+HQmJTTugl6fQZek/Hv7PRkcgcO/RyUFk=
+
+Name: base/res/drawable-hdpi-v4/abc_textfield_search_default_mtrl_alph
+ a.9.png
+SHA-256-Digest: 8xpnSO9mralCwEREhhFoYrmvNe22WUMPEhHiWgP8vTE=
+
+Name: base/res/drawable-hdpi-v4/common_full_open_on_phone.png
+SHA-256-Digest: 5a3FjhToTMr3ZhZEJfzDo5aKYHPguvM88HLQWxfRATQ=
+
+Name: base/res/drawable-hdpi-v4/common_google_signin_btn_icon_dark_nor
+ mal_background.9.png
+SHA-256-Digest: ofpbw0dd8KnauP+cpo30bPOQc/aB8AZphgwP7y5mnQs=
+
+Name: base/res/drawable-hdpi-v4/common_google_signin_btn_icon_light_no
+ rmal_background.9.png
+SHA-256-Digest: FAcnb/0VUqW3sfMxT+S07hjPr4UPmhT0xoqocoCWV3Q=
+
+Name: base/res/drawable-hdpi-v4/common_google_signin_btn_text_dark_nor
+ mal_background.9.png
+SHA-256-Digest: e1IhqHIW7S0AllynNx4uZ4/Zd3+MtL4ujo1hkM2vT0s=
+
+Name: base/res/drawable-hdpi-v4/common_google_signin_btn_text_light_no
+ rmal_background.9.png
+SHA-256-Digest: TuT3t/oVFl4FTALHEkpwASP0/WBsvvlMp3LN+67maHQ=
+
+Name: base/res/drawable-hdpi-v4/googleg_disabled_color_18.png
+SHA-256-Digest: GB1F3SKQHXUGRZJ7aWXOZKEkj2dQovfnYEdEtlD6LxA=
+
+Name: base/res/drawable-hdpi-v4/googleg_standard_color_18.png
+SHA-256-Digest: CyJpcjVmWfE6fksMQ59DfoNyh0nY224UqZKlqYVVnAM=
+
+Name: base/res/drawable-hdpi-v4/ic_call_answer.png
+SHA-256-Digest: HSyfqfTg4xi7j9/dn0UiZKrvKq7L78sEeEWdKS/kcXo=
+
+Name: base/res/drawable-hdpi-v4/ic_call_answer_low.png
+SHA-256-Digest: ZHml2ZyIxyPnC2zV+hun0Nm8a2d0LxZoHt3nUMsFWog=
+
+Name: base/res/drawable-hdpi-v4/ic_call_answer_video.png
+SHA-256-Digest: 02MN8SnGFtc+lSSvAKb5f9wmByJ7PfuLlIBur/7oZTo=
+
+Name: base/res/drawable-hdpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: DytD8cHcCpgBSeb9h3zwgl8Kl/CuHeuVS9H1wY3r1BA=
+
+Name: base/res/drawable-hdpi-v4/ic_call_decline.png
+SHA-256-Digest: dMPUaQ+MPM6WHOBffIbUCaX9D3Gr3tlMImvmLSzFR0I=
+
+Name: base/res/drawable-hdpi-v4/ic_call_decline_low.png
+SHA-256-Digest: bgxQqu7vHyQ4FjRSwcn5EthTW5axFJUpiKmomAQm1Yw=
+
+Name: base/res/drawable-hdpi-v4/notification_bg_low_normal.9.png
+SHA-256-Digest: Noakbtohs+Fi7A4XOofDI0GD6wC0MvnH+MMwjCXN6xM=
+
+Name: base/res/drawable-hdpi-v4/notification_bg_low_pressed.9.png
+SHA-256-Digest: 13/jLIZ+Gb9fGvWIPxMXIsJhgx0YqRvJInHgx4WuMPU=
+
+Name: base/res/drawable-hdpi-v4/notification_bg_normal.9.png
+SHA-256-Digest: bToSSQKQKeKHjojlLbFcE9XYE7sewTJBfg74R3+7iPg=
+
+Name: base/res/drawable-hdpi-v4/notification_bg_normal_pressed.9.png
+SHA-256-Digest: mMf/V6VWjcYBtV5OMEk27watUKaAQIVqGRC6O5hxEkE=
+
+Name: base/res/drawable-hdpi-v4/notification_oversize_large_icon_bg.pn
+ g
+SHA-256-Digest: aUlB5NxArdjM4WPYg5fpay+L2TICnreaP1CnE7W2j3g=
+
+Name: base/res/drawable-hdpi-v4/notify_panel_notification_icon_bg.png
+SHA-256-Digest: EGVQRZR/Q8qitLYjhpFFoJKjbU5CYgR89PFz/R2N98Y=
+
+Name: base/res/drawable-ldpi-v4/ic_call_answer.png
+SHA-256-Digest: sZmcE0eL8o9Xamkaz10cov1fOKHsBqU8las4Pm8g8yc=
+
+Name: base/res/drawable-ldpi-v4/ic_call_answer_low.png
+SHA-256-Digest: Nfe7SH7GO8JrUi6CGb18SLEbb5NtVK75qjQxesbGrJ0=
+
+Name: base/res/drawable-ldpi-v4/ic_call_answer_video.png
+SHA-256-Digest: hVDCtP4Fom8FcNdo6lv40AXbGpND9E+dmkUB5UqdRJg=
+
+Name: base/res/drawable-ldpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: 8Jvv4+X7Bsa/4RWg0iOwOWNM5xR2Wtybh6glZK/q7dk=
+
+Name: base/res/drawable-ldpi-v4/ic_call_decline.png
+SHA-256-Digest: ccBS+VG5w+G6T1/FmW4merrm6fzMEvVmqDhaSUDBxH8=
+
+Name: base/res/drawable-ldpi-v4/ic_call_decline_low.png
+SHA-256-Digest: 1ln0F8hC1fWVO8Mi7iuPAeCuey36yO0mqa9M241eP9o=
+
+Name: base/res/drawable-ldrtl-hdpi-v17/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: cvbAFBd8kW086pVSFUNfh73uT6Tzo7+Mpr58busxm+c=
+
+Name: base/res/drawable-ldrtl-mdpi-v17/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: dF8ysWzmd46xsps22oBuHTpE2NFYQsrNPkTe8dBzCnI=
+
+Name: base/res/drawable-ldrtl-xhdpi-v17/abc_spinner_mtrl_am_alpha.9.pn
+ g
+SHA-256-Digest: cogd191K/if0QQN444i5jqOxtExlDT0EaPq1xCBT6yM=
+
+Name: base/res/drawable-ldrtl-xxhdpi-v17/abc_spinner_mtrl_am_alpha.9.p
+ ng
+SHA-256-Digest: 9Pr3h3UpA6o+uAl1q4RS2c1vsScfC04ZJbz0wvwQX+U=
+
+Name: base/res/drawable-ldrtl-xxxhdpi-v17/abc_spinner_mtrl_am_alpha.9.
+ png
+SHA-256-Digest: QplnZDrSXC3QDgE5NxWv33p+i4o2xPR5TJmKL1Os29E=
+
+Name: base/res/drawable-mdpi-v4/abc_ab_share_pack_mtrl_alpha.9.png
+SHA-256-Digest: 5FrSQigULopN/aLTfKdOVY8lR+jivPDp28CNmJkSocg=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_check_to_on_mtrl_000.png
+SHA-256-Digest: LgofroJORR14NAdAxqG3QTEJjnMc3K+9T+gz/SRr8K4=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_check_to_on_mtrl_015.png
+SHA-256-Digest: 0ihmU0kaiEYtxbuWd6ZzH0P/4X02huQR2WvVWZ6jTWg=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_radio_to_on_mtrl_000.png
+SHA-256-Digest: FP3jmrMn4oXLEqBZEJBgo2qOP/PvASIgVAKdarbkcrs=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_radio_to_on_mtrl_015.png
+SHA-256-Digest: x5/gRfzU0ZYaAv/5xXZGnJ0MFm5XO1WCqs1JEc2E1E0=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_switch_to_on_mtrl_00001.9.png
+SHA-256-Digest: Ys614319Bc9CqoEhfHwHU+yS0c8slUQzHvwBjWjv9fY=
+
+Name: base/res/drawable-mdpi-v4/abc_btn_switch_to_on_mtrl_00012.9.png
+SHA-256-Digest: 2JAQMesEF1A/pa++NsmZA4QcDday862VOTaEQjJR9jk=
+
+Name: base/res/drawable-mdpi-v4/abc_cab_background_top_mtrl_alpha.9.pn
+ g
+SHA-256-Digest: TGc9VPj0I50oKtE7WqzNRpKkcmUhqcm6uJGyZTyrajk=
+
+Name: base/res/drawable-mdpi-v4/abc_ic_commit_search_api_mtrl_alpha.pn
+ g
+SHA-256-Digest: FKoBjhjp6r6foeTAD+kjJZ+pjbspadhSMHLFOYpTmHI=
+
+Name: base/res/drawable-mdpi-v4/abc_list_divider_mtrl_alpha.9.png
+SHA-256-Digest: PO49/Fr5/juB3Qi//smRp0w1a5I9pgJEeZT+NuirSG8=
+
+Name: base/res/drawable-mdpi-v4/abc_list_focused_holo.9.png
+SHA-256-Digest: EtZw88qvTWn0ay7oPrKMA2em4OBeKiis1ZfWalAc7QI=
+
+Name: base/res/drawable-mdpi-v4/abc_list_longpressed_holo.9.png
+SHA-256-Digest: 8MUg4NzZIgu/Dt2A8m1dwH54H8tR73y6r7I9tb3VuKQ=
+
+Name: base/res/drawable-mdpi-v4/abc_list_pressed_holo_dark.9.png
+SHA-256-Digest: t+EG8NMrQE9Tg3nU+yri6XCGPMkxEt9pOfS8/KS5d1Y=
+
+Name: base/res/drawable-mdpi-v4/abc_list_pressed_holo_light.9.png
+SHA-256-Digest: fFaekEdPMQqjLETZRHL8ZshK85dlvUoXXnDTYK0mOdE=
+
+Name: base/res/drawable-mdpi-v4/abc_list_selector_disabled_holo_dark.9
+ .png
+SHA-256-Digest: 940RkD+c/5oxL61yAKd78ZlDG0to2KymBTi7NpYQ0Rs=
+
+Name: base/res/drawable-mdpi-v4/abc_list_selector_disabled_holo_light.
+ 9.png
+SHA-256-Digest: zj98PfG6OrrQWQgWkPgeY/riYPIXxu3OOcO3w0Rc8Ug=
+
+Name: base/res/drawable-mdpi-v4/abc_menu_hardkey_panel_mtrl_mult.9.png
+SHA-256-Digest: cGIopDWGbcoqvRA3tL/oUqWG5EjZmiMMvAmByckDWz8=
+
+Name: base/res/drawable-mdpi-v4/abc_popup_background_mtrl_mult.9.png
+SHA-256-Digest: WyC8Uv72vE20c6IAznFjILVyIJHCKP7SreQKlve7XeY=
+
+Name: base/res/drawable-mdpi-v4/abc_scrubber_control_off_mtrl_alpha.pn
+ g
+SHA-256-Digest: yjtsAAupG+4zncPQbSnIYET+vgCwHUzUmnt6dPaKELs=
+
+Name: base/res/drawable-mdpi-v4/abc_scrubber_control_to_pressed_mtrl_0
+ 00.png
+SHA-256-Digest: 6RZMO7TkNLYhowzpMJY/vcKpd70JjGahpcoSa/GVBgk=
+
+Name: base/res/drawable-mdpi-v4/abc_scrubber_control_to_pressed_mtrl_0
+ 05.png
+SHA-256-Digest: Z4htQdDaYZVx0xPJ565/cWX40MNv4HOCR8+XVLCpFXc=
+
+Name: base/res/drawable-mdpi-v4/abc_scrubber_primary_mtrl_alpha.9.png
+SHA-256-Digest: STBv6CIF4VyobWOAnSJX2KiCqulr9YIqxdLtFyHjl4Q=
+
+Name: base/res/drawable-mdpi-v4/abc_scrubber_track_mtrl_alpha.9.png
+SHA-256-Digest: hnKmm9X84uIrnDbU91c9PpH/X7E1NRD4eH6uk/wjYOk=
+
+Name: base/res/drawable-mdpi-v4/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: 1bksgGr6dyOkYyZQHV293sUQoILZhzSvxgPplpqBjfo=
+
+Name: base/res/drawable-mdpi-v4/abc_switch_track_mtrl_alpha.9.png
+SHA-256-Digest: RAFvXMhMFJziBHHqRKpAm62sWN2E1/FRS0zTyLx2l74=
+
+Name: base/res/drawable-mdpi-v4/abc_tab_indicator_mtrl_alpha.9.png
+SHA-256-Digest: NBiYctICngodBWSOfBfPUA88vVQGF0h+Gr4g0a0gAvs=
+
+Name: base/res/drawable-mdpi-v4/abc_text_select_handle_left_mtrl.png
+SHA-256-Digest: tI/bP5kRnJ63ITCMGXamQZpUykXp8XzpQ289bRNE66M=
+
+Name: base/res/drawable-mdpi-v4/abc_text_select_handle_middle_mtrl.png
+SHA-256-Digest: QawMQ0ECBUfX+61vfVBZKnZb3fHFfTnmLAw8t75UErM=
+
+Name: base/res/drawable-mdpi-v4/abc_text_select_handle_right_mtrl.png
+SHA-256-Digest: dkSewxjHXYpp0WSkUTlC2XBiYZ68WgoG4vNlTIvZVng=
+
+Name: base/res/drawable-mdpi-v4/abc_textfield_activated_mtrl_alpha.9.p
+ ng
+SHA-256-Digest: giYNlcGw8uqmC7oEc5wqOo6H1PTOoIeIk6psUfKiVAg=
+
+Name: base/res/drawable-mdpi-v4/abc_textfield_default_mtrl_alpha.9.png
+SHA-256-Digest: W3Iez/TfPPRGfzdQ7yNOK2OsWjtRKSHoArzMHH9RCUc=
+
+Name: base/res/drawable-mdpi-v4/abc_textfield_search_activated_mtrl_al
+ pha.9.png
+SHA-256-Digest: qpToeNbd++7r+V2Vvsbym9Utf5/wSimCyCJvOtYif3w=
+
+Name: base/res/drawable-mdpi-v4/abc_textfield_search_default_mtrl_alph
+ a.9.png
+SHA-256-Digest: nyvqS0F6mSunQpJv+IiSLy50+Knb8moi8JKwToMfg6E=
+
+Name: base/res/drawable-mdpi-v4/common_google_signin_btn_icon_dark_nor
+ mal_background.9.png
+SHA-256-Digest: 8HHGvKgYLChNIYuT53zXZwXiJNC3G/UNtraJ9xpm7jo=
+
+Name: base/res/drawable-mdpi-v4/common_google_signin_btn_icon_light_no
+ rmal_background.9.png
+SHA-256-Digest: uOJzW2jg68R/icK2ERgH/L1oUtYkXZyuIsLptKOzar8=
+
+Name: base/res/drawable-mdpi-v4/common_google_signin_btn_text_dark_nor
+ mal_background.9.png
+SHA-256-Digest: dfx2Xj3S2cwXWBZfjFzxy1VvXLkR4GYcCL/zJOa6lTI=
+
+Name: base/res/drawable-mdpi-v4/common_google_signin_btn_text_light_no
+ rmal_background.9.png
+SHA-256-Digest: 1VMXwL9aRbrLHEtNmAzac8R/BPtRyifPdQr7LOLNlXE=
+
+Name: base/res/drawable-mdpi-v4/googleg_disabled_color_18.png
+SHA-256-Digest: FMbAorXiEipj4RcjLT9dRK0VoEmJSWBgDDUrM8Y7NBI=
+
+Name: base/res/drawable-mdpi-v4/googleg_standard_color_18.png
+SHA-256-Digest: sa2bxtEbQE3JJShm72MZfnaZWm03cNgskzSDXNF+HVs=
+
+Name: base/res/drawable-mdpi-v4/ic_call_answer.png
+SHA-256-Digest: tMfLObO0kd0KE7G36IFcqMHuJFqsJhmTtvGPkh9V5yc=
+
+Name: base/res/drawable-mdpi-v4/ic_call_answer_low.png
+SHA-256-Digest: 9Z9TLnRJ65XVxuMo6k5l7gAYuX1jqyDyd8LHKDyRkOE=
+
+Name: base/res/drawable-mdpi-v4/ic_call_answer_video.png
+SHA-256-Digest: HeB/Jg4UJDZBdk2ISRQW3ACqP40lvDxjED6To+v01S8=
+
+Name: base/res/drawable-mdpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: jFhOdMXv0UgukFatx45m+UeWJ408U6Kvj0AdQ9298TE=
+
+Name: base/res/drawable-mdpi-v4/ic_call_decline.png
+SHA-256-Digest: 0FYGovC8U4VBmY65IlOqhZN/OjBtQ87VTEEEffVdBH4=
+
+Name: base/res/drawable-mdpi-v4/ic_call_decline_low.png
+SHA-256-Digest: lWxIYZ4yY61dWCiXK8Jx4ygxl0b6wcoP+hZHeddN6z8=
+
+Name: base/res/drawable-mdpi-v4/notification_bg_low_normal.9.png
+SHA-256-Digest: xnUaV/sOuJboRB16eWDFD+RoGjsDlxSz/XXssw/jgd4=
+
+Name: base/res/drawable-mdpi-v4/notification_bg_low_pressed.9.png
+SHA-256-Digest: 7z0xhE/BU5+uyPoWKCq+QFgYdvOBoI1nJpTlWdV3XIs=
+
+Name: base/res/drawable-mdpi-v4/notification_bg_normal.9.png
+SHA-256-Digest: S0dqWAWwBezrlv+xrcLGbGGcV/rQRHXq8Bp/JaMEpwk=
+
+Name: base/res/drawable-mdpi-v4/notification_bg_normal_pressed.9.png
+SHA-256-Digest: fF4BPMCZZROCLQSbJL548YqUQi+/EeAe+nMaNeAHMNI=
+
+Name: base/res/drawable-mdpi-v4/notify_panel_notification_icon_bg.png
+SHA-256-Digest: RdwAT/zXVRLabcyk3wq2EjQoOqQpoDiRFEfHeG83RFM=
+
+Name: base/res/drawable-v21/abc_action_bar_item_background_material.xm
+ l
+SHA-256-Digest: tQbLF73oUpUebFxRp8kM0XAUaW5wx9j9G5Igch/BPhw=
+
+Name: base/res/drawable-v21/abc_btn_colored_material.xml
+SHA-256-Digest: 1+lCRkURznw2PtSQcazKAe40YBO2DWMSAazteG9F1Qg=
+
+Name: base/res/drawable-v21/abc_dialog_material_background.xml
+SHA-256-Digest: pvZPdrMXl1po+Y+PJ5CdFiXxoSDy8AYTE5TcxZays08=
+
+Name: base/res/drawable-v21/abc_edit_text_material.xml
+SHA-256-Digest: PRjQzirf0PNDsQPOKXFbJ2uEdWm9LSUKXJuPArQfOtI=
+
+Name: base/res/drawable-v21/abc_list_divider_material.xml
+SHA-256-Digest: sBIsiERN74ZqVBBJeZzFJKg9gxRyuNZOzJW4yqQRpAQ=
+
+Name: base/res/drawable-v21/m3_tabs_background.xml
+SHA-256-Digest: iABfXzcmuHjEzzkDHqidoxrFLsSAyVEy+fc92RI2wec=
+
+Name: base/res/drawable-v21/material_cursor_drawable.xml
+SHA-256-Digest: q2Y+PrB0cY7tuTPNu5bwqJnjny0vdN7Fui4vdxfHvpA=
+
+Name: base/res/drawable-v21/mtrl_navigation_bar_item_background.xml
+SHA-256-Digest: pS4wbq/6YBHs8GHHwdMeyOjYROI73lmfuLEi+ur36/8=
+
+Name: base/res/drawable-v21/notification_action_background.xml
+SHA-256-Digest: F2zYro35pvGd50sRoDjGDx+F11q25Vila2qKxDKGT1I=
+
+Name: base/res/drawable-v23/abc_control_background_material.xml
+SHA-256-Digest: XqnybbKjqnmXDhOT12y/JvLydcdEjeygIENCvcU5T7I=
+
+Name: base/res/drawable-v23/m3_radiobutton_ripple.xml
+SHA-256-Digest: 4luUxcXh1KDvk+ysUg+1z9ZZlvf0/DBzhS1qDsJ8aJA=
+
+Name: base/res/drawable-v23/m3_selection_control_ripple.xml
+SHA-256-Digest: jXbjrLWfyxlUWyOayPXL5Oq8IsPq9o0z/yp725a5SYs=
+
+Name: base/res/drawable-v23/m3_tabs_background.xml
+SHA-256-Digest: kC1T5WMWrkgJRluYz/4ouoMVzMsAyPRWL0F8/6juAd4=
+
+Name: base/res/drawable-v23/m3_tabs_transparent_background.xml
+SHA-256-Digest: 2k4D6ymhoF+eI4wSTI6bwWx8tFWfrC/cLBFxGlb38IE=
+
+Name: base/res/drawable-v23/mtrl_popupmenu_background_overlay.xml
+SHA-256-Digest: eypw7OxTobKf8elB7/nBw2nsGijDwO9/Sr6byQTlDKk=
+
+Name: base/res/drawable-watch-v20/abc_dialog_material_background.xml
+SHA-256-Digest: +GK9OhnU25KcSQVeEq8vsBmBc/AwcS1dj7v18kUeiW8=
+
+Name: base/res/drawable-watch-v20/common_google_signin_btn_text_dark_n
+ ormal.xml
+SHA-256-Digest: 1iNU74n/7UDSWqFFddVV3295Zdey4h6IaXNXsNCSMtc=
+
+Name: base/res/drawable-watch-v20/common_google_signin_btn_text_disabl
+ ed.xml
+SHA-256-Digest: jSfYp72H78ox78lr1xW++0NiTgmmuImP3vpyNYoOveM=
+
+Name: base/res/drawable-watch-v20/common_google_signin_btn_text_light_
+ normal.xml
+SHA-256-Digest: NYXza59U4s/xVrNGnyW/4Rl67lrRWV74L+EYOEiH9yg=
+
+Name: base/res/drawable-xhdpi-v4/abc_ab_share_pack_mtrl_alpha.9.png
+SHA-256-Digest: qlwFkOgifj1UaSM7/TN/OGyGBpeRrAuK78hReaiNtP8=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_check_to_on_mtrl_000.png
+SHA-256-Digest: vQJKEBhyx/qdNpgIOxdtMpj2k6RXCgpBbLKWWfNKRyk=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_check_to_on_mtrl_015.png
+SHA-256-Digest: ox6vaKARRhLVtT8ET3SkF0JmY8MK3tkE7YdTm0dRuzY=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_radio_to_on_mtrl_000.png
+SHA-256-Digest: kmy6bOAS1/KnFH2g5wo5Lb/xMdr7lX3iNXkVUcjmAXA=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_radio_to_on_mtrl_015.png
+SHA-256-Digest: nzaSbHP3MCIpZ5hP2BGSO8OlCPfQi8h2cmoGbTCBhuU=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_switch_to_on_mtrl_00001.9.png
+SHA-256-Digest: kCyfDU4CSFWqyMbAF+/t3jlp1IZcsFX3jFdX/IqdzbM=
+
+Name: base/res/drawable-xhdpi-v4/abc_btn_switch_to_on_mtrl_00012.9.png
+SHA-256-Digest: ZPTmmyEz28+HelDj+pyIMMS0G4lokFbXkJDVQlfFQps=
+
+Name: base/res/drawable-xhdpi-v4/abc_cab_background_top_mtrl_alpha.9.p
+ ng
+SHA-256-Digest: TncmcuSNSn7Gq9EqDGHp57pUoG/caT3Vh2XM+MUNrjs=
+
+Name: base/res/drawable-xhdpi-v4/abc_ic_commit_search_api_mtrl_alpha.p
+ ng
+SHA-256-Digest: 7S4wLefEwrrytvPBJRNEXzkapGUT/gqS/di0hFxQrPw=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_divider_mtrl_alpha.9.png
+SHA-256-Digest: yEQGjtKlmf/LV3LdXqVg9BRKkHCYRFsxiK5XSP3jLiE=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_focused_holo.9.png
+SHA-256-Digest: mg2RE4438cfKNp/kNjSo37s5ye1FXzh+BIksPI84uqo=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_longpressed_holo.9.png
+SHA-256-Digest: Qz0qQwvFeA/TzwSNzXm6B/wxkKccQeiMXlcIliUwgBg=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_pressed_holo_dark.9.png
+SHA-256-Digest: +p9q7GdlJfHU9P6bsZPKK5Qr2/UKMT9dPUFrDzq5Vnk=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_pressed_holo_light.9.png
+SHA-256-Digest: C4HzILJchvCw5NG+p2LBppcggv2JZVw+lJXLefoZ+58=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_selector_disabled_holo_dark.
+ 9.png
+SHA-256-Digest: PI0SZSDZ4uacXxc2+aU2joe7+0OAGlJWXRjJcQabJgg=
+
+Name: base/res/drawable-xhdpi-v4/abc_list_selector_disabled_holo_light
+ .9.png
+SHA-256-Digest: 1ZX+t//PW7CcAcyiNdEcLsDoeNIqmevTxL3DuFUXGdU=
+
+Name: base/res/drawable-xhdpi-v4/abc_menu_hardkey_panel_mtrl_mult.9.pn
+ g
+SHA-256-Digest: 8VCrrdh5uAv/Sigb6AYhhopLl3BP9mHeq+fxfVbuhV4=
+
+Name: base/res/drawable-xhdpi-v4/abc_popup_background_mtrl_mult.9.png
+SHA-256-Digest: 4Qikg+plSrYYL87zTHOulKbOBReYurlqslDvpA1QdSQ=
+
+Name: base/res/drawable-xhdpi-v4/abc_scrubber_control_off_mtrl_alpha.p
+ ng
+SHA-256-Digest: cPnmC1w+hWTyeA6UJyLrkygNCJ28zl/JNxcX8+fyUNs=
+
+Name: base/res/drawable-xhdpi-v4/abc_scrubber_control_to_pressed_mtrl_
+ 000.png
+SHA-256-Digest: 63YpltUFvBpbPDJS3AR5mUCGbkbVRmz1hJHEvZP75lY=
+
+Name: base/res/drawable-xhdpi-v4/abc_scrubber_control_to_pressed_mtrl_
+ 005.png
+SHA-256-Digest: 3a1Gjz+ZCGo651X3g8NEtc5tcJutGZC724FWi3ySM+o=
+
+Name: base/res/drawable-xhdpi-v4/abc_scrubber_primary_mtrl_alpha.9.png
+SHA-256-Digest: 2j5VhEd/JkWjN0waIy+VCUv3mglfCFjEOIF87x6e+qM=
+
+Name: base/res/drawable-xhdpi-v4/abc_scrubber_track_mtrl_alpha.9.png
+SHA-256-Digest: Rp3DmSIbTt7Bs8q6xKAykaOG27Gq3EnLyETCm9aNam8=
+
+Name: base/res/drawable-xhdpi-v4/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: utxNGqsQXQsMSzds/86f9JeEWDKNVtI47sIzgDqLrLw=
+
+Name: base/res/drawable-xhdpi-v4/abc_switch_track_mtrl_alpha.9.png
+SHA-256-Digest: u5aDsNIyxh+2NVZ8WCv8IXvzetYMAKfopW/lMMcpfGs=
+
+Name: base/res/drawable-xhdpi-v4/abc_tab_indicator_mtrl_alpha.9.png
+SHA-256-Digest: 9YmNduNDG4vWaZbc1RzdxTHe9QDbM2dKjFi9jRYlj0w=
+
+Name: base/res/drawable-xhdpi-v4/abc_text_select_handle_left_mtrl.png
+SHA-256-Digest: KtsJwzben7e5nR9TUPuPkul51t8d0srbypMPSZA/bjA=
+
+Name: base/res/drawable-xhdpi-v4/abc_text_select_handle_middle_mtrl.pn
+ g
+SHA-256-Digest: GNPEQt6R08qTRnk33rKNTdS/BXe1taoVDODshmlpr1k=
+
+Name: base/res/drawable-xhdpi-v4/abc_text_select_handle_right_mtrl.png
+SHA-256-Digest: eNPumXsHp1oajcWbHZmZP2mQYAZ2ziUQoBnoSKHduVc=
+
+Name: base/res/drawable-xhdpi-v4/abc_textfield_activated_mtrl_alpha.9.
+ png
+SHA-256-Digest: sCzWclNW783pNTRrJTnjorSLBE3Ro5/BcTqNP13HQ/A=
+
+Name: base/res/drawable-xhdpi-v4/abc_textfield_default_mtrl_alpha.9.pn
+ g
+SHA-256-Digest: 11G8YhemubaEZjXH1df4IljwYe58+nRc+tjnRpGzha8=
+
+Name: base/res/drawable-xhdpi-v4/abc_textfield_search_activated_mtrl_a
+ lpha.9.png
+SHA-256-Digest: XUC4hzgE4x7Z7mz3j79AtGuP/fc4HIB7mQCnEybNX1Q=
+
+Name: base/res/drawable-xhdpi-v4/abc_textfield_search_default_mtrl_alp
+ ha.9.png
+SHA-256-Digest: sHJnixj6KvevFY8NyD3uD1Soj27e3PSLa7h5XFRys1I=
+
+Name: base/res/drawable-xhdpi-v4/common_full_open_on_phone.png
+SHA-256-Digest: Gm0AwWfBGhblQtc0BX5RWKINBtqOSW5WGklyRQLtdX8=
+
+Name: base/res/drawable-xhdpi-v4/common_google_signin_btn_icon_dark_no
+ rmal_background.9.png
+SHA-256-Digest: oPqs5/U+8AJ+wvEUwk4WP+6wUA+6jj/HdEMsEeswbD0=
+
+Name: base/res/drawable-xhdpi-v4/common_google_signin_btn_icon_light_n
+ ormal_background.9.png
+SHA-256-Digest: n7YpOpLJrIVDGIiBMZYmVgORLjN0BP2H8ndAmg3aVks=
+
+Name: base/res/drawable-xhdpi-v4/common_google_signin_btn_text_dark_no
+ rmal_background.9.png
+SHA-256-Digest: 1ttZ4gwbR+9Q4y3SLADMtdZbanICRgvF4a+fQwAJZhM=
+
+Name: base/res/drawable-xhdpi-v4/common_google_signin_btn_text_light_n
+ ormal_background.9.png
+SHA-256-Digest: ckyfQQ0gIe+fBOgQs2F0NTRN4mAcps1wI0LAoJANN60=
+
+Name: base/res/drawable-xhdpi-v4/googleg_disabled_color_18.png
+SHA-256-Digest: qdlzXiGx3IDk0LFyBKHQ4DfGn8y1XIsfEj0fIPSJeB4=
+
+Name: base/res/drawable-xhdpi-v4/googleg_standard_color_18.png
+SHA-256-Digest: t5GEFYAr7ZrrhflwSfCsfLXWGi9D+vJnx1JxyDzSvSI=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_answer.png
+SHA-256-Digest: 5GHlbxPB1HqQOtHakSnqae3Rde5Y0XxZma4bgxKAJ2k=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_answer_low.png
+SHA-256-Digest: g1AOzcl8lwfOuD37XXsg8bBACMwxnzz7HrzCgLhojlg=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_answer_video.png
+SHA-256-Digest: p5iKmuNbqPVoqhtEh8fc5SlDlQfO8sHmncaqWKbc1KU=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: 76dw9mpZ6Wd8HtruYz1Bkus7Se5/yuBZ6hC/Q9fn9Dk=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_decline.png
+SHA-256-Digest: BducT7A5jO5NIZzNq1ebkO7kpRQ7w3bbVnuIbywQFZU=
+
+Name: base/res/drawable-xhdpi-v4/ic_call_decline_low.png
+SHA-256-Digest: uYQ8lDP95GnCxijXWwWsN36tg4FJov8Rz6Bp9jLLVUU=
+
+Name: base/res/drawable-xhdpi-v4/notification_bg_low_normal.9.png
+SHA-256-Digest: YOhtVUjFvz9gaxAYElLYnfwGdH83L2WnYyFJb9HOlCU=
+
+Name: base/res/drawable-xhdpi-v4/notification_bg_low_pressed.9.png
+SHA-256-Digest: detjeNJHLBrLj4e8I6R+7kdkbPTPOfJcct0uZjwR/LM=
+
+Name: base/res/drawable-xhdpi-v4/notification_bg_normal.9.png
+SHA-256-Digest: zxer4yL/CjLId66s6K1ZhYRugW5adimdJESYKJrHIMU=
+
+Name: base/res/drawable-xhdpi-v4/notification_bg_normal_pressed.9.png
+SHA-256-Digest: QEM2ivMFnxme56jtnofMKTIvUk7WvYEih5grHrVvlxw=
+
+Name: base/res/drawable-xhdpi-v4/notify_panel_notification_icon_bg.png
+SHA-256-Digest: geqJcv4wO6ETHdNBUmQfAM4vLJGZhGIsWhxy90Vr2To=
+
+Name: base/res/drawable-xxhdpi-v4/abc_ab_share_pack_mtrl_alpha.9.png
+SHA-256-Digest: LeZ+5SHYBbmhdosTCkWCT2d6MLgZuKxU+dw93JQ+cRo=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_check_to_on_mtrl_000.png
+SHA-256-Digest: npxpTsGYSDTiN8DM10RuLbzkZ0GeVDOUz2SJb6ey+8s=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_check_to_on_mtrl_015.png
+SHA-256-Digest: aweeOH6t77AY+35vpYm0XVSCl6qjQTyLv/tqdgd7Jnw=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_radio_to_on_mtrl_000.png
+SHA-256-Digest: zKiZTSIr8FeNPbK6SKBrKEyOs4JcCKmDu2XiQ4yGAzE=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_radio_to_on_mtrl_015.png
+SHA-256-Digest: ES7fG+e9SA8M97L5OjkWN2l+ggNcX4Z/S4qkk8RLfNI=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_switch_to_on_mtrl_00001.9.pn
+ g
+SHA-256-Digest: ce18i8SxiLcTLmn2Jc6z1DxZ3/1vuuYipjrV22iApxY=
+
+Name: base/res/drawable-xxhdpi-v4/abc_btn_switch_to_on_mtrl_00012.9.pn
+ g
+SHA-256-Digest: Dzojz6TMITOHZvjBKc4ki/ie5t4kt9VlvrkfixRCc9o=
+
+Name: base/res/drawable-xxhdpi-v4/abc_cab_background_top_mtrl_alpha.9.
+ png
+SHA-256-Digest: kmVQfkdmCJEWwUtVlD5sR9wuxlFmhSSjeCbGkeSuIB0=
+
+Name: base/res/drawable-xxhdpi-v4/abc_ic_commit_search_api_mtrl_alpha.
+ png
+SHA-256-Digest: WNddLhHq6oA4m7JX4qyqtf0S2aeD3CwJOtZ+8dptgsA=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_divider_mtrl_alpha.9.png
+SHA-256-Digest: nHtozS+JZcKKH3EYVjW8OIEYphzjl0uwUCt6fsXv+jk=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_focused_holo.9.png
+SHA-256-Digest: c1P46c8CDAQtDqmNwA/DNGDOGnvsLuGG5b6XovWAPr0=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_longpressed_holo.9.png
+SHA-256-Digest: E7//Zu6IqO/M8Nd+Lbgz76W2emrCkIT+euo4nRsRlz4=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_pressed_holo_dark.9.png
+SHA-256-Digest: TdizLp1peW7N5u5Gtw9IhTEFes2UfTpw6+F4Cv8SIFk=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_pressed_holo_light.9.png
+SHA-256-Digest: 7Dej9UBn7kMomcXlXfwliUdjTd1XbOfBSxF4Fcnf/zQ=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_selector_disabled_holo_dark
+ .9.png
+SHA-256-Digest: CtNsJOpleTk0VmEFJXKmaGkufeMjCLjFsRjUjXQ/Os8=
+
+Name: base/res/drawable-xxhdpi-v4/abc_list_selector_disabled_holo_ligh
+ t.9.png
+SHA-256-Digest: JDYpY290WUN32Nv9D2fcq1ezUdcmD8qs3hElod7keKk=
+
+Name: base/res/drawable-xxhdpi-v4/abc_menu_hardkey_panel_mtrl_mult.9.p
+ ng
+SHA-256-Digest: 9duU6MBd3VamMiCSPc+F/ztGt8sJfdtBLalBe1Ytrw4=
+
+Name: base/res/drawable-xxhdpi-v4/abc_popup_background_mtrl_mult.9.png
+SHA-256-Digest: X8zzH9foayXAA+nXDVQ8tYrZtWFgMtZDBSTaOpJrT1M=
+
+Name: base/res/drawable-xxhdpi-v4/abc_scrubber_control_off_mtrl_alpha.
+ png
+SHA-256-Digest: yUXooVoxpyGujxvhTgfBqdBM1iuZMGidx41p1k7k/Gs=
+
+Name: base/res/drawable-xxhdpi-v4/abc_scrubber_control_to_pressed_mtrl
+ _000.png
+SHA-256-Digest: yT0t9iMMaZsUY+TZPUJzbKXAp6w89SRjYAFK11Hvtws=
+
+Name: base/res/drawable-xxhdpi-v4/abc_scrubber_control_to_pressed_mtrl
+ _005.png
+SHA-256-Digest: GE5ae953d07U+Et2wxrDX3EYuj/OWWgwHAJAM9LReFM=
+
+Name: base/res/drawable-xxhdpi-v4/abc_scrubber_primary_mtrl_alpha.9.pn
+ g
+SHA-256-Digest: OLlTT4TcWvzak5XWe7cnvepGpWHE0UW8ZW18yZv2PNE=
+
+Name: base/res/drawable-xxhdpi-v4/abc_scrubber_track_mtrl_alpha.9.png
+SHA-256-Digest: iUAJuBoAa2ztiUVKhyg0O8n2338QIZrEDg4lmI6AAH4=
+
+Name: base/res/drawable-xxhdpi-v4/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: ZBL9Va8lRIZY9DlzN+aFM8rpsj+eLRnvbehWDJB9shA=
+
+Name: base/res/drawable-xxhdpi-v4/abc_switch_track_mtrl_alpha.9.png
+SHA-256-Digest: 1yS8JBZHEQXLMjEjQANR2YLBLU2nBvRvPNNWBKz6ExY=
+
+Name: base/res/drawable-xxhdpi-v4/abc_tab_indicator_mtrl_alpha.9.png
+SHA-256-Digest: WhzGmx5v+3Tg36HzLMHH4vKgAtaFcUoDA0ANrBMuqtk=
+
+Name: base/res/drawable-xxhdpi-v4/abc_text_select_handle_left_mtrl.png
+SHA-256-Digest: E+dr4a4DgJbAZy6ziii/WoKgOBETvP/IFyBhLgCsh68=
+
+Name: base/res/drawable-xxhdpi-v4/abc_text_select_handle_middle_mtrl.p
+ ng
+SHA-256-Digest: UhkRqCz5eUcUaShrPCiT4uiknj3OdwzjEnnejqDnPc8=
+
+Name: base/res/drawable-xxhdpi-v4/abc_text_select_handle_right_mtrl.pn
+ g
+SHA-256-Digest: bEFRleqoOW/6gE/9TXSw00RUFicSBhil4OJIDHaYnOs=
+
+Name: base/res/drawable-xxhdpi-v4/abc_textfield_activated_mtrl_alpha.9
+ .png
+SHA-256-Digest: UsmHLF/fKlPhugbhZRu5CXxSRQzmLx+JAgpu8YxrpFo=
+
+Name: base/res/drawable-xxhdpi-v4/abc_textfield_default_mtrl_alpha.9.p
+ ng
+SHA-256-Digest: aDJ7kntDUffZNmg98YwJohabFn3CAlM+fgdtYGzj9SA=
+
+Name: base/res/drawable-xxhdpi-v4/abc_textfield_search_activated_mtrl_
+ alpha.9.png
+SHA-256-Digest: BnNxwIsRIly56v82eB6Add2aQG6FtE+VVenLqwGT0Cg=
+
+Name: base/res/drawable-xxhdpi-v4/abc_textfield_search_default_mtrl_al
+ pha.9.png
+SHA-256-Digest: iiJ/4QZx5XEV6epggwcvLLAQXToF7CFpqET1k/hlvYU=
+
+Name: base/res/drawable-xxhdpi-v4/common_google_signin_btn_icon_dark_n
+ ormal_background.9.png
+SHA-256-Digest: 40VgNYAkWqHw76HHJa0xqev8ngJ+Wtm9gWoq7Z3Z1kE=
+
+Name: base/res/drawable-xxhdpi-v4/common_google_signin_btn_icon_light_
+ normal_background.9.png
+SHA-256-Digest: 09M6EQqHlJ1tqKv9Rz48fl6zJaDlHICr0qnxxLWWvvk=
+
+Name: base/res/drawable-xxhdpi-v4/common_google_signin_btn_text_dark_n
+ ormal_background.9.png
+SHA-256-Digest: mrpGIpCT+lFwQevFUokJGavbwUYe5uJgWA+KJnjUWoM=
+
+Name: base/res/drawable-xxhdpi-v4/common_google_signin_btn_text_light_
+ normal_background.9.png
+SHA-256-Digest: XWNqPnTEwgMF+cukeuZ/R8Qub9lczvUR7eCv62cKVUw=
+
+Name: base/res/drawable-xxhdpi-v4/googleg_disabled_color_18.png
+SHA-256-Digest: iDakkl0FHCj+Vp3X2miVmN7OpHXw70ZSMSwWvqy0M00=
+
+Name: base/res/drawable-xxhdpi-v4/googleg_standard_color_18.png
+SHA-256-Digest: kORE/iSbN4xEJjEaOtnyzCu0AlBTGtKOgOeYpjg2drY=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_answer.png
+SHA-256-Digest: CBC9Ldn14M48e8+Qi1TeuCYy0/bSyTVS7j3A6R+dpeg=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_answer_low.png
+SHA-256-Digest: YHMdg78o/m8CU87wUAV9OUW6P6NdEUR8o8l21qwgAbg=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_answer_video.png
+SHA-256-Digest: vJZ+chXvDim6eTW2+ZAVzPsG7SVmMyBlkcNBhQFlrzo=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: iKago9Yhj7/7S9bGoW82ISmVS3hAy81V+KnuKhZPfhA=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_decline.png
+SHA-256-Digest: O6wlZc6stGAw56BknnupBi9smxXy+XnAePBCb0JrK1g=
+
+Name: base/res/drawable-xxhdpi-v4/ic_call_decline_low.png
+SHA-256-Digest: HS0lRLEZGKL86Z5pJZQTuql4NQOI1QOYpOCvhT+y+K8=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_check_to_on_mtrl_000.png
+SHA-256-Digest: 0588VWkkiLGf/uoONMyNLzoZCmqIZ333EdR35HjSi6M=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_check_to_on_mtrl_015.png
+SHA-256-Digest: 8gqWo1PFtjUt6cY/tHz9l8hyAXr2NAzdpw7Y4J7fDew=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_radio_to_on_mtrl_000.png
+SHA-256-Digest: 6Ea0zv14DzfEYme7vDzPh1fS1zZTP5XjEs2wQ5sSF7A=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_radio_to_on_mtrl_015.png
+SHA-256-Digest: hQzQUzxkbZrgeEJeG/7p+cWihYrhL3i0rvLskHl00JQ=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_switch_to_on_mtrl_00001.9.p
+ ng
+SHA-256-Digest: YpVgQuDUHKV8TsApjIoDrkmaIMNpnuJ0+onJOXGO6QU=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_btn_switch_to_on_mtrl_00012.9.p
+ ng
+SHA-256-Digest: EKoShcec7J0IcMdHZIgTGIkDTNClcX0McbDsvOYTbvg=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_scrubber_control_to_pressed_mtr
+ l_000.png
+SHA-256-Digest: f217DyIERrws8uKNaLhF6pXZRPB/6xYKvJTv+r6wckY=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_scrubber_control_to_pressed_mtr
+ l_005.png
+SHA-256-Digest: jYzt8DrjbdPFlEqozJI45SFwL0ogyLj7l5TxzFQ2UHI=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_spinner_mtrl_am_alpha.9.png
+SHA-256-Digest: NL1530ZraAXMpXfBCjVwq8sSIMzUut7DEMbgAH0q+Uc=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_switch_track_mtrl_alpha.9.png
+SHA-256-Digest: l8axMtuvwmTxYFYPNHZIFCurDKPRnfkUr8d+cC40wjg=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_tab_indicator_mtrl_alpha.9.png
+SHA-256-Digest: r+UypWFVrLtl5qH3jNCvJZe6JPk3YIiGP6/otCmTFak=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_text_select_handle_left_mtrl.pn
+ g
+SHA-256-Digest: 9UJ3qMcatUcplqAiaZXx+UV9IMOSNHXZM1Gejm7bNKk=
+
+Name: base/res/drawable-xxxhdpi-v4/abc_text_select_handle_right_mtrl.p
+ ng
+SHA-256-Digest: E3C1JFtINsN+O/8cO/Q/es80K9l6rj+XsROrzsnkt5U=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_answer.png
+SHA-256-Digest: hdxMgMKQjRRT21RpXMlRwCggbvMMp/F61/vUQAjQ+oM=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_answer_low.png
+SHA-256-Digest: gYALk1XxAUd5sbXQglNlrZ7OnpbYqYeSLA4KcPI2vCA=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_answer_video.png
+SHA-256-Digest: 1GzjF1FkTaG+mlIp+KspVyqpy2WdBkNvtOXaBBEoIys=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_answer_video_low.png
+SHA-256-Digest: cCuHfuzNeJAj79HdCb/R8FPxP48EcnRC8j5butEGFEU=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_decline.png
+SHA-256-Digest: veyG1tpi3UnvwINrtuyG7j5fWXuedoIFfzWqmTDcWVQ=
+
+Name: base/res/drawable-xxxhdpi-v4/ic_call_decline_low.png
+SHA-256-Digest: TI6erO4kStt8OUoieDCgIo6sOUlhEpXlFPW7LfKipwc=
+
+Name: base/res/drawable/$avd_hide_password__0.xml
+SHA-256-Digest: GBkBNkEWmK6amfIZ87YFMQm7DFiKkM0v99CeXWIU+bM=
+
+Name: base/res/drawable/$avd_hide_password__1.xml
+SHA-256-Digest: P+pXqH0IjAJcPk2AlKS1+MNiv1knE5AwD7lLzrd1hNc=
+
+Name: base/res/drawable/$avd_hide_password__2.xml
+SHA-256-Digest: 6l0IC4gWHuzKTAK83MeKNSyiUD1MXfGny3e39YlDcFU=
+
+Name: base/res/drawable/$avd_show_password__0.xml
+SHA-256-Digest: qiyBADvj5waVNswtpP0mREI03aSmF1pFUUvTYpXqXP8=
+
+Name: base/res/drawable/$avd_show_password__1.xml
+SHA-256-Digest: f27Ig6yGa3LX6bqZ6D0SxWDRSggBvG7x2Z9ujY0mx54=
+
+Name: base/res/drawable/$avd_show_password__2.xml
+SHA-256-Digest: SGM3kN2NDC88dhnRj5yNuyCP4o4dKYADpasD7BtZe44=
+
+Name: base/res/drawable/$m3_avd_hide_password__0.xml
+SHA-256-Digest: InnnXAhFDwrNo6j/zikwC8kmeW1puj96PE+qoUHa9B0=
+
+Name: base/res/drawable/$m3_avd_hide_password__1.xml
+SHA-256-Digest: hdJjBWcDbCas76dDaPQ6ebutTi6vbTxeLIxQVOV37Jg=
+
+Name: base/res/drawable/$m3_avd_hide_password__2.xml
+SHA-256-Digest: sbYmTscDz7VjDMqWMAT0Bj+lKpbvCFeOKTf4nx7HA9I=
+
+Name: base/res/drawable/$m3_avd_show_password__0.xml
+SHA-256-Digest: b4Ml2LHUwK209WEglqEGY0NEIcjI7ULGNi/6MyQbSkk=
+
+Name: base/res/drawable/$m3_avd_show_password__1.xml
+SHA-256-Digest: mbZ7Ak7Owa5uBmWwPIrxz43Y83z+9CqLTD0OTianXRg=
+
+Name: base/res/drawable/$m3_avd_show_password__2.xml
+SHA-256-Digest: 3ov9STu+SFEYmbdaz+KZQGaFHqu2XzlnSd9MTPJE6GU=
+
+Name: base/res/drawable/$mtrl_checkbox_button_checked_unchecked__0.xml
+SHA-256-Digest: V/OXtp2tIXx1Tzn0DD148itzX47BTTCB/+iHsnzV08E=
+
+Name: base/res/drawable/$mtrl_checkbox_button_checked_unchecked__1.xml
+SHA-256-Digest: jasVtrsC5IbA/C7fQBsars6VruE83tiJqlHPjMdeBwI=
+
+Name: base/res/drawable/$mtrl_checkbox_button_checked_unchecked__2.xml
+SHA-256-Digest: BDMR7Mz7YciHlTFYOx+zH+6wwZrgoGNXdRVEl+4+5zo=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_checked_indetermina
+ te__0.xml
+SHA-256-Digest: GOCAuusUSiPASGs6Lk5/cp4GH0Zv4te3UUJZFO4Sw9Y=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_checked_unchecked__
+ 0.xml
+SHA-256-Digest: LjH/i++sEhpoEucdm8F50L2AkySX6EU7ij8wuRIU68U=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_checked_unchecked__
+ 1.xml
+SHA-256-Digest: 8o1nNpQesQIYezAsbcDc8Xp5GbtQhVfRp8XF11Cikrk=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_checked_unchecked__
+ 2.xml
+SHA-256-Digest: sbDzLJVL02yyeJdtGSYjjNlnrGio0IXN3x+bZgZDdpo=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_indeterminate_check
+ ed__0.xml
+SHA-256-Digest: dkHYhD9kYT1bQd1I5DBUrD5mLw9XKnhCUHELZkWIdLw=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_indeterminate_unche
+ cked__0.xml
+SHA-256-Digest: +OCHalvMuvhkc8uaeNLl8o33pcMWNohMQXkCVSq+PH4=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_indeterminate_unche
+ cked__1.xml
+SHA-256-Digest: +cJVz1N9Tu22WGFPuzrTcFb5KA+AjCX2JkbYhotrW50=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_indeterminate_unche
+ cked__2.xml
+SHA-256-Digest: iaowlUBbMaK0MPNrcsg4mtGq4EjG+0/YJgFLEQBVBwQ=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_checked__
+ 0.xml
+SHA-256-Digest: dlBCj8oWpjBaXHtqW+QJsv4WYBph5K7b9kcn9/6/vD0=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_checked__
+ 1.xml
+SHA-256-Digest: F3UHuQV76hdMFn5UdAAtebnTV6HL54CZSeKyzdCmCH8=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_checked__
+ 2.xml
+SHA-256-Digest: K19wPucRGmU9yDF23gWFAj8JLs4IPSVlne8drLQNLjo=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_indetermi
+ nate__0.xml
+SHA-256-Digest: I+FKt5/ukHKVhl6sW2LUGR+dZipV8CIZgk8za+17/Ss=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_indetermi
+ nate__1.xml
+SHA-256-Digest: MYRLR35UgHjGXuYrV0LTq2UWeFjdWQbX9LuK+6PVepw=
+
+Name: base/res/drawable/$mtrl_checkbox_button_icon_unchecked_indetermi
+ nate__2.xml
+SHA-256-Digest: eqQOeRXr0nujYip+5PlvJYGFVNzTT3CwOVabbhvMd8E=
+
+Name: base/res/drawable/$mtrl_checkbox_button_unchecked_checked__0.xml
+SHA-256-Digest: xk4TPt+ly8P3VR5gu502XR+GFXBzOFG9HUFDEXMcmMg=
+
+Name: base/res/drawable/$mtrl_checkbox_button_unchecked_checked__1.xml
+SHA-256-Digest: tjS7rjCUz7W44Cr+lAjN4mR4rOOwMGsHzQvuosKRgX8=
+
+Name: base/res/drawable/$mtrl_checkbox_button_unchecked_checked__2.xml
+SHA-256-Digest: 0IBse7MJGBnJUqK013YaCKyNdvo3SUR6ErTwW1iep+8=
+
+Name: base/res/drawable/$mtrl_switch_thumb_checked_pressed__0.xml
+SHA-256-Digest: TtEuTfnICXc3NIagAasCA0wAX9j5A6TIbBCfitP4zvU=
+
+Name: base/res/drawable/$mtrl_switch_thumb_checked_unchecked__0.xml
+SHA-256-Digest: 5cLrn+qjysQg50vzmYN/4UcR9ZRfV4npG0JeEp2T/DI=
+
+Name: base/res/drawable/$mtrl_switch_thumb_checked_unchecked__1.xml
+SHA-256-Digest: J0qZKNuxCe6GY5B1N5REdw8ylxqxecg8aYq2785a2cQ=
+
+Name: base/res/drawable/$mtrl_switch_thumb_pressed_checked__0.xml
+SHA-256-Digest: +ncOL1/8/+pgkmOPCXogUc9VeCAeUMqs5EXbff+Y+6Q=
+
+Name: base/res/drawable/$mtrl_switch_thumb_pressed_unchecked__0.xml
+SHA-256-Digest: X0smu/QAMpqCpoYmbhqcXnfDSuG1LaXfapnMuW75opk=
+
+Name: base/res/drawable/$mtrl_switch_thumb_unchecked_checked__0.xml
+SHA-256-Digest: oiRKAB967Xlm0aIbPUBOC76RoUusdjefJ4/tbkanWZ8=
+
+Name: base/res/drawable/$mtrl_switch_thumb_unchecked_checked__1.xml
+SHA-256-Digest: 2ffHhqtcNZPPpbWuS0taiivJ7wPYK+7Mo/WNmD0Zl+g=
+
+Name: base/res/drawable/$mtrl_switch_thumb_unchecked_pressed__0.xml
+SHA-256-Digest: ead+oFuO8eLjrNhcTTEGd29e/xN2NXasXrXQGR3aTio=
+
+Name: base/res/drawable/abc_btn_borderless_material.xml
+SHA-256-Digest: yX3iGgqoOUwgBRs8K78xrJ4dTx8lZn0E175fXEK7XpQ=
+
+Name: base/res/drawable/abc_btn_check_material.xml
+SHA-256-Digest: df6PHgriLRMrPlOQaRG4qvtTIzaewh4E/j8DwrcQgO4=
+
+Name: base/res/drawable/abc_btn_check_material_anim.xml
+SHA-256-Digest: BBCOTPXl90r/yP48S2TjIbfKaMVJf50xWr3zT2FqDTc=
+
+Name: base/res/drawable/abc_btn_default_mtrl_shape.xml
+SHA-256-Digest: hsv7hN78aj0Fa0tlma9egOd7UpbTQ/zst+1z976e2Qg=
+
+Name: base/res/drawable/abc_btn_radio_material.xml
+SHA-256-Digest: FzRrhnXp+0Hjr0k2MeS/kEk8QYOi1XPchlZsLDS49Is=
+
+Name: base/res/drawable/abc_btn_radio_material_anim.xml
+SHA-256-Digest: tcXhT3bPUABM6cLnTEkOvEzZqRHrjLHMnSreDYwmew0=
+
+Name: base/res/drawable/abc_cab_background_internal_bg.xml
+SHA-256-Digest: mxReM3uCCDt6EbTJxoo6LXqoKXJRwn82UPkfg+izgHs=
+
+Name: base/res/drawable/abc_cab_background_top_material.xml
+SHA-256-Digest: 6I5XfD3IG1CHXyVbqy89lEsJ86n3pO8ytmexSYc+Q0U=
+
+Name: base/res/drawable/abc_ic_ab_back_material.xml
+SHA-256-Digest: vcewGXZwC5+I1v4WStVvidrFhaLeUGsgLj1Gt6lbKOA=
+
+Name: base/res/drawable/abc_ic_arrow_drop_right_black_24dp.xml
+SHA-256-Digest: /xo7VvvJhkyGEsgP41deNTuvI6Vidg+DQaiRGq8SG10=
+
+Name: base/res/drawable/abc_ic_clear_material.xml
+SHA-256-Digest: tBauVdvnyxh5Czx2cd0UdLuW2g4EghFy65Eipk0JwlA=
+
+Name: base/res/drawable/abc_ic_go_search_api_material.xml
+SHA-256-Digest: ABvSIS1xDbuS6lo8MZf9cQuHz+IM8uXZ7ZljSrFMuD8=
+
+Name: base/res/drawable/abc_ic_menu_copy_mtrl_am_alpha.xml
+SHA-256-Digest: zLBkaOw9zS/rnVzxiOqew5M02zgII+xiBGVynCybzDA=
+
+Name: base/res/drawable/abc_ic_menu_cut_mtrl_alpha.xml
+SHA-256-Digest: Z1E083rYQC8rqNbgpxodBw1+N5qxHfFxmPAo0JlmaNA=
+
+Name: base/res/drawable/abc_ic_menu_overflow_material.xml
+SHA-256-Digest: 97wHTbix7HcEqitYiqMKx9gR/fBRcaWq4UALt0/Qt28=
+
+Name: base/res/drawable/abc_ic_menu_paste_mtrl_am_alpha.xml
+SHA-256-Digest: Hz32RVdPqao0TAtb9mPegxXaUlTsrO1/pW/bYhsCoZs=
+
+Name: base/res/drawable/abc_ic_menu_selectall_mtrl_alpha.xml
+SHA-256-Digest: 13TPt8MdUtQjz+eoC/1NN7kmwU+/c2aFYEFWsiVlVlM=
+
+Name: base/res/drawable/abc_ic_menu_share_mtrl_alpha.xml
+SHA-256-Digest: +cwOUJoxh/3tnVPdRUIQIxjm/IVu2rJxNfcDn/EKqv8=
+
+Name: base/res/drawable/abc_ic_search_api_material.xml
+SHA-256-Digest: Iv6oVk3pcQ5r72HP9ngsyuNPemcttno7wHdfeHeEwfk=
+
+Name: base/res/drawable/abc_ic_voice_search_api_material.xml
+SHA-256-Digest: 3+9YdgVyLBvYD6hRNrOjm68r/auqFuYl2NFxTSDcthY=
+
+Name: base/res/drawable/abc_item_background_holo_dark.xml
+SHA-256-Digest: ofUSbHHzpIe7JlynNpySQhA18jZ+FdySM3egPBfYxPE=
+
+Name: base/res/drawable/abc_item_background_holo_light.xml
+SHA-256-Digest: ViZTkr0w/AVzBfmGIqD+T87noJwNsujtXmxlZW87gbk=
+
+Name: base/res/drawable/abc_list_selector_background_transition_holo_d
+ ark.xml
+SHA-256-Digest: JGZW6DrpVAzDDPblbmUPqty5n6abp1dVif4WJJBcqi8=
+
+Name: base/res/drawable/abc_list_selector_background_transition_holo_l
+ ight.xml
+SHA-256-Digest: kKuiFs6bk06EDHDXxi4tQO1CGrzk0QyJ/k6LC5js4ZA=
+
+Name: base/res/drawable/abc_list_selector_holo_dark.xml
+SHA-256-Digest: 3cuzfP3IIkxuv7Vzx7bKYSK5TNUN5Xi21+NgGXH81l8=
+
+Name: base/res/drawable/abc_list_selector_holo_light.xml
+SHA-256-Digest: OUbS5+aDGwGtNVo9TMhgerUyBKN4w5oWaqB9edUc96M=
+
+Name: base/res/drawable/abc_ratingbar_indicator_material.xml
+SHA-256-Digest: K/xgBaejRvQFAaJFL/O1YFwOUy4FWfHSviW65C+mXcM=
+
+Name: base/res/drawable/abc_ratingbar_material.xml
+SHA-256-Digest: XQ04+/TCqBjJ8hJXQl3j8UDL9JrUnuGfUrMfDvaaEZw=
+
+Name: base/res/drawable/abc_ratingbar_small_material.xml
+SHA-256-Digest: i43cLyxIuKzQWODks4l/XxPGWoyN/NMGqmJqW69Oo7U=
+
+Name: base/res/drawable/abc_seekbar_thumb_material.xml
+SHA-256-Digest: tetTokOeV9YhLkN81CQyJ9Jn/jLksgFe1Gu6JpnLR4g=
+
+Name: base/res/drawable/abc_seekbar_tick_mark_material.xml
+SHA-256-Digest: hjD1ouduRZi/+5HwhzBkcbmLPiJDD+EQg39fks63KfI=
+
+Name: base/res/drawable/abc_seekbar_track_material.xml
+SHA-256-Digest: I5oTVtXp5dkMjqaBaQFLKeH+b0hiTijDU9Id3UlSzmg=
+
+Name: base/res/drawable/abc_spinner_textfield_background_material.xml
+SHA-256-Digest: xeEE8bvbrsLe1Fo4gECFA7zVVeH02OUkwT4pMa/5dSo=
+
+Name: base/res/drawable/abc_star_black_48dp.xml
+SHA-256-Digest: ufZ2c9IHXitkVLY5PoyZhSPDBv3WUTqlu3D3lXaZzt0=
+
+Name: base/res/drawable/abc_star_half_black_48dp.xml
+SHA-256-Digest: accc43AWSxZqC3n1iqD969G/lst8b3GE3NulbdTTqTA=
+
+Name: base/res/drawable/abc_switch_thumb_material.xml
+SHA-256-Digest: 37F8fvo8dz+tqGl9e8lJpTXTjE+XtU938pJCJfDf3/w=
+
+Name: base/res/drawable/abc_tab_indicator_material.xml
+SHA-256-Digest: D7/3ZKuubbJ0CUSoblZ8Coapp7XBr/+lB0eC0vpzhJE=
+
+Name: base/res/drawable/abc_text_cursor_material.xml
+SHA-256-Digest: MSsjHYscdU9DLD+cZyxdcNr6rJElXOZFDPknfuCwS5g=
+
+Name: base/res/drawable/abc_textfield_search_material.xml
+SHA-256-Digest: YWpMYaxuQORsfCHvBTzkuo6Dhdp8U7kv7kTE2k5EMmU=
+
+Name: base/res/drawable/abc_vector_test.xml
+SHA-256-Digest: P92C8Udd/jEDtJYHUNNACI0GXh86oLm3CV3y9XKQK+8=
+
+Name: base/res/drawable/avd_hide_password.xml
+SHA-256-Digest: ugzlvLNZL5ty4nmQjnNs8VOtUPCunaznPFTp1luaoe0=
+
+Name: base/res/drawable/avd_show_password.xml
+SHA-256-Digest: qLR/9LdUIDenohFGNtvZ4jxWWLEcltG0u6x+Gj33wHU=
+
+Name: base/res/drawable/baseline_add_24.xml
+SHA-256-Digest: GUoP25DYOYtGiq+UE2vPKehsktoWddEpCoOZ8Cd8ZL0=
+
+Name: base/res/drawable/btn_checkbox_checked_mtrl.xml
+SHA-256-Digest: 3EURV1s1CwdbyRRfe+oHWeqKb2Z6PheOi0JAOZuoE94=
+
+Name: base/res/drawable/btn_checkbox_checked_to_unchecked_mtrl_animati
+ on.xml
+SHA-256-Digest: rM1qi9G7uWpF2kE3fT/r1uPaiuOvXQBbd4Lu+YxLET4=
+
+Name: base/res/drawable/btn_checkbox_unchecked_mtrl.xml
+SHA-256-Digest: 6t1Osyh/k2YWmPZ9ahhb7ydO9bBCJXX3HS4dHXwHT44=
+
+Name: base/res/drawable/btn_checkbox_unchecked_to_checked_mtrl_animati
+ on.xml
+SHA-256-Digest: xiU5MeSJT983HhJp78uP/GOndosBjbdXuZ44BZfFjSw=
+
+Name: base/res/drawable/btn_radio_off_mtrl.xml
+SHA-256-Digest: dxWIafG8Tcmn2jMktdyWptjhDNgeeOZWfI+/C8Sa0ho=
+
+Name: base/res/drawable/btn_radio_off_to_on_mtrl_animation.xml
+SHA-256-Digest: 1+Vyjm8TDdW8U0SrfHTHjbTKpMdPgD3zUjTxgi7QFa8=
+
+Name: base/res/drawable/btn_radio_on_mtrl.xml
+SHA-256-Digest: zj0uOWmjx71IJ4+viS8/gFKp0TjDzfj+mpT5gO99kG0=
+
+Name: base/res/drawable/btn_radio_on_to_off_mtrl_animation.xml
+SHA-256-Digest: /qOD59sjWBVBQVtHabzyALOVeS7dBQqXIllYGHNTrOk=
+
+Name: base/res/drawable/common_google_signin_btn_icon_dark.xml
+SHA-256-Digest: fhGSHaAifuERHSNIGCpfUv6TFsPrPq04p8MERMuKkYs=
+
+Name: base/res/drawable/common_google_signin_btn_icon_dark_focused.xml
+SHA-256-Digest: 321QiWt5yVjerzKvzLLpYpZQK4BgHZe4FgIra3DtSLY=
+
+Name: base/res/drawable/common_google_signin_btn_icon_dark_normal.xml
+SHA-256-Digest: KbVQPJ2SLQ8dAnUpzgAEiJe7ASXHrq1XhH7o+ixgfZ0=
+
+Name: base/res/drawable/common_google_signin_btn_icon_disabled.xml
+SHA-256-Digest: qqoZsDm/qHIFAqVnezeIec2liEjNjaZMAL5IN1J9gbw=
+
+Name: base/res/drawable/common_google_signin_btn_icon_light.xml
+SHA-256-Digest: xocAy0X+X1i7zFlJoF+2SKutU049Gy8i6M3+0drVseY=
+
+Name: base/res/drawable/common_google_signin_btn_icon_light_focused.xm
+ l
+SHA-256-Digest: V13L8IQH4pv0yBTz0+aFfZXv17IlWXrJp4qngkq6nC4=
+
+Name: base/res/drawable/common_google_signin_btn_icon_light_normal.xml
+SHA-256-Digest: jVA5LyivR5bgFdqMs50vA8P20rOpT+Jn2gKGADUfXMU=
+
+Name: base/res/drawable/common_google_signin_btn_text_dark.xml
+SHA-256-Digest: Cy24DfO0f/oDK0IpH9HcCSY/jR56tpA6V9VMewdnsrs=
+
+Name: base/res/drawable/common_google_signin_btn_text_dark_focused.xml
+SHA-256-Digest: H5mhSQs+vDkytZ3oNQrZxs1iq8ATIuUotbipRwafv7s=
+
+Name: base/res/drawable/common_google_signin_btn_text_dark_normal.xml
+SHA-256-Digest: q1Wqm5sJhSlJIYoNYWIz9ZcHBI9GJKP3DMrWkWMBOe4=
+
+Name: base/res/drawable/common_google_signin_btn_text_disabled.xml
+SHA-256-Digest: VnMvOvnL3/HkhR//vjDwRk1I81SjgaPxRnhsgV8A5xI=
+
+Name: base/res/drawable/common_google_signin_btn_text_light.xml
+SHA-256-Digest: cYYXFa3JR6R5HA+E9LUjPZz3I/xOOE7l55uBSyu774Q=
+
+Name: base/res/drawable/common_google_signin_btn_text_light_focused.xm
+ l
+SHA-256-Digest: FkiNJcxvrCvo2Yyn8NjSjahJ+vEh2NchzYpS7pXKvsY=
+
+Name: base/res/drawable/common_google_signin_btn_text_light_normal.xml
+SHA-256-Digest: Tv/dl0fiQIUd4Tx55oYO+SpAdXdqfpgfB0W4JCAm8JE=
+
+Name: base/res/drawable/design_fab_background.xml
+SHA-256-Digest: QholX/mwutf9MJLwjxCSAAw4vmPwJNUyiab6sAGe2Qg=
+
+Name: base/res/drawable/design_ic_visibility.xml
+SHA-256-Digest: YrVCtULgwLzRRdComJ3hJBaTfjknMnzov3Pfwnkqe0o=
+
+Name: base/res/drawable/design_ic_visibility_off.xml
+SHA-256-Digest: 8mCxBv98ujWDSu0ao9AFWn3Hl8TrFSN8Oa+S/TU2ApU=
+
+Name: base/res/drawable/design_password_eye.xml
+SHA-256-Digest: rcIEZ7xmUFRBZ98EPY3vjOiiuvMCSwzBuOqXcVDhNWo=
+
+Name: base/res/drawable/design_snackbar_background.xml
+SHA-256-Digest: QmRCO9yv+0xA5YTpcu0fzN4k8CGO3uP9dXzR5F7XQYE=
+
+Name: base/res/drawable/ic_add_placeholder.xml
+SHA-256-Digest: 2ajXL2fwdtGSy8BlXMzHL9xw7Z175jW4+oGShXWQ34o=
+
+Name: base/res/drawable/ic_arrow_back_black_24.xml
+SHA-256-Digest: FqODro1bMgkvhoHNkGo/19grtc1DDfnFuDQLm/dRZ7g=
+
+Name: base/res/drawable/ic_clear_black_24.xml
+SHA-256-Digest: ccOET8598YHD5xRWOB4O4iBXjMYABkJdZz7IVaqmU9Q=
+
+Name: base/res/drawable/ic_clock_black_24dp.xml
+SHA-256-Digest: BMCNOwT9nqUiqnTkcAEJVjaWUKB2eVPoMWk0OTHFuYE=
+
+Name: base/res/drawable/ic_delete.xml
+SHA-256-Digest: Njfp1E2YLc5xtUGrItjJ2sqNujpwcp3A7xvdRYMGG/M=
+
+Name: base/res/drawable/ic_edit.xml
+SHA-256-Digest: vFFZMZ8g5930uprzY5UOdwHGar9nbMZ11COXXz4IHic=
+
+Name: base/res/drawable/ic_keyboard_black_24dp.xml
+SHA-256-Digest: kqSdu8zmPH0nab7ZoRp+FR1xYWYphymyalF0Ga2wQCs=
+
+Name: base/res/drawable/ic_launcher_background.xml
+SHA-256-Digest: 9ARG8w6fhlJrYjEVJzTI8/QCtUkLYB/lndQtcsZzSQo=
+
+Name: base/res/drawable/ic_lock.xml
+SHA-256-Digest: UG6U4AHg4kngCJwbj0EQT2ZUDj5lriczHpvNi9fXFfA=
+
+Name: base/res/drawable/ic_m3_chip_check.xml
+SHA-256-Digest: ZPjlE5lRjuF+0plezSpOrpRpbUvfw1luvXopkFoKWv4=
+
+Name: base/res/drawable/ic_m3_chip_checked_circle.xml
+SHA-256-Digest: AwI2UuRLq/FPUCT8sDBrurxMXhg5fCUQ2am9UW7YAc4=
+
+Name: base/res/drawable/ic_m3_chip_close.xml
+SHA-256-Digest: /vhE/Iid1yj3bwnBA/3bNWGQX7wOS8Wh5URQPB4hpfQ=
+
+Name: base/res/drawable/ic_mtrl_checked_circle.xml
+SHA-256-Digest: JaedKRlU5O1jYz25A4WLfPGURz2gWYOlFM7h/cCqhBQ=
+
+Name: base/res/drawable/ic_mtrl_chip_checked_black.xml
+SHA-256-Digest: ZQERZ4PGwhT2pz7MfIn2ofVn3/gxeqUSzNH/LAhnqiI=
+
+Name: base/res/drawable/ic_mtrl_chip_checked_circle.xml
+SHA-256-Digest: LitJQ9pDNdrwN0Z7qcNGe/Joucqjo3gtY20SDOH5YOg=
+
+Name: base/res/drawable/ic_mtrl_chip_close_circle.xml
+SHA-256-Digest: LMlj2hvqSieFxPR+cz877XjVW4xY6c7b+gcdvzI3D24=
+
+Name: base/res/drawable/ic_remove_placeholder.xml
+SHA-256-Digest: eDhkJTNNbIJbolvy2elenDcj09BxxqG8VBT0/r/MICI=
+
+Name: base/res/drawable/ic_search_black_24.xml
+SHA-256-Digest: SxFrQMhOqUOaWIxXMThaQMwsWj3tjdcu2tFwKQpryxI=
+
+Name: base/res/drawable/ic_stat_name_placeholder.xml
+SHA-256-Digest: 3XwRnElOPqiy4kjNxPwNtEtugao4CDru166iMfy8VOk=
+
+Name: base/res/drawable/ic_sync.xml
+SHA-256-Digest: 1R8LMyLVRuk2+Acw6qqFcaAdwWoTTJ1XcGUi2Tcgb8c=
+
+Name: base/res/drawable/indeterminate_static.xml
+SHA-256-Digest: c1zAhEjoTrf3jKqovivEpNJ9sVuWhQn7dHNad4GQ9VQ=
+
+Name: base/res/drawable/m3_avd_hide_password.xml
+SHA-256-Digest: bmR/D/ljUj5pRTyBNk1rSE1BVTVKx23QS+e6pRuyu4g=
+
+Name: base/res/drawable/m3_avd_show_password.xml
+SHA-256-Digest: MYtCdvnySAucYgQNzDP8ODN3iIlecoCGE6DfWydKfsU=
+
+Name: base/res/drawable/m3_bottom_sheet_drag_handle.xml
+SHA-256-Digest: YS+3yGpsE8jNR8QOCvaRN5zo5YfhOWMT3AIiqrSig/U=
+
+Name: base/res/drawable/m3_password_eye.xml
+SHA-256-Digest: 5aERFYEgw0qO/Z4eBMu4K4V8uSs/o4zrLtr0vjSinOA=
+
+Name: base/res/drawable/m3_popupmenu_background_overlay.xml
+SHA-256-Digest: YAqwa8RmabFat0xVVvFxAIOKfeZnZHnBKGG/PihXAVo=
+
+Name: base/res/drawable/m3_tabs_line_indicator.xml
+SHA-256-Digest: prHOQzbfxXrh13QNa9eWN42rdmpVFnlhLzRGiFhYli4=
+
+Name: base/res/drawable/m3_tabs_rounded_line_indicator.xml
+SHA-256-Digest: hiDa5JayvuQCx6Cyb1R8CwYTyrFGcJL4+Wx1JWfRAuM=
+
+Name: base/res/drawable/material_ic_calendar_black_24dp.xml
+SHA-256-Digest: nvORL9kp/duymX8b8egbNYwESa0cFiMmLj7T5CPH8j4=
+
+Name: base/res/drawable/material_ic_clear_black_24dp.xml
+SHA-256-Digest: LPnjj/F847I3LNpqLlrIj8TM9oADLl6brOzHsQKgNsQ=
+
+Name: base/res/drawable/material_ic_edit_black_24dp.xml
+SHA-256-Digest: /2xPCP4hh52rUIBaslgqqyKfT4RjdejI31dVr0DGezg=
+
+Name: base/res/drawable/material_ic_keyboard_arrow_left_black_24dp.xml
+SHA-256-Digest: 1gmTRUeMNOvSdiksyHNRKDObGpHXiPXIibrPb4a6gbM=
+
+Name: base/res/drawable/material_ic_keyboard_arrow_right_black_24dp.xm
+ l
+SHA-256-Digest: 3HVzg7IdDY9G3IsTmi9JmYXB9euDwEPxon2jmCXCwlM=
+
+Name: base/res/drawable/material_ic_menu_arrow_down_black_24dp.xml
+SHA-256-Digest: Vojz4AvTLLliTR/0cu7CVkoyjeSKZEWN14uTLRnQpBk=
+
+Name: base/res/drawable/material_ic_menu_arrow_up_black_24dp.xml
+SHA-256-Digest: ivRD4Ju89QAu4uBGswl0IBTAGl6r++CJwt4AdDL07fY=
+
+Name: base/res/drawable/mtrl_bottomsheet_drag_handle.xml
+SHA-256-Digest: fVCx0aPBP+XgUb3JAsSoJr1unQtEOBo+79Vdd70Efoc=
+
+Name: base/res/drawable/mtrl_checkbox_button.xml
+SHA-256-Digest: 5qheZShOY0UryViQ0K+b49l/k0lKpUmT0vyhCbIZbWA=
+
+Name: base/res/drawable/mtrl_checkbox_button_checked_unchecked.xml
+SHA-256-Digest: YBjVz4NvtPCAiOhS82SR8DwEG7RXEZ/kJxztTetrng0=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon.xml
+SHA-256-Digest: QGHQrcCXbCHLGeMmLNtcnAjc3Dc0WJ3WFVYgs8uCvqs=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_checked_indeterminat
+ e.xml
+SHA-256-Digest: m0pXcn4Cz4gRZNh5vNOJc/PxPxFG00oVtPvKEqH+ueg=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_checked_unchecked.xm
+ l
+SHA-256-Digest: aA2KrBMLkPnNRiJ2zw6xZvnAFDgez2152TKloeiXhbU=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_indeterminate_checke
+ d.xml
+SHA-256-Digest: YjF8i2QZb3Id3R1LBXZViMz/PxpanmuDuRmkrefzfOw=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_indeterminate_unchec
+ ked.xml
+SHA-256-Digest: sQ+0p9rcsPIEIruAE+VjAB2zes6yrNpWEYy2cu8mxTI=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_unchecked_checked.xm
+ l
+SHA-256-Digest: B0iokA9rV8HewOy2fQEeGGCm5FW2mwucXFOKNqX2mXw=
+
+Name: base/res/drawable/mtrl_checkbox_button_icon_unchecked_indetermin
+ ate.xml
+SHA-256-Digest: 7K9XMf9+xqdnlZHUV+wQMduv+W67SppOxtB6pVZTU+4=
+
+Name: base/res/drawable/mtrl_checkbox_button_unchecked_checked.xml
+SHA-256-Digest: /DYHFe5AGu1fKG7Ln5zzN8n6UNQzkTtqwVUQHUL2Ui4=
+
+Name: base/res/drawable/mtrl_dialog_background.xml
+SHA-256-Digest: 7rscyWEnCDRQeQkyYFQigC1KMNmLk/DfTdQvP7eXGVU=
+
+Name: base/res/drawable/mtrl_dropdown_arrow.xml
+SHA-256-Digest: UoDiGBgxDd19azGttNj8tCPUzHCCuaMTWrTFIoqO/Jo=
+
+Name: base/res/drawable/mtrl_ic_arrow_drop_down.xml
+SHA-256-Digest: Irz30mp69xhAWaBCttz3IUHlUnowlaat2bdwRvJuMwg=
+
+Name: base/res/drawable/mtrl_ic_arrow_drop_up.xml
+SHA-256-Digest: wsyXZJJ0vCn+Ghr8HNBJuZHJzOKip1hn/DBKUtc1c3c=
+
+Name: base/res/drawable/mtrl_ic_cancel.xml
+SHA-256-Digest: iqaIFwNSSxvdKaC7LUU5UmqOFVF9NAk2kUcQIyA1tp0=
+
+Name: base/res/drawable/mtrl_ic_check_mark.xml
+SHA-256-Digest: iI6xZ6cDaHgiChjs7XpEOIvxpMmm6kxrFUSWrCg3pIQ=
+
+Name: base/res/drawable/mtrl_ic_checkbox_checked.xml
+SHA-256-Digest: qzQJV2VALAVr78gVkGpo3D3KDy3hhqiG+9ivbJzRNyw=
+
+Name: base/res/drawable/mtrl_ic_checkbox_unchecked.xml
+SHA-256-Digest: N3ZIr8H+5CdrQsv+GzlVkIWN+zrW3ERDpIbEp04qyPA=
+
+Name: base/res/drawable/mtrl_ic_error.xml
+SHA-256-Digest: PtRt3O4+i4AncazNFbv+Ac8/CAHVsODaizEoiF3T1Ls=
+
+Name: base/res/drawable/mtrl_ic_indeterminate.xml
+SHA-256-Digest: AByiRq8zdnafy0sByu8kp+F8eRfzGbAPokm+4w0DW/w=
+
+Name: base/res/drawable/mtrl_popupmenu_background.xml
+SHA-256-Digest: ttO2QoLtt/URFLbHp+1vkTMb4PSjIgcZOfARJYVty5Q=
+
+Name: base/res/drawable/mtrl_popupmenu_background_overlay.xml
+SHA-256-Digest: ek3AeHgWAhPRzt8oIr54hdAbbOi4GRnGL08amyKKVk8=
+
+Name: base/res/drawable/mtrl_switch_thumb.xml
+SHA-256-Digest: SF7wt6wDatZl0/KTeBCIoLdJtyH9o/rDJ9boEmqAzlA=
+
+Name: base/res/drawable/mtrl_switch_thumb_checked.xml
+SHA-256-Digest: MeN5j0N0pXEBQEA8/+wYZmQ7hhzOqSL8Gut46JgAWwU=
+
+Name: base/res/drawable/mtrl_switch_thumb_checked_pressed.xml
+SHA-256-Digest: bTj5DHb/tValTRLfcmKdWGdGgOoiD67vJhhjixCqamE=
+
+Name: base/res/drawable/mtrl_switch_thumb_checked_unchecked.xml
+SHA-256-Digest: vF6my8jiMmWr3Rxl4IpTlYD+Hbz2VFXY9HQIQjvF7q4=
+
+Name: base/res/drawable/mtrl_switch_thumb_pressed.xml
+SHA-256-Digest: 8ooe0Nxt+OeBX8dgPEY1so3yg6K9usF5xL9qWF/CCgo=
+
+Name: base/res/drawable/mtrl_switch_thumb_pressed_checked.xml
+SHA-256-Digest: 57RMFXe8ofLEm8f5vto8PRBAsUvEdpENS2/Oa+z0dmo=
+
+Name: base/res/drawable/mtrl_switch_thumb_pressed_unchecked.xml
+SHA-256-Digest: dWZ8YBhkOk8ES1WuBFVRMcrDIt1DvhVqiAX1+PnbB3s=
+
+Name: base/res/drawable/mtrl_switch_thumb_unchecked.xml
+SHA-256-Digest: CTP8O2KjnPe/4wa79lgTfuLWBC6TQ7KF1Q71Inm/MBo=
+
+Name: base/res/drawable/mtrl_switch_thumb_unchecked_checked.xml
+SHA-256-Digest: IwCPB4jtwl3JtfS/XrucOGfwbEkLXb/irr3G6CTeY0Y=
+
+Name: base/res/drawable/mtrl_switch_thumb_unchecked_pressed.xml
+SHA-256-Digest: qFlIwJBC/BN3412P/NaDxGLdOlTTnpmemOFtMei1l2c=
+
+Name: base/res/drawable/mtrl_switch_track.xml
+SHA-256-Digest: 2i7bNUUIdQFrVSwDyErvoPhwpoLgtQTi5ZCbZvdoksE=
+
+Name: base/res/drawable/mtrl_switch_track_decoration.xml
+SHA-256-Digest: es5EUTU25VrOHAyOOF5gIJbuu39tDLDW0vbuO6AzOVE=
+
+Name: base/res/drawable/mtrl_tabs_default_indicator.xml
+SHA-256-Digest: hZ+geJVHxsVtDmsS3GRMxQxuvQdPxtvLJDFuI7pLJ40=
+
+Name: base/res/drawable/navigation_empty_icon.xml
+SHA-256-Digest: ATD9HVEeuyaDdkwhIEGC/5V7IYHXi3QW47ovI4taMBQ=
+
+Name: base/res/drawable/notification_bg.xml
+SHA-256-Digest: l8gLcUmpZaQ5+QmmCEBkaEKEfjnVRlveaaAktol4Pxo=
+
+Name: base/res/drawable/notification_bg_low.xml
+SHA-256-Digest: /tzFeYbeW27iWcoYl/6H6zEbd4VjhQtIgqIZgxKqigE=
+
+Name: base/res/drawable/notification_icon_background.xml
+SHA-256-Digest: K7RMw4FT8m+ii+/Fqd5M3XvDvrPiZDPTjYmnN0D83cM=
+
+Name: base/res/drawable/notification_tile_bg.xml
+SHA-256-Digest: CZOSxfVHMstgp5VkQRrPEU7SMpll5km0qzaMeSmlnxY=
+
+Name: base/res/drawable/password_status_bg.xml
+SHA-256-Digest: t01uYvvYzvEIKbkErp/zk/p8tu+M+qt/OOOXcOb/wNs=
+
+Name: base/res/drawable/test_level_drawable.xml
+SHA-256-Digest: iT6LCon7DUYSAyqRRPc7iWCruH3p7JefWdtNcDVb8ns=
+
+Name: base/res/drawable/tooltip_frame_dark.xml
+SHA-256-Digest: ElfmqGQ3CdxRdTYZzWYfrq/id3+zCZmMuJSp5ZmdA0w=
+
+Name: base/res/drawable/tooltip_frame_light.xml
+SHA-256-Digest: /FOs5//zC3NC7ycjq/mHr3uMf5LHm2gfuQBJnAGAJtY=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_emphasized.xml
+SHA-256-Digest: K1Jg8ZjsXbjct2elOPaxQggddY2hX88NJaYScXvZNgA=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_emphasized_accele
+ rate.xml
+SHA-256-Digest: HXVQAJQRXfnS7f1x36W4JP6rjp5BVnY8J1gFXM74vcM=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_emphasized_decele
+ rate.xml
+SHA-256-Digest: vhDeGh7zZR6dQvGCdj3y0hjbiDHdrc5Zs2w5VhWRIcM=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_linear.xml
+SHA-256-Digest: 39aegTKunEiXwKQwvfsNC1rd1HddNt0/l99MgWZfTo0=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_standard.xml
+SHA-256-Digest: vtHDkL0e2xsvWRgHvHDp05rEPGTRi2xGv6NhLclHwV4=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_standard_accelera
+ te.xml
+SHA-256-Digest: JRrNwN8HLOBRzh8AMifNjfH7cyhKsVFmLkRFkcFsrsw=
+
+Name: base/res/interpolator-v21/m3_sys_motion_easing_standard_decelera
+ te.xml
+SHA-256-Digest: T4w0NSKzhH8M6c62xH9QiO4tHn4/zhNb1tOrIfNcIpo=
+
+Name: base/res/interpolator-v21/mtrl_fast_out_linear_in.xml
+SHA-256-Digest: f3zEcU9jF97TVp5DpA+tKqf0+KOZXlbR+leRaAhpxWE=
+
+Name: base/res/interpolator-v21/mtrl_fast_out_slow_in.xml
+SHA-256-Digest: Jd1qt60fdIGnuet/lae36iB+tGXfxIS1HcimbfKtjpo=
+
+Name: base/res/interpolator-v21/mtrl_linear_out_slow_in.xml
+SHA-256-Digest: ZzS+moMr1tFMK7YlKqJ9lqnJjA6MeNjBJNw4UzCA7ww=
+
+Name: base/res/interpolator/btn_checkbox_checked_mtrl_animation_interp
+ olator_0.xml
+SHA-256-Digest: tKgjpLlbdaRiDJGPiISvWQB3y8Lnrgi0K0zwZUAVVC8=
+
+Name: base/res/interpolator/btn_checkbox_checked_mtrl_animation_interp
+ olator_1.xml
+SHA-256-Digest: InFwjSQzU2jpFsGdNMiMVXET9qjiiX2in4tC6VB42ww=
+
+Name: base/res/interpolator/btn_checkbox_unchecked_mtrl_animation_inte
+ rpolator_0.xml
+SHA-256-Digest: AW3W1y4N+kMTEZixsUhIds4DWQSk8Wemv2mjlitdDPY=
+
+Name: base/res/interpolator/btn_checkbox_unchecked_mtrl_animation_inte
+ rpolator_1.xml
+SHA-256-Digest: uQY9aT/C9aan2stVNEw8zzREBrZunK0NR6fvKeUgYMw=
+
+Name: base/res/interpolator/btn_radio_to_off_mtrl_animation_interpolat
+ or_0.xml
+SHA-256-Digest: 27BR1x04l4eqWfUikd6tLBx7eX9R51kYVeiXidOwP5E=
+
+Name: base/res/interpolator/btn_radio_to_on_mtrl_animation_interpolato
+ r_0.xml
+SHA-256-Digest: 8AaZ6eLvpezaMtDuwYg3ECd0VIPcuK2VUzFZGW5nbR0=
+
+Name: base/res/interpolator/fast_out_slow_in.xml
+SHA-256-Digest: azxkvR/xytQHVV+ReNqYNUwoCXQPsAYeStqBA61tuoA=
+
+Name: base/res/interpolator/mtrl_linear.xml
+SHA-256-Digest: wsvCcQg3L7TycfBdzQUPNZ1tqLfTY1IXZ/SoWBhPHhU=
+
+Name: base/res/layout-land/material_clock_period_toggle_land.xml
+SHA-256-Digest: /SYEz1s6urUp9oRO7nkaAKO8+sH9bBl5+6DiepPT38c=
+
+Name: base/res/layout-land/material_timepicker.xml
+SHA-256-Digest: r7yV3ADWogCpt5vthhr1BFnJ32d8AC3VCnumiC/cSv8=
+
+Name: base/res/layout-land/mtrl_picker_header_dialog.xml
+SHA-256-Digest: 38fMJg+GydI51j4NI308ljq+mYjE4paeMBM1KH9KQCI=
+
+Name: base/res/layout-sw600dp-v13/design_layout_snackbar.xml
+SHA-256-Digest: twiwzfTy+PeIsL0Ebf1n++uDAqS9rngYU2HpP0y9hDM=
+
+Name: base/res/layout-sw600dp-v13/mtrl_layout_snackbar.xml
+SHA-256-Digest: AUWymElBUhz067j0x0ewX80/lWdkd4jtL81dxGXVBCA=
+
+Name: base/res/layout-v21/notification_action.xml
+SHA-256-Digest: 010Lx/cId39pMwoegonTpW43xgN9JI9XCakOUS2Px/w=
+
+Name: base/res/layout-v21/notification_action_tombstone.xml
+SHA-256-Digest: u9OS6e8KvxisyWdyqBOesWt/h2fTiCiXzDTmK/3kCbQ=
+
+Name: base/res/layout-v21/notification_template_custom_big.xml
+SHA-256-Digest: uAI2m52kE8Os3WX81oTTcfqoGhAbqLHm1KEeqWrTmtg=
+
+Name: base/res/layout-v21/notification_template_icon_group.xml
+SHA-256-Digest: 214gu4IYkg4M332Wxmw/XVL9tdR1mvy6rhwKfoc1F5U=
+
+Name: base/res/layout-v22/abc_alert_dialog_button_bar_material.xml
+SHA-256-Digest: 8fcuXyTJ/yQLCF467sBj1euJITvbvZEqqbIi1Y0aZJQ=
+
+Name: base/res/layout-v22/design_navigation_item.xml
+SHA-256-Digest: mATfpopjDdDY3CWgRcbcXoW4HYvd8CiaLeqoUKUqcjc=
+
+Name: base/res/layout-v22/m3_alert_dialog_actions.xml
+SHA-256-Digest: lvVWDBIfhWzXWX4Nx6RnTMHrhwMJf6+85nIHEs3oAC8=
+
+Name: base/res/layout-v22/material_timepicker_dialog.xml
+SHA-256-Digest: Hbp5yVr1cRIOWb+CKVga2AbxO/XsaN58KAJKL6iMBGE=
+
+Name: base/res/layout-v22/mtrl_alert_dialog_actions.xml
+SHA-256-Digest: bBNNWhL0LCQyxVBwCeO+fIdcA3SLDot6tEJRE4WbJnk=
+
+Name: base/res/layout-v22/mtrl_search_view.xml
+SHA-256-Digest: K0kBuFLG5XrJCvEq60Vrh5D7v/ZGCQrtfvTBqRHdUig=
+
+Name: base/res/layout-v26/abc_screen_toolbar.xml
+SHA-256-Digest: aW2EIYIshzKnhy9RjfW3nhbdM7KG13pcDzm/xIheQQg=
+
+Name: base/res/layout-v26/mtrl_calendar_month.xml
+SHA-256-Digest: QchlPs5hmIJxFw1ZvbnZ88U4z75Q6zGxxmJZi4BW0Ik=
+
+Name: base/res/layout-watch-v20/abc_alert_dialog_button_bar_material.x
+ ml
+SHA-256-Digest: i/hVHAt6Pe05z8mJgqm+i0LwL+jRKYCeD4OknQowZQw=
+
+Name: base/res/layout-watch-v20/abc_alert_dialog_title_material.xml
+SHA-256-Digest: /6RCpe4BPs3Tks/nEfIAiVw7Zf7yUP2bVQ44VFhY0WY=
+
+Name: base/res/layout/abc_action_bar_title_item.xml
+SHA-256-Digest: v/3NV7ra9MNx0yHhXfYRKcGoWuUZWoIXhgrhIAZKs3E=
+
+Name: base/res/layout/abc_action_bar_up_container.xml
+SHA-256-Digest: g/Pep3h4zy4jCH9HLLJ0Q2juK9oOjhV08rMmUYTZiQA=
+
+Name: base/res/layout/abc_action_menu_item_layout.xml
+SHA-256-Digest: w0vhO5TjTJUxK5lNT5yVXDm0LpAWwjwJWeMnJR4O0GA=
+
+Name: base/res/layout/abc_action_menu_layout.xml
+SHA-256-Digest: tcU30lO1cGtg6a8JTbOdi9L0s1WKc0jfS3HymMFoeg8=
+
+Name: base/res/layout/abc_action_mode_bar.xml
+SHA-256-Digest: xfhvlHOtoiLcS8m+a8Gfq2mEvheRIIJOfhEmuXMTKzI=
+
+Name: base/res/layout/abc_action_mode_close_item_material.xml
+SHA-256-Digest: 0lzGqfy/MG/4jA/MRlLssrqmM26ViGXfqESX662erRg=
+
+Name: base/res/layout/abc_activity_chooser_view.xml
+SHA-256-Digest: K6htb3kRejYZFtct7wYVL3pDgq3XV8glKNIeu4yeL0E=
+
+Name: base/res/layout/abc_activity_chooser_view_list_item.xml
+SHA-256-Digest: 53anKE0a9D24roOTd6vPNJXeX7CyVhtLe1CW+B4NhAc=
+
+Name: base/res/layout/abc_alert_dialog_button_bar_material.xml
+SHA-256-Digest: JHPCOVXNTJScp6QQmvwtw9tgKfmqnU2mZGUawc90C4k=
+
+Name: base/res/layout/abc_alert_dialog_material.xml
+SHA-256-Digest: wgaYV9J9DRaBbrs/iZoQ+mjwMeZaeSLP1kulPORUjAA=
+
+Name: base/res/layout/abc_alert_dialog_title_material.xml
+SHA-256-Digest: QblYN9oFSV1VEHYwb0joXP4hRIuVpi/GwqDlN3f0eS4=
+
+Name: base/res/layout/abc_cascading_menu_item_layout.xml
+SHA-256-Digest: NR6e+3uZcOfd2/7oR2fJYuklzfqfFhkp56q/Qx9LZQM=
+
+Name: base/res/layout/abc_dialog_title_material.xml
+SHA-256-Digest: 3un/NmI+3UbqdnIoKZCrhfC7wJl1IHRjKUQJuutd5ug=
+
+Name: base/res/layout/abc_expanded_menu_layout.xml
+SHA-256-Digest: PhHqfHRn/oOzV3FH56HHhdXJWjVN6mMVHL6YrXK6VdM=
+
+Name: base/res/layout/abc_list_menu_item_checkbox.xml
+SHA-256-Digest: X6LVwKc6a3DOnHxrBpNUDsQGb9EkIciTMQFQNaBjgNI=
+
+Name: base/res/layout/abc_list_menu_item_icon.xml
+SHA-256-Digest: okFklQ7Zj0+3k5XKOAlhc8XTItUzSJrsaj1VDsr7M/0=
+
+Name: base/res/layout/abc_list_menu_item_layout.xml
+SHA-256-Digest: 6lB8fDakr3rpN4TFFOhS4tBXdaz6NxB+WTDNfD1Rnio=
+
+Name: base/res/layout/abc_list_menu_item_radio.xml
+SHA-256-Digest: g6GhiQKjuGO2ZvqVleJAJWoIr3m76pvtMpRUwsSiwkY=
+
+Name: base/res/layout/abc_popup_menu_header_item_layout.xml
+SHA-256-Digest: MUmVjRepV4H/xDj/YuAJsoOT5sGnDBHADuvW/2Iy25I=
+
+Name: base/res/layout/abc_popup_menu_item_layout.xml
+SHA-256-Digest: Yvm4XKsf+YkrkYmLG5Sc4cc4YKgTrZX1BoD5TKG0ROY=
+
+Name: base/res/layout/abc_screen_content_include.xml
+SHA-256-Digest: pN8HYaSOVLf+hncpa6UyfS8u7lukgA55RxMoq3nM0aY=
+
+Name: base/res/layout/abc_screen_simple.xml
+SHA-256-Digest: JSmQV6MzW9yIBHMsbyHrAMBIDv8jjXtuasyekm0J0kI=
+
+Name: base/res/layout/abc_screen_simple_overlay_action_mode.xml
+SHA-256-Digest: /Prewk1OPTrkfNnt5cltMBzolYb+ycpWmDyKhiBnWno=
+
+Name: base/res/layout/abc_screen_toolbar.xml
+SHA-256-Digest: gQXebSygERVJBuxAPcaEytCO+tvGN3g8nLEEFBjOumU=
+
+Name: base/res/layout/abc_search_dropdown_item_icons_2line.xml
+SHA-256-Digest: M6QzGLJcrnBxnNaoOip61MzKo7Z7Qi2SuQr56p/MYRg=
+
+Name: base/res/layout/abc_search_view.xml
+SHA-256-Digest: RBToUjZ8/5VtBLrZ7/rLJfcJi/mBIiWilIh54MZaG8o=
+
+Name: base/res/layout/abc_select_dialog_material.xml
+SHA-256-Digest: H3olZFJc3B6Y+n3eT6yniNigpja2MNOvVuVExrnamBY=
+
+Name: base/res/layout/abc_tooltip.xml
+SHA-256-Digest: ytr4BWB5DQf/rd0OhTPt/y7njaFvqEdvL1117PNrrzY=
+
+Name: base/res/layout/activity_main.xml
+SHA-256-Digest: pcBd+ZgdEavj2v+geXq1EXHO098Jktu3aoZNrsNqJ0U=
+
+Name: base/res/layout/browser_actions_context_menu_page.xml
+SHA-256-Digest: F5yA/wPYWDNUv7Fc6GDUtrfc8WXuJFsm9/nGTwun21Y=
+
+Name: base/res/layout/browser_actions_context_menu_row.xml
+SHA-256-Digest: qpLGtG9km5rkMDPxbZhH7ET+YgTBclHje7KSr4oCfY4=
+
+Name: base/res/layout/custom_dialog.xml
+SHA-256-Digest: R7sqs/8j9ulIoLzI3aOBvAjZew23H/3u3KYLFiM7Q3o=
+
+Name: base/res/layout/design_bottom_navigation_item.xml
+SHA-256-Digest: kHo0T1sJS2EjofCLyBU7jAnb5OtVpRJCuMHL7d9Wm9M=
+
+Name: base/res/layout/design_bottom_sheet_dialog.xml
+SHA-256-Digest: Hl/dApYeglzhihBs0o2K2vjLa3sq0s18I0HPlnEBevc=
+
+Name: base/res/layout/design_layout_snackbar.xml
+SHA-256-Digest: 575rnxweYNZtAq+6MufZzfoQK7Sqr8wXS0GyG7K3t0k=
+
+Name: base/res/layout/design_layout_snackbar_include.xml
+SHA-256-Digest: OavXtrgo9OQ41jTHpM+JLUG7BKOqsWlPgGv8kpm3nCM=
+
+Name: base/res/layout/design_layout_tab_icon.xml
+SHA-256-Digest: Q6xwRY7hYcLlxJn50lUYd5KTKR4QkbeAie1S1go0ijo=
+
+Name: base/res/layout/design_layout_tab_text.xml
+SHA-256-Digest: qjaVp7ROAdi7452EwYfwisZaeMXWHJBvNqkHVIvPAoc=
+
+Name: base/res/layout/design_menu_item_action_area.xml
+SHA-256-Digest: thvAgaLnu5JMWRCmHTcq2qqinevsefkBXWpURaEx3v8=
+
+Name: base/res/layout/design_navigation_item.xml
+SHA-256-Digest: dgkqh0+9x4iGH48+ZGOx+zXlEyhg/iKOwCqu0oVft5Q=
+
+Name: base/res/layout/design_navigation_item_header.xml
+SHA-256-Digest: 1gCC7j7d/KO9qbOxBkQ2bPKhcOjbERGMI2PvliY33hM=
+
+Name: base/res/layout/design_navigation_item_separator.xml
+SHA-256-Digest: 7aM/Ocbz4MkQwfCcpamyVMiEVdRc+fxjotzk8EKFTsg=
+
+Name: base/res/layout/design_navigation_item_subheader.xml
+SHA-256-Digest: L6gnQEpJmyRLiZXvA29IkN7w9q2AknnPOMpMq9+2IaA=
+
+Name: base/res/layout/design_navigation_menu.xml
+SHA-256-Digest: a1vq9MrZOIPbLB3raE/u3kcETkylXu11WvpDWaGEZhA=
+
+Name: base/res/layout/design_navigation_menu_item.xml
+SHA-256-Digest: Iyi0KPI/HYADGav/lrVqUf2Ch8bqX0bW390muorEGN4=
+
+Name: base/res/layout/design_text_input_end_icon.xml
+SHA-256-Digest: /vZ+CTJJjiLqWIfNuZjbjJwnp4coHQxCWddEK/csduY=
+
+Name: base/res/layout/design_text_input_start_icon.xml
+SHA-256-Digest: adFDyWNMAnbRpdBC+aCLHvxbwp0cXZeo/FZipP3vNL4=
+
+Name: base/res/layout/dialog_search_results.xml
+SHA-256-Digest: oGVVcjeohGzZ2eHzKd8O3pWYZspbhGAUQLbnAQp3YSQ=
+
+Name: base/res/layout/fragment_graph.xml
+SHA-256-Digest: z3f5460oaMFcMyJSpfHEHBoq04AZjMElgKstlISc8lk=
+
+Name: base/res/layout/fragment_history.xml
+SHA-256-Digest: YnVp4VrpNF4HgSaSEsdfYjAdOBOyR9bTgbW7Uz1jDU0=
+
+Name: base/res/layout/fragment_sesh.xml
+SHA-256-Digest: o/lRcuMaZaEPiNZK6IhBbmNkpz6ptayLl4fCuBBOCpM=
+
+Name: base/res/layout/fragment_stats.xml
+SHA-256-Digest: euf1b3V8a6fqsv6Lg6BkQEWZOd5girD+lnQrTaZ3IUI=
+
+Name: base/res/layout/ime_base_split_test_activity.xml
+SHA-256-Digest: scJVKA6tKQXs3W9XeBc99vburamCxsKTJPCGJH9G31g=
+
+Name: base/res/layout/ime_secondary_split_test_activity.xml
+SHA-256-Digest: cQeCvf1zMsvEIhfeQJJA911/n9iACF9wp4K8jjyngVA=
+
+Name: base/res/layout/item_cloud_smoker_search.xml
+SHA-256-Digest: TFc7KBygtaVcgsdxe/sgF/xGGqaHEkL3ejKbs0tJjZg=
+
+Name: base/res/layout/item_log_entry.xml
+SHA-256-Digest: yQgB+M7SlrlHzQkcHONfYphN923LwF4YqYcn71HQ3ic=
+
+Name: base/res/layout/item_summary_entry.xml
+SHA-256-Digest: 2lWZuwHX/5ZAs/GauwnfGzMoUVw5d+Occ9cImnrzBng=
+
+Name: base/res/layout/m3_alert_dialog.xml
+SHA-256-Digest: pCK4c0YiWLfa3P63bbIRQQBDoAWsjvTQtT6Y4Dfh5OQ=
+
+Name: base/res/layout/m3_alert_dialog_actions.xml
+SHA-256-Digest: 5+Y5EtT7bmbk1dwia0XrNms8sMMCq0dn4MVFzjqHiI8=
+
+Name: base/res/layout/m3_alert_dialog_title.xml
+SHA-256-Digest: nxcN2dr92wvJb+0CyqcqaZdQAkUCGDiSjv1BMF+WVW8=
+
+Name: base/res/layout/m3_auto_complete_simple_item.xml
+SHA-256-Digest: EGEuWNORwLbVFbXQO9ZrXpx7tnaNfLoJVStuR1YPfzw=
+
+Name: base/res/layout/m3_side_sheet_dialog.xml
+SHA-256-Digest: lEQIQ8l3C4sFvB7hlAmI+gUXLG/MZiVl0YpXuchw6gU=
+
+Name: base/res/layout/material_chip_input_combo.xml
+SHA-256-Digest: oXRDmzimjUPhoue1SiKJEMafE+ZTFBii0VaTMX7ymRs=
+
+Name: base/res/layout/material_clock_display.xml
+SHA-256-Digest: MnQ5g9hfIzTMWIiAJElW694hUn2ySlVJYtenZrzK0+E=
+
+Name: base/res/layout/material_clock_display_divider.xml
+SHA-256-Digest: nGhVCXm7FzbgEcUfhU/Cs1lg2d30dvJnyqFh7+CEE8w=
+
+Name: base/res/layout/material_clock_period_toggle.xml
+SHA-256-Digest: WoJ//VWyELJPdyHK3prWBFxsBiXgiNMW81R4Ipm5jzI=
+
+Name: base/res/layout/material_clockface_textview.xml
+SHA-256-Digest: nXKtm4WpgTIPN5pNp2LvXqYlbhDhkQdRnEQkS8DC62A=
+
+Name: base/res/layout/material_clockface_view.xml
+SHA-256-Digest: /sIXRlBU5plzkvbnBhWCJs7kIVKEHkgrPGw8UMtfnik=
+
+Name: base/res/layout/material_radial_view_group.xml
+SHA-256-Digest: Wyv7JCBD4+H3ANPXzDuKynD1A5PN6I6H2faOUD37/XA=
+
+Name: base/res/layout/material_textinput_timepicker.xml
+SHA-256-Digest: GLKCuUHyCPQvzv6Mn52joNN7kNiQRmBd8i2lYAd3OTw=
+
+Name: base/res/layout/material_time_chip.xml
+SHA-256-Digest: gmyLx47pAbKwIm40St5CzTUHxSB1pT7S8AjvXlzS2pg=
+
+Name: base/res/layout/material_time_input.xml
+SHA-256-Digest: jyIv+vqdx8PB0xpV1yLCaC/P4TqoXpzZ42adsGjhdyc=
+
+Name: base/res/layout/material_timepicker.xml
+SHA-256-Digest: wxpmI6XJzxHqfh7qNJGkrRGRvpURFQzbs4IADVdo5sA=
+
+Name: base/res/layout/material_timepicker_dialog.xml
+SHA-256-Digest: lPbemFJjwWnlN0nXxSocSp1MaPtnVDS6eXSrShgYL6E=
+
+Name: base/res/layout/material_timepicker_textinput_display.xml
+SHA-256-Digest: OdoaUuut96afRHQk1WwqaFuYHe6sfPqbMfCqVBtm+Iw=
+
+Name: base/res/layout/mtrl_alert_dialog.xml
+SHA-256-Digest: tqYS4+uEPXo32qzmq1kxnxQ3Atm7pBQOMATf1yZQUHE=
+
+Name: base/res/layout/mtrl_alert_dialog_actions.xml
+SHA-256-Digest: /4WvqD49HPyA+sKEyd40NXYDQO09ueOBpnuhe0EppVc=
+
+Name: base/res/layout/mtrl_alert_dialog_title.xml
+SHA-256-Digest: 2cKRsxrvNqTEXKRnKh7EqXHDbTPdZI1lZtVxLxDd57k=
+
+Name: base/res/layout/mtrl_alert_select_dialog_item.xml
+SHA-256-Digest: jCpE8sK35BLV9j1RqcCuLRJnRWbwX0rmdBzc6l63sW0=
+
+Name: base/res/layout/mtrl_alert_select_dialog_multichoice.xml
+SHA-256-Digest: naJYDuFa1+QKt3dHK3+UZM8SnDX6HeP6qN33RiM/DBE=
+
+Name: base/res/layout/mtrl_alert_select_dialog_singlechoice.xml
+SHA-256-Digest: QF+HLn8PmHkUKZRzjSlOi1If1wS5XpGVLnJRv67mbSY=
+
+Name: base/res/layout/mtrl_auto_complete_simple_item.xml
+SHA-256-Digest: hW1CCtavCJj+IpIZkUq0ovCP82l8kyAe0fuKNznrtNo=
+
+Name: base/res/layout/mtrl_calendar_day.xml
+SHA-256-Digest: K+nVrshRf0PNBgo0NI6Cfv4ynTcnYvX7wE0Ax1DWSvY=
+
+Name: base/res/layout/mtrl_calendar_day_of_week.xml
+SHA-256-Digest: 6+1kivKbD2tSDKMp0bop606VY7FgxPuZ1N3sSqHU0kc=
+
+Name: base/res/layout/mtrl_calendar_days_of_week.xml
+SHA-256-Digest: zfkX31hFceEpGJ5Ma/4DMKddtKUwx1bX/oIPdEA8oDE=
+
+Name: base/res/layout/mtrl_calendar_horizontal.xml
+SHA-256-Digest: r8bZCLh6ARvqkECpQeBtfQ0eFF64gPcFIa+teufhTN4=
+
+Name: base/res/layout/mtrl_calendar_month.xml
+SHA-256-Digest: 3MA7QuZVrFzxQU2lMcmDI0siFDBvKxKdPtphOLJeFug=
+
+Name: base/res/layout/mtrl_calendar_month_labeled.xml
+SHA-256-Digest: uFiG6ZVgm79mGImQfKrpbpFfyxbo4xAE+Vz5vCUj07k=
+
+Name: base/res/layout/mtrl_calendar_month_navigation.xml
+SHA-256-Digest: pSecbP3iuHaZdAcvv23krZWezwJMAWPp4c2JUERVU6Q=
+
+Name: base/res/layout/mtrl_calendar_months.xml
+SHA-256-Digest: 3wSaal8orBOJA1NfmUXVeweUznSKd6ma25BNAp7sj60=
+
+Name: base/res/layout/mtrl_calendar_vertical.xml
+SHA-256-Digest: pdxB6XvXttfnLQYEYTbehrTPboKuTckGCFrcBd3HFws=
+
+Name: base/res/layout/mtrl_calendar_year.xml
+SHA-256-Digest: jcgDthYogXm6sRk8c/N75mulaFG9MablDl8Kwg/Qb98=
+
+Name: base/res/layout/mtrl_layout_snackbar.xml
+SHA-256-Digest: JpaO6LgSqzXIb7OjG14vrRP3VQZp7rUI5ZyF7EiL8Jk=
+
+Name: base/res/layout/mtrl_layout_snackbar_include.xml
+SHA-256-Digest: AsXrTTyplLUwTmxSH4RRAspe0ToPlvcyZHlbepxN0I0=
+
+Name: base/res/layout/mtrl_navigation_rail_item.xml
+SHA-256-Digest: gaBvHVT1yelTdQ2f8ysx6phwID1u1EgC52DZEufER+g=
+
+Name: base/res/layout/mtrl_picker_actions.xml
+SHA-256-Digest: TlZDqIPbBK8Ez/zbA2L3QjH+7REyAfbv0g3LNuhHaUc=
+
+Name: base/res/layout/mtrl_picker_dialog.xml
+SHA-256-Digest: GpxeRqTu4J9rX0QdYcFdv1BT01N5HmhbeSmpkyMF64Y=
+
+Name: base/res/layout/mtrl_picker_fullscreen.xml
+SHA-256-Digest: yPYAY0ITJnodTNJLF5mc5rgSjgYKdo8249CqIGPpWeI=
+
+Name: base/res/layout/mtrl_picker_header_dialog.xml
+SHA-256-Digest: S/tLEyO/EisX+yBIPog22H8cKKGi9YOM94zSdsn8b+M=
+
+Name: base/res/layout/mtrl_picker_header_fullscreen.xml
+SHA-256-Digest: ivGFwbk+7/mRosh7hpW5iYdFmwfm9g7ZIFPjDtTDyWg=
+
+Name: base/res/layout/mtrl_picker_header_selection_text.xml
+SHA-256-Digest: 7pjYfm9z7SIY/qtN90eoKEQ8oZbFiIRuZNyv9HwkSvM=
+
+Name: base/res/layout/mtrl_picker_header_title_text.xml
+SHA-256-Digest: roqzxRDsk0OsIGkByGCqrsawgX98BmwojmQn2C9KkTk=
+
+Name: base/res/layout/mtrl_picker_header_toggle.xml
+SHA-256-Digest: NB4Yr+Cn50HooP7jPE1QwD8wE6oB178VsWNYuttYpyo=
+
+Name: base/res/layout/mtrl_picker_text_input_date.xml
+SHA-256-Digest: O8jdTksQ84SfmMq1tKBSbz/QtUkIAQWxq2sXHvintvg=
+
+Name: base/res/layout/mtrl_picker_text_input_date_range.xml
+SHA-256-Digest: CiX4jh1x7cLtU5AZ5ykI3lYMRGQvoCHGXDo96fpV3Jg=
+
+Name: base/res/layout/mtrl_search_bar.xml
+SHA-256-Digest: HnV73o1fmdvLn7V5sn2/HwT6cZ0oCYIndoMfg14ormg=
+
+Name: base/res/layout/mtrl_search_view.xml
+SHA-256-Digest: tb3fqML4sKxlvoB29qlBl7Jl+FAu/UMdQzzSM8ed+j8=
+
+Name: base/res/layout/notification_template_part_chronometer.xml
+SHA-256-Digest: BHAtNs/RhDlGx7wb+tDQASoa6V+YS/JxtGH1/we21dE=
+
+Name: base/res/layout/notification_template_part_time.xml
+SHA-256-Digest: dupP+2nBUvM9AmtzX+OprKNbosiv28W5ycpJxNTle08=
+
+Name: base/res/layout/select_dialog_item_material.xml
+SHA-256-Digest: WfGcv6eVPa4KsrP0XaW6rafEa7NenhmIl90d8fxWVUQ=
+
+Name: base/res/layout/select_dialog_multichoice_material.xml
+SHA-256-Digest: 0qklQkxo86PYenn+l85menIvMflXkwFe31vkzv9l0K4=
+
+Name: base/res/layout/select_dialog_singlechoice_material.xml
+SHA-256-Digest: ZwhoZ/OeudSTP5E/iLFAgyrDB1IURVOG7F1+CPW3bBY=
+
+Name: base/res/layout/spinner_dropdown_add_item.xml
+SHA-256-Digest: Df9yczQy7Q3TUqqOCOxv0K+ZcNgb5MLN3nJtqYzMUTo=
+
+Name: base/res/layout/spinner_dropdown_item.xml
+SHA-256-Digest: vvZegzQGyFdyv6pe+ID1BI7PsJPdFZSSYlGpkse2HhY=
+
+Name: base/res/layout/spinner_item.xml
+SHA-256-Digest: a25hMmuQsv3UgGgTRvupauwX9TUeoFw0VWKdxdKTuoI=
+
+Name: base/res/layout/support_simple_spinner_dropdown_item.xml
+SHA-256-Digest: kIPf6WSVdJBXgkn6ufJCHn9ywh3nYh5FfzqwifNRAH8=
+
+Name: base/res/mipmap-anydpi-v26/ic_launcher.xml
+SHA-256-Digest: BMmaLbsVCsAaLjQQT4DMngRir4yAU7Pl5GTyBU3mCfE=
+
+Name: base/res/mipmap-anydpi-v26/ic_launcher_round.xml
+SHA-256-Digest: 6kgC+HtTGlWMIyXV2M0YBgCvBYYGGFLMisKT7ah8ROU=
+
+Name: base/res/mipmap-hdpi-v4/ic_launcher.webp
+SHA-256-Digest: MaShfCS1upskeQBRZEdAFcHwTsanhssKx4hb0ThcXqA=
+
+Name: base/res/mipmap-hdpi-v4/ic_launcher_foreground.webp
+SHA-256-Digest: 7s/kc9NRTwwZ1Y1Nl/1scufgz+7cD1DMp862zE3Ocs8=
+
+Name: base/res/mipmap-hdpi-v4/ic_launcher_round.webp
+SHA-256-Digest: +A4UYaQ7AkaO5tQB2dQmnuRwdft7hLRUSh4Q70YE08Q=
+
+Name: base/res/mipmap-mdpi-v4/ic_launcher.webp
+SHA-256-Digest: V4YjUbmnSHNk63DJEKQE5lNAZmwWwyi55Vzn9UbMpas=
+
+Name: base/res/mipmap-mdpi-v4/ic_launcher_foreground.webp
+SHA-256-Digest: 1U49QJJeLsk0v0Yf6mCe9pEi4ElIvUvoM0yDtl5pkt8=
+
+Name: base/res/mipmap-mdpi-v4/ic_launcher_round.webp
+SHA-256-Digest: H9KitJ2hi/hgFRzRKY/YURwhbFOt4l0WyGu60IpJJQw=
+
+Name: base/res/mipmap-xhdpi-v4/ic_launcher.webp
+SHA-256-Digest: FnLeKZ2eHBBaX+rkcbNxDfP53di4g5BsPfkcoi1CfMM=
+
+Name: base/res/mipmap-xhdpi-v4/ic_launcher_foreground.webp
+SHA-256-Digest: ltWUIlifw1EA3YIsilLMq+xRI/KaTbUUENBWJHW7F/I=
+
+Name: base/res/mipmap-xhdpi-v4/ic_launcher_round.webp
+SHA-256-Digest: 0UjXpD85XOprl6+9MUcXf4jgZRemHHtjT8OTO3aDPhQ=
+
+Name: base/res/mipmap-xxhdpi-v4/ic_launcher.webp
+SHA-256-Digest: LCzXWkrwAcC+tyj1/yB07P2Zm5xElN8ttUIJrlV9IvE=
+
+Name: base/res/mipmap-xxhdpi-v4/ic_launcher_foreground.webp
+SHA-256-Digest: u06xd1kYdG740FQ7FHnVJVi27PzkxqRACPi2e0IekZg=
+
+Name: base/res/mipmap-xxhdpi-v4/ic_launcher_round.webp
+SHA-256-Digest: naVRPz5PwSIK/ZXesIBWivH+zEV72wgYSEssI5f3m6k=
+
+Name: base/res/mipmap-xxxhdpi-v4/ic_launcher.webp
+SHA-256-Digest: p2znYxyvMfUxCp4YDot5L0KfDCaAMrI8O/kw7JwLyM4=
+
+Name: base/res/mipmap-xxxhdpi-v4/ic_launcher_foreground.webp
+SHA-256-Digest: ybuTc4dX7g7v949WJNHwVNMwGxfpW0ekpTxin4VCMJ4=
+
+Name: base/res/mipmap-xxxhdpi-v4/ic_launcher_round.webp
+SHA-256-Digest: q9k/xOBt4z+OE1bafmq0Ue0oSdV2c9pCYOmCPbDHRuM=
+
+Name: base/res/raw/firebase_common_keep.xml
+SHA-256-Digest: NH3lxUI5o5B1UN1UVvwhFXyTjj6cSoYLVNOKl24lnZ4=
+
+Name: base/res/xml/backup_rules.xml
+SHA-256-Digest: nEPe/s5hZOuyANN5QfrSFEsq4ZJFC9EzphUM/EMne1s=
+
+Name: base/res/xml/data_extraction_rules.xml
+SHA-256-Digest: WxCfavaGsz9ETLNptErodyVUHok26zV3teZlmIoHbBE=
+
+Name: base/res/xml/image_share_filepaths.xml
+SHA-256-Digest: 0+PYMzWkF9P74ASmHnQJ3nsU/HPY73jmvmkO1bJvAU0=
+
+Name: base/resources.pb
+SHA-256-Digest: IhFl3vrsWnDq4QddBXsvtFaTpbveeKOUHpd3wr1S2Iw=
+
+Name: base/root/DebugProbesKt.bin
+SHA-256-Digest: ypS/oc4BR20CnbRUgA+PqGy+Imnsc5oCtRtXHAY5UIE=
+
+Name: base/root/META-INF/androidx.activity_activity.version
+SHA-256-Digest: soymXbECIyS5y1XtoRnETNH0RQxXBzhilawFFVaCVhc=
+
+Name: base/root/META-INF/androidx.annotation_annotation-experimental.v
+ ersion
+SHA-256-Digest: J6r1311ZdNe0jkMkkaxdSQoCd27/ksy39SmxkjjYp7M=
+
+Name: base/root/META-INF/androidx.appcompat_appcompat-resources.versio
+ n
+SHA-256-Digest: WK0UAJ7FO2I4kH8jrGKWNQ8aacVXMM0tzZz49811sF8=
+
+Name: base/root/META-INF/androidx.appcompat_appcompat.version
+SHA-256-Digest: 3KwRB+iN9CbwFKLOPc4Yk/thN+nl3cp13ItlgsPWIyo=
+
+Name: base/root/META-INF/androidx.arch.core_core-runtime.version
+SHA-256-Digest: XNw+uBHL4V7/NrC/hyxRCFuV9zavAoyIwHQv8g7Xr20=
+
+Name: base/root/META-INF/androidx.browser_browser.version
+SHA-256-Digest: XJ6JfylFugWbZZJdRbFz+em4jit+qpbzpqFpQik5TCA=
+
+Name: base/root/META-INF/androidx.cardview_cardview.version
+SHA-256-Digest: 2BTeF6H0WWjS1JYv99xB8qfYOnCybTDCcfZ3VmjBhf4=
+
+Name: base/root/META-INF/androidx.coordinatorlayout_coordinatorlayout.
+ version
+SHA-256-Digest: YERhUvbZ39APDPo7ZnCe52bp1wHMzIqiOgQcupn2ATk=
+
+Name: base/root/META-INF/androidx.core_core-ktx.version
+SHA-256-Digest: iLCrGbWjgcoAU/JukEQY4oqA9HhLIzp8BKm1z1hV6iY=
+
+Name: base/root/META-INF/androidx.core_core.version
+SHA-256-Digest: s7sBERc0aifflatcmL6NQ1VyzI4RUPfaupccQ4/ie8E=
+
+Name: base/root/META-INF/androidx.cursoradapter_cursoradapter.version
+SHA-256-Digest: 6n+vb87ZSD7+UKeSS1B1FP2ycoVQFRjqb7gC61/XvF0=
+
+Name: base/root/META-INF/androidx.customview_customview-poolingcontain
+ er.version
+SHA-256-Digest: PBXdK2MXEBjGDt++zLfjM9taYGOhSsdjAo2KTsm4R5M=
+
+Name: base/root/META-INF/androidx.customview_customview.version
+SHA-256-Digest: 4gzAgfJ6RrySxRleVW2JREePDfdh5vSNGFd7j7Cmo+U=
+
+Name: base/root/META-INF/androidx.databinding_viewbinding.version
+SHA-256-Digest: iUg1DDN1YhEfMZHPT+05knKDOOPdtBC7EoItJ7mbn3M=
+
+Name: base/root/META-INF/androidx.documentfile_documentfile.version
+SHA-256-Digest: JeXiTvtb4MdkAa0YGoUU9StZ6QZsEgA2BLXfMjAyVow=
+
+Name: base/root/META-INF/androidx.drawerlayout_drawerlayout.version
+SHA-256-Digest: qnaK3udKZvoXD2dI8SZSajZQouSQEUYiND0J0Qu1W+o=
+
+Name: base/root/META-INF/androidx.dynamicanimation_dynamicanimation.ve
+ rsion
+SHA-256-Digest: pOusyJBVU7rfiim3r4J0gMm4+d3oi8bKoIio5IZEsog=
+
+Name: base/root/META-INF/androidx.emoji2_emoji2-views-helper.version
+SHA-256-Digest: HLXiEKmbMsKBB7ruinYte2bznpeKSxK1lv5XHE6bN7E=
+
+Name: base/root/META-INF/androidx.emoji2_emoji2.version
+SHA-256-Digest: /GWW/00bQRiHMtXUpOLNOCNxn6H5kAl7N+7Dt6GT2X4=
+
+Name: base/root/META-INF/androidx.fragment_fragment.version
+SHA-256-Digest: sqyXC0An6cQrVewXkvppmCdukevKTcjh+QgeN3IPhII=
+
+Name: base/root/META-INF/androidx.interpolator_interpolator.version
+SHA-256-Digest: P+Cb+7Hfusye8adem3Iv8OhSjXYYyVgZFckjIzUa1lA=
+
+Name: base/root/META-INF/androidx.legacy_legacy-support-core-utils.ver
+ sion
+SHA-256-Digest: nk5vMFwaZ3wju48UhqJ0S4/Cicl7w+tr9Q0DPZIh6Ig=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-livedata-core-kt
+ x.version
+SHA-256-Digest: PWkxDovmfAs5ywrEt/xfuMYDy+maLDE+NltGyQl9MSY=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-livedata-core.ve
+ rsion
+SHA-256-Digest: N2jpgJQGhvox2MIJzjYOTdQdIWj0lr6yUCf8PWf4Hvk=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-livedata-ktx.ver
+ sion
+SHA-256-Digest: Jhxp5VMIssoQsLOeigm2N8cdN40B8qUsY+amhu1vB40=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-livedata.version
+SHA-256-Digest: nJnDUpK17f/I/rscteCW9mqofvFwr0XL4UwSj2vUFHc=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-process.version
+SHA-256-Digest: YcDQ0HtAuUTxHO3eLdMMYXoxX0AodnTJAo8G18tmuic=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-runtime-ktx.vers
+ ion
+SHA-256-Digest: l7afONLooVVfSWPXC6njRwoFlYHkicp7Wi6BpEPhON0=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-runtime.version
+SHA-256-Digest: 6VDSYEDM+6ORBWyXcIqqpkeeRkyF5JCgk+AAtOy5Owc=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-ktx.ve
+ rsion
+SHA-256-Digest: NGPJZC7b7iueRaJkchuOolhxqWOUMSZz8p+tXnPZTj0=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel-saveds
+ tate.version
+SHA-256-Digest: B+u5pBJXTgXYHKKPnmv67o/aoWNdSTnh0CIiNM879xY=
+
+Name: base/root/META-INF/androidx.lifecycle_lifecycle-viewmodel.versio
+ n
+SHA-256-Digest: nx2ILm2eRXa6AN088NBhj4GcKSAgoCRnzEbfukU7ZKY=
+
+Name: base/root/META-INF/androidx.loader_loader.version
+SHA-256-Digest: +I5qNWud+ihN8c7YvvcVT2Q0/VPft8nCYzkSglBSJFY=
+
+Name: base/root/META-INF/androidx.localbroadcastmanager_localbroadcast
+ manager.version
+SHA-256-Digest: dLsl8VKBD1OgpYAN29NTFFA9kBQZ8NgtIwr2pAeR8lw=
+
+Name: base/root/META-INF/androidx.print_print.version
+SHA-256-Digest: VJHaYhhbydi6ei+Do6csm0Ot/2P1UN16mAwuwXOduOA=
+
+Name: base/root/META-INF/androidx.profileinstaller_profileinstaller.ve
+ rsion
+SHA-256-Digest: VUHHbzhvLdzgorOTOKqSQaZh2q9fgL4pjXcHLy4cXfw=
+
+Name: base/root/META-INF/androidx.recyclerview_recyclerview.version
+SHA-256-Digest: Zqk1T+55Af4ZcVFUvDDRU8myvxlzkbUR5aWEwq69G1E=
+
+Name: base/root/META-INF/androidx.room_room-ktx.version
+SHA-256-Digest: MH1+ERfp7aTQ65HyFGgTB+njRE6zgKhWSiUuXbc6VSw=
+
+Name: base/root/META-INF/androidx.room_room-runtime.version
+SHA-256-Digest: wwJ8DwJtgOg+HSgHOpA4TqQ/PqO44K7BkvvDO6lJQ0Q=
+
+Name: base/root/META-INF/androidx.savedstate_savedstate.version
+SHA-256-Digest: otHDLv3gA0NjuvWfhWgxgI3vChL5/O52rAJvEYvpiek=
+
+Name: base/root/META-INF/androidx.sqlite_sqlite-framework.version
+SHA-256-Digest: 7afVROCKCSMDIUhfQOhfMEXhpNq8FDqHo9xnCPPLrR0=
+
+Name: base/root/META-INF/androidx.sqlite_sqlite.version
+SHA-256-Digest: 6kRYLo7/2O4P04/S1eWlhX3f+vXUaEn+dJFsA6ihHA8=
+
+Name: base/root/META-INF/androidx.startup_startup-runtime.version
+SHA-256-Digest: aMapnSOt4bYsTDBcmi5XVTnI3oJrMZIQ16QPFbxRinE=
+
+Name: base/root/META-INF/androidx.tracing_tracing.version
+SHA-256-Digest: ZzXFQmMTiLDJ9HCHY14jlTtHDwenpr0CsZ9xwVZ6ySo=
+
+Name: base/root/META-INF/androidx.transition_transition.version
+SHA-256-Digest: KXl47rVlfXo6P1I75eL88oE7Ai6aJK5KCDsB6oYsgK0=
+
+Name: base/root/META-INF/androidx.vectordrawable_vectordrawable-animat
+ ed.version
+SHA-256-Digest: w/7uqpxb9KE9K3qH1Q9yDPIf45oSb31DKULuTfpH1+w=
+
+Name: base/root/META-INF/androidx.vectordrawable_vectordrawable.versio
+ n
+SHA-256-Digest: VHoyVUGpuwp0LxwPipiVZswRyJ4X24l5mPC4Af/cyPo=
+
+Name: base/root/META-INF/androidx.versionedparcelable_versionedparcela
+ ble.version
+SHA-256-Digest: TYlfzNV/RcaUvIS4vix6YhRMYThxUKAFuEkU+wNqOb0=
+
+Name: base/root/META-INF/androidx.viewpager2_viewpager2.version
+SHA-256-Digest: DsVue7vV1lGV2LCFITpeytJ4XCE4jngBsi3SozMWQBU=
+
+Name: base/root/META-INF/androidx.viewpager_viewpager.version
+SHA-256-Digest: Xf1LVDVgPlWX6deEx4trTMzDdH1rO6sp+W4ru50qM4M=
+
+Name: base/root/META-INF/com.google.android.material_material.version
+SHA-256-Digest: SpCgS6c3HpuP9mBlilv4G7sVMrH3Yfo4XVIj+K1qBYA=
+
+Name: base/root/META-INF/com/android/build/gradle/app-metadata.propert
+ ies
+SHA-256-Digest: vtfOcDKKw4Ok9/Q/fVLQ6ZXz1ldqdXehMIHEmVnLaNw=
+
+Name: base/root/META-INF/kotlinx_coroutines_android.version
+SHA-256-Digest: zA1sv2vSrlHeR+qQ8GcGVbc7HGMuSnTxlk5fjf8oXL0=
+
+Name: base/root/META-INF/kotlinx_coroutines_core.version
+SHA-256-Digest: mZ+Efp78hE0Zx/IpVdtStYA1e3zZh8ARkyDZreqMAZI=
+
+Name: base/root/META-INF/kotlinx_coroutines_play_services.version
+SHA-256-Digest: mXnfKgx0gIPIh7IZNGY+bOWsgr/l5qRpRbXLSVVFmT0=
+
+Name: base/root/META-INF/services/io.grpc.LoadBalancerProvider
+SHA-256-Digest: CdlmJg7GueKzSzjvbUvrs0TBFgd2FB0vH6ltY7B/Fn8=
+
+Name: base/root/META-INF/services/io.grpc.ManagedChannelProvider
+SHA-256-Digest: XFrNgLrnQWj8w3m7JpJniztseCGTNtqMf/p1tkDbQ5s=
+
+Name: base/root/META-INF/services/io.grpc.NameResolverProvider
+SHA-256-Digest: aKc6D0PClaS5G1LeqSytKc7/CCZAKT40QuJCMrqupmo=
+
+Name: base/root/META-INF/services/kotlinx.coroutines.CoroutineExceptio
+ nHandler
+SHA-256-Digest: gEIQQc4Bl+ATk1qvoDuPIijXG0R4QXYF+NaSlY6Eems=
+
+Name: base/root/META-INF/services/kotlinx.coroutines.internal.MainDisp
+ atcherFactory
+SHA-256-Digest: c2XawPIZW8/CQqOa3kePO9D32XjpIm5CTUsgetWsq0Q=
+
+Name: base/root/META-INF/version-control-info.textproto
+SHA-256-Digest: LIHtuTNR3CoycRviudU8sPo4Cu/JgZEN+GHtB8wIqsI=
+
+Name: base/root/firebase-annotations.properties
+SHA-256-Digest: v+qtfhQYbamEep5sXF+SK3BTA6uTLTrbM5+r60Mx0BA=
+
+Name: base/root/firebase-auth-interop.properties
+SHA-256-Digest: zuejzjeXQoJSII0uavNhnaCceqZXenDou9I9ZSaFJUA=
+
+Name: base/root/firebase-auth-ktx.properties
+SHA-256-Digest: vAo1uju9gGwSxmp1XF5CbKSYeWNsYfSX4kbHQgN31ww=
+
+Name: base/root/firebase-auth.properties
+SHA-256-Digest: wUAtchXMdFKHp9cjUdgIGxGUE4E0jEr+qzelVmW1IMk=
+
+Name: base/root/firebase-database-collection.properties
+SHA-256-Digest: 3+4LqiKy9uQiLtdZE45JCJ3ULhXTsJAZseujs0Fq/6g=
+
+Name: base/root/google/apphosting/datastore/testing/datastore_test_tra
+ ce.proto
+SHA-256-Digest: RMA6/jTbQ6xsMXUcLAyCBBO/omW25yKudj8TEd5CGyI=
+
+Name: base/root/google/firebase/firestore/proto/bundle.proto
+SHA-256-Digest: wN3jiPzgAM/6YINX9g866wcsth9D2bfhzJ/+AAFiEFM=
+
+Name: base/root/google/firebase/firestore/proto/maybe_document.proto
+SHA-256-Digest: oOC5RlYe/zFkzf/txOc2C3DwhjXO94pUOLPOEfHSnqY=
+
+Name: base/root/google/firebase/firestore/proto/mutation.proto
+SHA-256-Digest: Pj8F2AGFOrvXsTXwLVI8S1s6D/HZt7GUhUDi/DWprj0=
+
+Name: base/root/google/firebase/firestore/proto/target.proto
+SHA-256-Digest: JtZwF+pOYcbjU20D3ZPdBVdrzzc4CVyqExrNitVcumQ=
+
+Name: base/root/google/firestore/admin/index.proto
+SHA-256-Digest: daxcwXDe7Zy/SQHNh8/ElOs5mZWRYjCyB+P9shlmCks=
+
+Name: base/root/google/firestore/v1/aggregation_result.proto
+SHA-256-Digest: BJiErMdqL2HUj1YRGmWFAt9EbK5tjWi8ukrr19Xh6jA=
+
+Name: base/root/google/firestore/v1/bloom_filter.proto
+SHA-256-Digest: L7yjTM3LcJrbre2heLQqdpsyX+QVpyx0X2Lx5MTvEQQ=
+
+Name: base/root/google/firestore/v1/common.proto
+SHA-256-Digest: 4LbkwFJHu2WROpvHvUiN9GdFJqOpNrqRayc+AUGGeh4=
+
+Name: base/root/google/firestore/v1/document.proto
+SHA-256-Digest: ufaGR/SZBeHnUj9oIQAqfaKLlkGBbcrGOeUjJ3K4rlo=
+
+Name: base/root/google/firestore/v1/firestore.proto
+SHA-256-Digest: XhGDg1PyHSQ5LDR46OMCvdKw8wkty2+/2tlM54L37IM=
+
+Name: base/root/google/firestore/v1/query.proto
+SHA-256-Digest: VLNQ37Y2nYovYnNgGOuUvU8QaI5UDfj3xqKFgCmXKIQ=
+
+Name: base/root/google/firestore/v1/write.proto
+SHA-256-Digest: Stk1vFkxa8/bJp9wAVYjFRDXrBv5w3WIZEAuZplTkaQ=
+
+Name: base/root/google/protobuf/any.proto
+SHA-256-Digest: IHfocuCknsKYtqBrN1JewloO/zApEd0oJK+LOzsYH5c=
+
+Name: base/root/google/protobuf/api.proto
+SHA-256-Digest: 153iUbx+oq7PaoslRa+ayfIkKEzokuusps1AWzZDJSU=
+
+Name: base/root/google/protobuf/duration.proto
+SHA-256-Digest: F3Qzg8gUXHFOJKkYW79C4Oty0CMJJxCPVv3KRZrjvag=
+
+Name: base/root/google/protobuf/empty.proto
+SHA-256-Digest: YOpQ3SJr+vjyzia78S5zqykYqr5V5hWSSFvWY8WgiuI=
+
+Name: base/root/google/protobuf/field_mask.proto
+SHA-256-Digest: nEwMsWRa9iQ33KMyZbUzL//8MhZpHim4UQB7UW6ijs8=
+
+Name: base/root/google/protobuf/source_context.proto
+SHA-256-Digest: whwZZb6xHLYrGjCEyOKMf7pF0Arp8YAdxIoV4iC25JQ=
+
+Name: base/root/google/protobuf/struct.proto
+SHA-256-Digest: QRlXmBuV6PRUj79ADyk5fBi831y2t937Hfnr5tJle8w=
+
+Name: base/root/google/protobuf/timestamp.proto
+SHA-256-Digest: vgFWYgNc1gRZ4lo4bRwp6gF4ui6jrFYT6xvhXo3nP7Y=
+
+Name: base/root/google/protobuf/type.proto
+SHA-256-Digest: jlkCFiPSAqG2Ml6KIc9vQ0/64KIWHUdMFs4VEh+C7zk=
+
+Name: base/root/google/protobuf/wrappers.proto
+SHA-256-Digest: 2Nguyj3MvBmkQk9UaW4WYxV9mJn+4Qlybhkr8h6JGC4=
+
+Name: base/root/integrity.properties
+SHA-256-Digest: ssQWZkKLTnDMTI6Pa6ZgOgfBdzlu54PiErTPDsC/4pA=
+
+Name: base/root/kotlin-tooling-metadata.json
+SHA-256-Digest: ammt6FQh12RW8YqMno9J+P7AST1adBaYEVNDEyGEQHg=
+
+Name: base/root/kotlin/annotation/annotation.kotlin_builtins
+SHA-256-Digest: O0SaKe1E5KBwmjikTXz6xyt8TG6jk6hEwAZvmQ5UqNs=
+
+Name: base/root/kotlin/collections/collections.kotlin_builtins
+SHA-256-Digest: g4i+PINKY3SkDHZuRJXiRxeyLyV2OIZkYpX74G9FKDI=
+
+Name: base/root/kotlin/coroutines/coroutines.kotlin_builtins
+SHA-256-Digest: KNx1CeeGzLJFQCfQrG9DDucLd6yx0c8iA6D/fce+Q8Q=
+
+Name: base/root/kotlin/internal/internal.kotlin_builtins
+SHA-256-Digest: Aov7lyAWtbnXsnbuh+8O6fvGoemyUxT4TrQl8W/3vEs=
+
+Name: base/root/kotlin/kotlin.kotlin_builtins
+SHA-256-Digest: KClDuhFK76jVtup4dIz+uGi50tLBo1iZ9Xu7XQmt1Q0=
+
+Name: base/root/kotlin/ranges/ranges.kotlin_builtins
+SHA-256-Digest: lY/MddU4pTiN/8A+/zDqMub93wIVUvtm7Hv6N27hCo8=
+
+Name: base/root/kotlin/reflect/reflect.kotlin_builtins
+SHA-256-Digest: 52npPDjrO3+JVGyO9NX7+nCxGQonnRPF6ypmLfs/67o=
+
+Name: base/root/play-services-auth-api-phone.properties
+SHA-256-Digest: sU5BXVoP4DRPbB2Y2eeiOCDCmfcJt/C4Llm6Kjeh494=
+
+Name: base/root/play-services-auth-base.properties
+SHA-256-Digest: IiWQjwJw0KCoR3vPnJq2+hIo5fW51OxSBKvt3n87Kss=
+
+Name: base/root/play-services-auth.properties
+SHA-256-Digest: x9UyVws1c1IAad80pkHGO1JqrbiaQtuDOfok3FhrxAA=
+
+Name: base/root/play-services-base.properties
+SHA-256-Digest: CatilS3qW1ldYUiOxnGyA5ax2BJdsalO4SQptYzfUDU=
+
+Name: base/root/play-services-basement.properties
+SHA-256-Digest: 486lyXgZ5/XgNwbkQFrYlFMmuug/FhxWZwxx+M7WRHQ=
+
+Name: base/root/play-services-fido.properties
+SHA-256-Digest: UEBTv7LLBx7CDC4nc+hD4w33o8yItREOwF4ivxnBVss=
+
+Name: base/root/play-services-tasks.properties
+SHA-256-Digest: qNyA6UxQC3ZtWFBt3SbBc8HJA34cLeNEjNQ6AJjkbX0=
+
+Name: base/root/protolite-well-known-types.properties
+SHA-256-Digest: 2ONwY8BftUVjBDZil0TEMLvHQJoPVzLGetkgFhcKaVs=
+
+Name: base/root/recaptcha.properties
+SHA-256-Digest: meVfkzIgn+qGp76hckiGUO1ppjOAjLOPeAacl6Mxxwk=
+

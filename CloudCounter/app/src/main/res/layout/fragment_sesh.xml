@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background image layer - fills entire area -->
+    <ImageView
+        android:id="@+id/backgroundImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/sesh_background"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="false"
+        android:contentDescription="Background decoration" />
+
+    <!-- Main content ScrollView - no padding on ScrollView itself -->
+    <ScrollView
+        android:id="@+id/seshScroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <!-- LinearLayout has the padding instead -->
+        <LinearLayout
+            android:id="@+id/seshContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Room name centered at top -->
+            <TextView
+                android:id="@+id/textRoomName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Example Room"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- Session timer and code on same line -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/textThisSesh"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="00:00"
+                    android:textSize="14sp"/>
+
+                <TextView
+                    android:id="@+id/textRoomCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Code: ABC123"
+                    android:textSize="14sp"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
+            <!-- Divider line -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Combined stats line (Total cones | Last cone | Rounds | Longest | Shortest) -->
+            <TextView
+                android:id="@+id/textGroupTotalCones"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Total cones: 0"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Last cone info with smoker name (optional, separate line) -->
+            <TextView
+                android:id="@+id/textLastConeInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- Cones since last bowl (conditional) -->
+            <TextView
+                android:id="@+id/textConesSinceLastBowl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cones since last bowl: 0"
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Hidden - no longer used since we combine everything -->
+            <TextView
+                android:id="@+id/textRoundsAndGaps"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="14sp"
+                android:visibility="gone"/>
+
+            <!-- Per-smoker stats label -->
+            <TextView
+                android:id="@+id/labelPerSmokerStats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Per-Smoker Stats"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"/>
+
+            <!-- Table headers -->
+            <LinearLayout
+                android:id="@+id/statsTableHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- Divider under headers -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- Container for the per-smoker stats table rows -->
+            <LinearLayout
+                android:id="@+id/perSmokerStatsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+            <!-- Resume button -->
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fabResumeSesh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
+                android:src="@drawable/ic_play_arrow"
+                android:backgroundTint="@color/light_grey"
+                android:visibility="gone"
+                app:tint="@android:color/white"
+                app:fabSize="normal"
+                android:contentDescription="Resume Session" />
+
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

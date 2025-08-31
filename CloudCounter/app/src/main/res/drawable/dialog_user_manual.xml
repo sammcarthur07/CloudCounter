@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/mainCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="#E64A4A4A"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="12dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Green gradient background (like shimmer_gradient) -->
+            <View
+                android:id="@+id/greenGradientBackground"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0.3"
+                android:background="@drawable/shimmer_gradient" />
+
+            <View
+                android:id="@+id/shimmerOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="800dp"
+                android:alpha="0.3"
+                android:background="@drawable/shimmer_gradient" />
+
+            <View
+                android:id="@+id/neonBorder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/neon_border_animation" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="600dp"
+                android:fadeScrollbars="false"
+                android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
+                android:scrollbarSize="4dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <!-- Title with emoji -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:gravity="center"
+                        android:letterSpacing="0.15"
+                        android:text="USER MANUAL ☁️"
+                        android:textColor="#98FB98"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <!-- Welcome Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Yo, what's good? Welcome to the official user manual for Cloud Counter, the only app you'll ever need for your sesh."
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Ever get so deep in a chill session that the great mysteries of the universe start to unfold? Mysteries like, &quot;Wait, whose turn is it?&quot; or &quot;Dude, how long has it been since we lit that up?&quot; Yeah, we've been there. Too many times."
+                        android:textColor="#CCCCCC"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="That's why we built Cloud Counter. It's like a super-smart buddy for your smoke circle, keeping track of all the important stuff so you can focus on, well, the other important stuff. Whether your friends are on the couch next to you or on the other side of the planet, this app has your back."
+                        android:textColor="#CCCCCC"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Virtual Circle Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="The Virtual Circle: Sesh With Your Buds, Anywhere ☁️"
+                        android:textColor="#98FB98"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="This ain't your average counter app. This is the future of the smoke circle."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• Cloud Rooms: Fire up a private, password-protected Cloud Room and invite your crew. It's your own virtual smoke spot.\n\n• Live Video &amp; Chat: Actually see and talk to your friends with built-in video chat. Pass it virtually and see their faces when it hits. No more texting &quot;u good?&quot; from another app.\n\n• Everything's Synced: When someone takes a hit in the room, everyone sees it happen instantly. The timers, the stats, the rotation—it's all synced up tighter than a fresh-rolled joint."
+                        android:textColor="#CCCCCC"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Never Lose Rotation Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Never Lose the Rotation Again 🔄"
+                        android:textColor="#98FB98"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="The sacred rules of the circle, now in digital form."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• One-Tap Toke Tracking: Log every joint, cone, or bowl with a single, satisfying tap. No buzzkill forms to fill out.\n\n• The Holy Trinity of Timers: Always know the Time Since Last Hit, the Gap Countdown (how long 'til the next one might be), and the Total Sesh Time.\n\n• Automated Puff-Puff-Pass: Turn on &quot;Auto&quot; mode and the app automatically passes the turn to the next person in the circle. No more debates, no more bogarting.\n\n• Munchies Run?: Gotta step away to raid the fridge? Just hit Pause on your name. The circle keeps going, and you can jump back in when you're ready."
+                        android:textColor="#CCCCCC"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Next Level Tech Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Some Next-Level Smoker Tech, Man 🤯"
+                        android:textColor="#98FB98"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="We packed some seriously dank tech in here."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• The &quot;Whoops&quot; Button (aka Rewind): Accidentally tapped &quot;Add Cone&quot; three times? No stress. The Rewind button lets you turn back time by 10-second chunks to fix any mistakes.\n\n• Predictive Auto-Add: This is wild. After a while, the app starts to catch your vibe and learn your rhythm. It can actually predict and auto-add the next hit for you. Yeah, for real."
+                        android:textColor="#CCCCCC"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Know Your Stash Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Know Your Stash, Set Your Vibe 🌿"
+                        android:textColor="#98FB98"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Go beyond just counting. Get a handle on your habits."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• Stash Tracker: Keep tabs on your stash. Log how much you've got, what you paid, and the app will tell you how much that epic sesh actually cost.\n\n• Goal Setter: Trying to chill a bit? Or maybe you wanna make sure you hit your weekend quota? Set personal goals for hits or sessions, and the app will track your progress."
+                        android:textColor="#CCCCCC"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Post-Sesh Breakdown Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="The Post-Sesh Breakdown 📈"
+                        android:textColor="#98FB98"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="When the smoke clears, geek out on the stats."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="• Session Summaries: Get a full report card for every sesh. See who was the MVP (Most Vaped Person), the longest time between passes, and the grand total of everything you blazed.\n\n• Your Personal History: Scroll back in time through all your past sessions. See your patterns, check your progress on goals, and remember that one legendary Tuesday night."
+                        android:textColor="#CCCCCC"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <View android:layout_width="match_parent" android:layout_height="2dp" android:background="@drawable/gradient_divider" android:layout_marginVertical="16dp"/>
+
+                    <!-- Closing Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="So yeah, that's the deal. It's for the casual smoker, the daily toker, the data nerd, and the social butterfly. Stop guessing and start tracking."
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Now, if you'll excuse us, it's 4:20 somewhere. Peace. ✌️"
+                        android:textColor="#98FB98"
+                        android:textSize="14sp"
+                        android:textStyle="italic"
+                        android:gravity="center"
+                        android:layout_marginBottom="24dp" />
+
+                    <!-- Back Button -->
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/buttonBack"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="#98FB98"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="4dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:text="Back"
+                                android:textColor="#424242"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                </LinearLayout>
+            </ScrollView>
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>

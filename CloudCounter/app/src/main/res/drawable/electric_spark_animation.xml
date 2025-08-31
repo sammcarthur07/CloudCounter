@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:oneshot="true">
+
+    <!-- Frame 1: Initial spark -->
+    <item android:duration="50">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="3dp"
+                        android:color="#FFFFFF"/>
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="6dp"
+                        android:color="#4098FB98"/>
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- Frame 2: Bright flash -->
+    <item android:duration="50">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="4dp"
+                        android:color="#FFFFFF"/>
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="8dp"
+                        android:color="#8098FB98"/>
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- Frame 3: Electric blue -->
+    <item android:duration="50">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="2dp"
+                        android:color="#00FFFF"/>
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="5dp"
+                        android:color="#4000FFFF"/>
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- Frame 4: Fade out -->
+    <item android:duration="100">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="24dp"/>
+                    <stroke
+                        android:width="1dp"
+                        android:color="#4098FB98"/>
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</animation-list>

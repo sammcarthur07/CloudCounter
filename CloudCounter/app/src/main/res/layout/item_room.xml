@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Room title -->
+    <TextView
+        android:id="@+id/textRoomName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Room Name"
+        android:textAppearance="?attr/textAppearanceHeadline6" />
+
+    <!-- Creation date and participant count on same line -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="4dp">
+
+        <TextView
+            android:id="@+id/textCreatedAt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Created: 07/29/2025 14:05"
+            android:textAppearance="?attr/textAppearanceBody2" />
+
+        <TextView
+            android:id="@+id/textParticipantCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2 active / 3 total"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
+
+    <!-- Share code - hidden by default -->
+    <TextView
+        android:id="@+id/textShareCode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Code: ABC123"
+        android:textAppearance="?attr/textAppearanceBody2"
+        android:paddingTop="4dp"
+        android:visibility="gone" />
+
+    <!-- Dynamic list of participants -->
+    <LinearLayout
+        android:id="@+id/containerParticipants"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp" />
+
+    <!-- Total activities in room -->
+    <TextView
+        android:id="@+id/textTotalCones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Total: 0 cones, 0 joints, 0 bowls"
+        android:textAppearance="?attr/textAppearanceBody2"
+        android:paddingTop="8dp"/>
+
+</LinearLayout>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:background="?android:attr/colorBackground">
+
+    <!-- Left: Title, timestamp, and details -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/textViewSummaryTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Session Summary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            tools:text="Session Summary" />
+
+        <TextView
+            android:id="@+id/textViewSummaryTimestamp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorSecondary"
+            tools:text="Jul 20, 2025, 02:34 PM" />
+
+        <TextView
+            android:id="@+id/textViewSummaryDetails"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="?android:attr/textColorSecondary"
+            tools:text="Smokers: A (5), B (4)\nTotal: 9\nRounds: 2\nDuration: 5m 12s\nLongest Gap: 1m 4s\nShortest Gap: 30s" />
+    </LinearLayout>
+
+    <!-- Resume button -->
+    <ImageButton
+        android:id="@+id/buttonResumeSummary"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_media_play"
+        android:contentDescription="@string/resume_summary_entry"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="?attr/colorControlNormal" />
+
+    <!-- Delete button on the right -->
+    <ImageButton
+        android:id="@+id/buttonDeleteSummary"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_menu_delete"
+        android:contentDescription="@string/delete_summary_entry"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="?attr/colorControlNormal" />
+
+</LinearLayout>

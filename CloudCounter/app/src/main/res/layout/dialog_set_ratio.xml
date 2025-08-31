@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Set consumption ratios in grams"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Bowl Input Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Bowl (Grams per Bowl)"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp" />
+
+    <EditText
+        android:id="@+id/editBowlGrams"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal"
+        android:hint="e.g., 0.2"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Cone Input Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cone (Grams per Cone)"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp" />
+
+    <EditText
+        android:id="@+id/editConeGrams"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal"
+        android:hint="Leave empty for auto-calculation"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/textConeInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Will be calculated based on your bowl activities"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Joint Input Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Joint (Grams per Joint)"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp" />
+
+    <EditText
+        android:id="@+id/editJointGrams"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="numberDecimal"
+        android:hint="e.g., 0.5"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Stash Deduction Settings Section -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Stash Deduction Settings"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Choose which activities deduct from your stash:"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:layout_marginBottom="12dp" />
+
+    <CheckBox
+        android:id="@+id/checkboxDeductCones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Deduct cones from stash"
+        android:checked="true"
+        android:layout_marginBottom="8dp" />
+
+    <CheckBox
+        android:id="@+id/checkboxDeductJoints"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Deduct joints from stash"
+        android:checked="true"
+        android:layout_marginBottom="8dp" />
+
+    <CheckBox
+        android:id="@+id/checkboxDeductBowls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Deduct bowls from stash"
+        android:checked="false"
+        android:layout_marginBottom="8dp" />
+
+</LinearLayout>

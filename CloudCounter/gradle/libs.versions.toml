@@ -1,0 +1,71 @@
+# This file is used to declare all your project's dependencies and their versions.
+# It provides a centralized place for version management.
+
+[versions]
+# Android Gradle Plugin (AGP) and Kotlin - These are typically set by Android Studio when creating a new project.
+# IMPORTANT: Use the versions that were generated for your "CloudCounter" project if they are already present and different.
+# If not, these are examples of recent stable versions.
+agp = "8.11.1"  # Example: or "8.3.2", "8.4.0", etc. Verify your project's default.
+kotlin = "1.9.23" # Example: or "2.0.0" if your AGP is very new. Verify your project's default.
+recyclerview = "1.3.2"
+mpAndroidChart = "v3.1.0"
+
+# AndroidX library versions
+coreKtx = "1.13.1"
+appcompat = "1.7.0"
+material = "1.12.0" # For Material Design components (XML Views)
+constraintlayout = "2.1.4"
+lifecycle = "2.8.1" # For Lifecycle components (ViewModel, LiveData)
+room = "2.6.1"      # For Room database
+kotlinxCoroutines = "1.8.0" # For Kotlin Coroutines
+
+# Testing library versions
+junit = "4.13.2"
+androidxJunit = "1.1.5" # For AndroidX Test JUnit
+espressoCore = "3.5.1"
+
+[libraries]
+# AndroidX Core & AppCompat
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+# MPAndroidChart
+philjay-mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpAndroidChart" } # <<< ADD THIS LIBRARY
+
+
+# Material Design Components (for XML Views)
+google-android-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+
+# ConstraintLayout
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+
+# Lifecycle (Runtime KTX is a good base, ViewModel and LiveData KTX are also needed for this phase)
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" } # Uncommented
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle" } # Uncommented
+
+# Room Database
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" } # For annotation processing
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" } # Kotlin Extensions and Coroutines support
+
+# Kotlin Coroutines
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+
+# Testing Libraries
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxJunit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+
+[plugins]
+# Android Application and Kotlin Android plugins - These are typically set by Android Studio.
+# Their aliases here should match what's used in your app/build.gradle.kts plugins block.
+# Ensure 'agp' and 'kotlin' versions are defined in the [versions] section above.
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
+# Kotlin Kapt plugin (for Room's annotation processor)
+# This correctly references the 'kotlin' version defined in the [versions] section.
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }

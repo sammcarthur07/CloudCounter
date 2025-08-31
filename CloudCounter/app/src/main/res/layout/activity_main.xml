@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_activity_root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:attr/colorBackground"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="VERSION : AUG 25th v16"
+        android:textColor="#00FF40"
+        android:textSize="5sp"
+        android:textStyle="bold"
+        android:padding="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="7dp"
+        android:paddingBottom="0dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp" >
+
+        <Spinner
+            android:id="@+id/spinnerSmoker"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="5"
+            android:paddingEnd="0dp"
+            android:prompt="@string/prompt_select_smoker" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="2dp"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioSticky"
+                style="@style/SmallRadioButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sticky" />
+
+            <RadioButton
+                android:id="@+id/radioAuto"
+                style="@style/SmallRadioButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="2dp"
+                android:checked="true"
+                android:text="Auto" />
+        </RadioGroup>
+
+        <ImageButton
+            android:id="@+id/btnVibrationToggle"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_vibration_on"
+            android:scaleType="centerInside"
+            android:contentDescription="Toggle vibration"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+
+        <ImageButton
+            android:id="@+id/btnNotificationToggle"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_popup_reminder"
+            android:scaleType="centerInside"
+            android:contentDescription="Toggle notifications"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="0dp"
+        android:paddingBottom="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginEnd="4dp">
+
+            <Button
+                android:id="@+id/btnAddJoint"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/button_add_joint"
+                android:textColor="@color/my_light_primary"
+                app:strokeColor="@color/chip_background_selected"
+                android:contentDescription="Add joint" />
+
+            <LinearLayout
+                android:id="@+id/layoutJointAutoControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="-10dp">
+
+                <CheckBox
+                    android:id="@+id/checkboxJointAuto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textJointTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp">
+
+            <Button
+                android:id="@+id/btnAddCone"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/button_add_cone"
+                android:textColor="@color/my_light_primary"
+                app:strokeColor="@color/my_light_primary"
+                android:contentDescription="Add cone" />
+
+            <LinearLayout
+                android:id="@+id/layoutConeAutoControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="-10dp">
+
+                <CheckBox
+                    android:id="@+id/checkboxConeAuto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textConeTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="4dp">
+
+            <Button
+                android:id="@+id/btnAddBowl"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/button_add_bowl"
+                android:textColor="@color/my_light_primary"
+                app:strokeColor="@color/my_light_primary"
+                android:contentDescription="Add bowl" />
+
+            <LinearLayout
+                android:id="@+id/layoutBowlAutoControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="-10dp">
+
+                <CheckBox
+                    android:id="@+id/checkboxBowlAuto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/textBowlTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/buttonContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="-19dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <Button
+            android:id="@+id/btnStartSesh"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="Start Sesh"
+            android:textSize="12sp"
+            android:backgroundTint="@color/my_light_primary"
+            android:textColor="@color/my_dark_grey_background"
+            app:strokeColor="@color/my_light_primary"
+            app:strokeWidth="1dp"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:contentDescription="Start session" />
+
+        <Button
+            android:id="@+id/btnRewind"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="⟲ Rewind"
+            android:textSize="12sp"
+            android:textColor="@color/design_default_color_secondary"
+            app:strokeColor="@color/design_default_color_secondary"
+            app:strokeWidth="1dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone"
+            android:minWidth="0dp"
+            android:contentDescription="Rewind 10 seconds" />
+
+        <Button
+            android:id="@+id/btnUndoLastActivity"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="↶ Undo"
+            android:textSize="12sp"
+            android:textColor="@color/button_text_color_undo"
+            app:strokeColor="@color/button_stroke_color_undo"
+            app:strokeWidth="1dp"
+            app:backgroundTint="@color/button_background_tint_undo"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone"
+            android:minWidth="0dp"
+            android:contentDescription="Undo last activity" />
+
+        <Button
+            android:id="@+id/btnEndSesh"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="End Sesh"
+            android:textSize="12sp"
+            android:textColor="@color/button_text_color_end_sesh"
+            app:strokeColor="@color/button_stroke_color_end_sesh"
+            app:strokeWidth="1dp"
+            app:backgroundTint="@color/button_background_tint_end_sesh"
+            android:visibility="gone"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:minWidth="0dp"
+            android:contentDescription="End session" />
+
+        <Button
+            android:id="@+id/btnToggleTimers"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="Advanced"
+            android:textSize="12sp"
+            android:textColor="@color/button_text_color_advanced"
+            app:strokeColor="@color/button_stroke_color_advanced"
+            app:strokeWidth="1dp"
+            app:backgroundTint="@color/button_background_tint_advanced"
+            android:layout_marginStart="4dp"
+            android:visibility="visible"
+            android:minWidth="0dp"
+            android:contentDescription="Toggle advanced controls visibility" />
+
+        <CheckBox
+            android:id="@+id/checkboxLiveSync"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Live Sync"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/timerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="-8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <TextView
+                android:id="@+id/textTimeSinceLast"
+                android:text="0s"
+                android:textSize="24sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Time since last activity" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textLastGapCountdown"
+                android:text="0s"
+                android:textSize="24sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Gap countdown" />
+
+            <ImageButton
+                android:id="@+id/btnTimerSound"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_lock_silent_mode_off"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Toggle timer sound"
+                android:layout_marginTop="0dp"
+                android:scaleType="fitCenter"
+                android:adjustViewBounds="true"
+                android:padding="2dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center">
+            <TextView
+                android:id="@+id/textThisSesh"
+                android:text="00:00:00"
+                android:textSize="24sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="Session elapsed time" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/roundsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:visibility="gone"
+        android:layout_marginTop="-10dp">
+
+        <ImageButton
+            android:id="@+id/btnRoundMinus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_media_previous"
+            android:contentDescription="Decrease rounds" />
+
+        <TextView
+            android:id="@+id/textRoundsLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textSize="24sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:contentDescription="Rounds left" />
+
+        <ImageButton
+            android:id="@+id/btnRoundPlus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_media_next"
+            android:contentDescription="Increase rounds" />
+    </LinearLayout>
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/tabBackground"
+        app:tabIndicatorColor="?attr/tabIndicatorColor"
+        app:tabTextColor="@color/tab_unselected_text_color_on_grey"
+        app:tabSelectedTextColor="?attr/tabSelectedTextColor"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        app:tabIconTint="@null"
+        app:tabTextAppearance="@style/TabTextAppearance" />/>
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

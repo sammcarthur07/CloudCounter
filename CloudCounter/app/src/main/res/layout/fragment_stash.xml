@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background image layer -->
+    <ImageView
+        android:id="@+id/backgroundImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/stash_background"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="false"
+        android:contentDescription="Background decoration" />
+
+    <!-- Main content ScrollView -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:id="@+id/layoutSignInPrompt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sign in to track your stash"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <com.google.android.gms.common.SignInButton
+                    android:id="@+id/btnGoogleSignIn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutSignedIn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:id="@+id/textUserEmail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="user@example.com"
+                        android:textSize="11sp"/>
+
+                    <ImageButton
+                        android:id="@+id/btnLogout"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_alignParentEnd="true"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:contentDescription="Logout"
+                        android:scaleType="centerInside"
+                        android:padding="2dp"/>
+                </RelativeLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <Button
+                        android:id="@+id/btnAddStash"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="32dp"
+                        android:layout_weight="1"
+                        android:text="+ Stash"
+                        android:textSize="12sp"
+                        android:textColor="@color/button_text_color_stash_add"
+                        app:strokeColor="@color/design_default_color_secondary"
+                        app:strokeWidth="1dp"
+                        android:backgroundTint="@color/button_background_tint_stash_add"
+                        android:layout_marginEnd="4dp"
+                        android:minWidth="0dp"/>
+
+                    <Button
+                        android:id="@+id/btnRemoveStash"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="32dp"
+                        android:layout_weight="1"
+                        android:text="- Stash"
+                        android:textSize="12sp"
+                        android:textColor="@color/button_text_color_stash_remove"
+                        app:strokeColor="@color/neon_orange"
+                        app:strokeWidth="1dp"
+                        android:backgroundTint="@color/button_background_tint_stash_remove"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:minWidth="0dp"/>
+
+                    <Button
+                        android:id="@+id/btnSetRatio"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="32dp"
+                        android:layout_weight="1"
+                        android:text="Ratio"
+                        android:textSize="12sp"
+                        android:textColor="@color/button_text_color_ratio"
+                        app:strokeColor="@color/neon_purple"
+                        app:strokeWidth="1dp"
+                        android:backgroundTint="@color/button_background_tint_ratio"
+                        android:layout_marginStart="4dp"
+                        android:minWidth="0dp"/>
+                </LinearLayout>
+
+                <!-- Attribution Radio Group (for adding activity) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="When adding activity, draw from:"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="2dp"/>
+
+                <RadioGroup
+                    android:id="@+id/radioGroupAttribution"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <RadioButton
+                        android:id="@+id/radioMyStashAttribution"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="My Stash"
+                        android:checked="true"
+                        android:textSize="12sp"/>
+
+                    <RadioButton
+                        android:id="@+id/radioTheirStashAttribution"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Their Stash"
+                        android:textSize="12sp"/>
+
+                    <RadioButton
+                        android:id="@+id/radioEachToOwnAttribution"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Each to own"
+                        android:textSize="12sp"/>
+                </RadioGroup>
+
+                <!-- Horizontal layout for both stash counters -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="16dp">
+
+                    <!-- My Stash Counter (left side, takes more space) -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:orientation="vertical"
+                        android:background="@drawable/rounded_background"
+                        android:padding="12dp"
+                        android:layout_marginEnd="8dp">
+
+                        <TextView
+                            android:id="@+id/textStashGrams"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0.00 grams"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:layout_gravity="center"/>
+
+                        <TextView
+                            android:id="@+id/textStashValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$0.00"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+
+                    <!-- Their Stash Counter (right side, smaller) -->
+                    <LinearLayout
+                        android:id="@+id/layoutTheirStashCounter"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:background="@drawable/rounded_background"
+                        android:padding="12dp"
+                        android:gravity="center"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Their Stash"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:layout_gravity="center"/>
+
+                        <TextView
+                            android:id="@+id/textTheirStashGrams"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0.00g"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="4dp"/>
+
+                        <TextView
+                            android:id="@+id/textTheirStashValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$0.00"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Cost and Ratio Info -->
+                <LinearLayout
+                    android:id="@+id/layoutCostInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="visible">
+
+                    <!-- Cost per Activity Row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:id="@+id/textCostPerCone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Cone: $0"
+                            android:textAlignment="center"
+                            android:textSize="12sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/textCostPerJoint"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Joint: $0"
+                            android:textAlignment="center"
+                            android:textSize="12sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/textCostPerBowl"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Bowl: $0"
+                            android:textAlignment="center"
+                            android:textSize="12sp"
+                            android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <!-- Ratio Info Row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/textRatioCone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="(0.3g)"
+                            android:textAlignment="center"
+                            android:textSize="10sp"
+                            android:textColor="@android:color/darker_gray"/>
+
+                        <TextView
+                            android:id="@+id/textRatioJoint"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="(0.5g)"
+                            android:textAlignment="center"
+                            android:textSize="10sp"
+                            android:textColor="@android:color/darker_gray"/>
+
+                        <TextView
+                            android:id="@+id/textRatioBowl"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="(0.2g)"
+                            android:textAlignment="center"
+                            android:textSize="10sp"
+                            android:textColor="@android:color/darker_gray"/>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Data Scope Selection (for reporting) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Data Scope:"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"/>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupDataScope"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipMyStash"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="My Stash"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipTheirStash"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Their Stash" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipOnlyMe"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Only Me" />
+
+                </com.google.android.material.chip.ChipGroup>
+
+                <!-- Stats Type Selection (Past/Current/Projected) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Stats Type:"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"/>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupStatsType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    android:layout_marginBottom="8dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipPast"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Past" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipCurrent"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Current"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipProjected"
+                        style="@style/Widget.MaterialComponents.Chip.Choice"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Projected" />
+
+                </com.google.android.material.chip.ChipGroup>
+
+                <!-- Time Period Selection -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Time Period:"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"/>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupTimePeriod"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    app:chipSpacingHorizontal="4dp"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSesh"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sesh"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipHour"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hour" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip12h"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="12h" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipToday"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Today" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipWeek"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Week" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipMonth"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Month" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipYear"
+                        style="@style/CompactChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Year" />
+
+                </com.google.android.material.chip.ChipGroup>
+
+                <TableLayout
+                    android:id="@+id/layoutStatsTable"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/rounded_background"
+                    android:paddingTop="6dp"
+                    android:paddingLeft="8dp"
+                    android:paddingRight="8dp"
+                    android:paddingBottom="6dp"
+                    android:layout_marginBottom="4dp">
+
+                    <TableRow android:id="@+id/rowCones">
+                        <TextView
+                            android:text="Cones:"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:paddingRight="8dp"
+                            android:textSize="12sp"/>
+                        <TextView
+                            android:id="@+id/textStatsCones"
+                            android:text="0 ($0.00)"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:textSize="12sp"/>
+                    </TableRow>
+
+                    <TableRow android:id="@+id/rowJoints">
+                        <TextView
+                            android:text="Joints:"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:paddingRight="8dp"
+                            android:textSize="12sp"/>
+                        <TextView
+                            android:id="@+id/textStatsJoints"
+                            android:text="0 ($0.00)"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:textSize="12sp"/>
+                    </TableRow>
+
+                    <TableRow android:id="@+id/rowBowls">
+                        <TextView
+                            android:text="Bowls:"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:paddingRight="8dp"
+                            android:textSize="12sp"/>
+                        <TextView
+                            android:id="@+id/textStatsBowls"
+                            android:text="0 ($0.00)"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:textSize="12sp"/>
+                    </TableRow>
+
+                    <TableRow>
+                        <TextView
+                            android:text="Total:"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:paddingRight="8dp"
+                            android:textStyle="bold"
+                            android:textSize="12sp"/>
+                        <TextView
+                            android:id="@+id/textStatsTotal"
+                            android:text="$0.00"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp"
+                            android:textStyle="bold"
+                            android:textSize="12sp"/>
+                    </TableRow>
+
+                </TableLayout>
+
+                <TextView
+                    android:id="@+id/textGivenToLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Given to:"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerDistribution"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:visibility="gone"/>
+
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

@@ -1,0 +1,570 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background image layer -->
+    <ImageView
+        android:id="@+id/backgroundImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/chat_background_black"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="false"
+        android:contentDescription="Background decoration" />
+
+    <!-- Main content -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Header with back button, current user and logout - FULLY TRANSPARENT -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:background="@android:color/transparent"
+                android:elevation="0dp"
+                android:gravity="center_vertical">
+
+                <!-- Back button -->
+                <ImageButton
+                    android:id="@+id/btnHeaderBack"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@android:drawable/ic_menu_revert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="@android:color/white"
+                    android:visibility="gone"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="Back" />
+
+                <TextView
+                    android:id="@+id/textCurrentUser"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Not signed in"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:ellipsize="end"
+                    android:maxLines="1" />
+
+                <!-- Logout icon button - NEON ORANGE -->
+                <ImageButton
+                    android:id="@+id/btnSignOut"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@android:drawable/ic_menu_close_clear_cancel"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="#FF6B35"
+                    android:visibility="gone"
+                    android:contentDescription="Logout" />
+            </LinearLayout>
+
+            <!-- Main content container -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <!-- Not signed in layout -->
+                <LinearLayout
+                    android:id="@+id/layoutSignedOut"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sign In Required"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="To use chat features, please sign in with your Google account"
+                        android:textAlignment="center"
+                        android:layout_marginBottom="32dp" />
+
+                    <Button
+                        android:id="@+id/btnSignIn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sign In with Google"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+
+                <!-- Signed in content -->
+                <FrameLayout
+                    android:id="@+id/layoutSignedIn"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone">
+
+                    <!-- Main Menu: Updated layout with centered buttons and logs to the right -->
+                    <FrameLayout
+                        android:id="@+id/layoutMainMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <!-- Main Menu Overlay Background -->
+                        <ImageView
+                            android:id="@+id/mainMenuOverlayBackground"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/overlay_main_menu"
+                            android:scaleType="centerCrop"
+                            android:alpha="0.3"
+                            android:visibility="visible" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:padding="32dp">
+
+                            <!-- Sesh Chat Row -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_gravity="center"
+                                android:layout_marginBottom="24dp">
+
+                                <!-- Sesh Chat Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnSeshChatContainer"
+                                    android:layout_width="200dp"
+                                    android:layout_height="70dp" />
+
+                                <!-- Spacing -->
+                                <View
+                                    android:layout_width="16dp"
+                                    android:layout_height="match_parent" />
+
+                                <!-- Sesh Logs Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnSeshLogsContainer"
+                                    android:layout_width="100dp"
+                                    android:layout_height="70dp" />
+                            </LinearLayout>
+
+                            <!-- Public Chat Row -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:layout_gravity="center">
+
+                                <!-- Public Chat Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnPublicChatContainer"
+                                    android:layout_width="200dp"
+                                    android:layout_height="70dp" />
+
+                                <!-- Spacing -->
+                                <View
+                                    android:layout_width="16dp"
+                                    android:layout_height="match_parent" />
+
+                                <!-- Public Logs Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnPublicLogsContainer"
+                                    android:layout_width="100dp"
+                                    android:layout_height="70dp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </FrameLayout>
+
+                    <!-- Chat Type Menu: Text / Video -->
+                    <FrameLayout
+                        android:id="@+id/layoutChatTypeMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone">
+
+                        <!-- Chat Type Menu Overlay Background (changes based on sesh/public) -->
+                        <ImageView
+                            android:id="@+id/chatTypeMenuOverlayBackground"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/overlay_sesh_type_menu"
+                            android:scaleType="centerCrop"
+                            android:alpha="0.3"
+                            android:visibility="visible" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/textChatTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Session Chat"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                android:padding="12dp"
+                                android:background="@android:color/transparent"
+                                android:textColor="@android:color/white" />
+
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="32dp">
+
+                                <!-- Text Chat Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnTextChatContainer"
+                                    android:layout_width="200dp"
+                                    android:layout_height="70dp"
+                                    android:layout_marginBottom="16dp" />
+
+                                <!-- Video Chat Button Container -->
+                                <FrameLayout
+                                    android:id="@+id/btnVideoChatContainer"
+                                    android:layout_width="200dp"
+                                    android:layout_height="70dp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </FrameLayout>
+
+                    <!-- Chat Logs Layout - NEW -->
+                    <RelativeLayout
+                        android:id="@+id/layoutChatLogs"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone">
+
+                        <!-- Background image (same as chat backgrounds) -->
+                        <ImageView
+                            android:id="@+id/logsBackgroundImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:alpha="0.3"
+                            android:visibility="visible" />
+
+                        <!-- Log Type Header - FULLY TRANSPARENT -->
+                        <LinearLayout
+                            android:id="@+id/logsHeader"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentTop="true"
+                            android:orientation="horizontal"
+                            android:padding="8dp"
+                            android:background="@android:color/transparent"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:id="@+id/textLogType"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Sesh Chat Logs"
+                                android:textSize="14sp"
+                                android:textColor="@android:color/white"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/textLogCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0 messages"
+                                android:textSize="12sp"
+                                android:textColor="@android:color/white" />
+                        </LinearLayout>
+
+                        <!-- Log Messages RecyclerView -->
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerLogMessages"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_below="@id/logsHeader"
+                            android:layout_above="@id/layoutLogInput"
+                            android:padding="8dp"
+                            android:clipToPadding="false"
+                            android:scrollbars="vertical" />
+
+                        <!-- Log Entry Input - REDUCED PADDING -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="10dp"
+                            android:layout_alignParentBottom="true"
+                            android:background="@android:color/black" />
+
+                        <!-- Log Entry Input - keep exactly as it was originally -->
+                        <LinearLayout
+                            android:id="@+id/layoutLogInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentBottom="true"
+                            android:orientation="horizontal"
+                            android:paddingLeft="8dp"
+                            android:paddingRight="8dp"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="16dp"
+                            android:background="@android:color/transparent"
+                            android:elevation="8dp"
+                            android:fitsSystemWindows="true">
+
+                            <EditText
+                                android:id="@+id/editLogMessage"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:hint="Add a log entry..."
+                                android:textColorHint="#808080"
+                                android:textColor="@android:color/white"
+                                android:inputType="textMultiLine"
+                                android:maxLines="4"
+                                android:padding="12dp"
+                                android:backgroundTint="#98FB98" />
+
+                            <ImageButton
+                                android:id="@+id/btnSendLog"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="8dp"
+                                android:src="@android:drawable/ic_menu_send"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Send log entry" />
+                        </LinearLayout>
+                    </RelativeLayout>
+
+                    <!-- Text Chat Layout -->
+                    <RelativeLayout
+                        android:id="@+id/layoutTextChat"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone">
+
+                        <!-- Background image for chat -->
+                        <ImageView
+                            android:id="@+id/chatBackgroundImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:alpha="0.1"
+                            android:visibility="gone" />
+
+                        <!-- Online users and typing indicator - FULLY TRANSPARENT -->
+                        <LinearLayout
+                            android:id="@+id/chatStatusBar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentTop="true"
+                            android:orientation="vertical"
+                            android:background="@android:color/transparent"
+                            android:padding="4dp">
+
+                            <TextView
+                                android:id="@+id/textOnlineUsers"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Online: "
+                                android:textSize="12sp"
+                                android:textColor="@android:color/white"
+                                android:ellipsize="end"
+                                android:maxLines="1" />
+
+                            <TextView
+                                android:id="@+id/textTypingIndicator"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Someone is typing..."
+                                android:textSize="11sp"
+                                android:textColor="@android:color/white"
+                                android:textStyle="italic"
+                                android:visibility="gone" />
+                        </LinearLayout>
+
+                        <!-- Messages RecyclerView -->
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/recyclerMessages"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_below="@id/chatStatusBar"
+                            android:layout_above="@id/layoutMessageInput"
+                            android:padding="8dp"
+                            android:clipToPadding="false"
+                            android:scrollbars="vertical" />
+
+
+
+                        <LinearLayout
+                            android:id="@+id/layoutMessageInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="64dp"
+                            android:layout_alignParentBottom="true"
+                            android:orientation="horizontal"
+                            android:paddingLeft="8dp"
+                            android:paddingRight="8dp"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="48dp"
+                            android:background="@android:color/transparent"
+                            android:elevation="8dp"
+                            android:fitsSystemWindows="true">
+
+                            <EditText
+                                android:id="@+id/editMessage"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:hint="Type a message..."
+                                android:textColorHint="#808080"
+                                android:textColor="@android:color/white"
+                                android:inputType="textMultiLine"
+                                android:maxLines="4"
+                                android:padding="12dp"
+                                android:backgroundTint="#98FB98" />
+
+                            <ImageButton
+                                android:id="@+id/btnCancelEdit"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="4dp"
+                                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Cancel edit"
+                                android:visibility="gone" />
+
+                            <ImageButton
+                                android:id="@+id/btnNotificationToggle"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="4dp"
+                                android:src="@android:drawable/ic_popup_reminder"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Toggle notifications" />
+
+                            <ImageButton
+                                android:id="@+id/btnSend"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:layout_marginStart="4dp"
+                                android:src="@android:drawable/ic_menu_send"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Send message" />
+                        </LinearLayout>
+                    </RelativeLayout>
+
+                    <!-- Video Chat Layout -->
+                    <RelativeLayout
+                        android:id="@+id/layoutVideoChat"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone">
+
+                        <!-- Video Chat Overlay Background -->
+                        <ImageView
+                            android:id="@+id/videoChatOverlayBackground"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/overlay_video_chat"
+                            android:scaleType="centerCrop"
+                            android:alpha="0.3"
+                            android:visibility="visible" />
+
+                        <!-- Top bar showing participants -->
+                        <LinearLayout
+                            android:id="@+id/videoTopBar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentTop="true"
+                            android:orientation="horizontal"
+                            android:background="@android:color/transparent"
+                            android:padding="12dp"
+                            android:gravity="center_vertical">
+
+                            <!-- Mic button - smaller and on the left -->
+                            <ImageButton
+                                android:id="@+id/btnToggleMic"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@android:drawable/ic_btn_speak_now"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:scaleType="centerInside"
+                                android:padding="4dp"
+                                android:tint="@android:color/white" />
+
+                            <!-- End call button - smaller -->
+                            <ImageButton
+                                android:id="@+id/btnEndCall"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:backgroundTint="@android:color/holo_red_dark"
+                                android:scaleType="centerInside"
+                                android:padding="4dp"
+                                android:layout_marginStart="8dp"
+                                android:tint="@android:color/white" />
+
+                            <TextView
+                                android:id="@+id/textVideoParticipants"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="12dp"
+                                android:text="Participants: "
+                                android:textColor="@android:color/white"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/textVideoRoomName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Public Chat"
+                                android:textColor="@android:color/white"
+                                android:textSize="12sp"
+                                android:layout_marginStart="8dp" />
+                        </LinearLayout>
+
+                        <!-- Horizontal scrollable video container -->
+                        <HorizontalScrollView
+                            android:id="@+id/videoScrollView"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_below="@id/videoTopBar"
+                            android:fillViewport="false"
+                            android:scrollbars="none">
+
+                            <LinearLayout
+                                android:id="@+id/videoContainer"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent"
+                                android:orientation="horizontal"
+                                android:gravity="center"
+                                android:paddingStart="16dp"
+                                android:paddingEnd="16dp"
+                                android:paddingTop="8dp"
+                                android:paddingBottom="8dp" />
+
+                        </HorizontalScrollView>
+
+                    </RelativeLayout>
+                </FrameLayout>
+            </FrameLayout>
+        </LinearLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+</FrameLayout>

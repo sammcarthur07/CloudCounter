@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="videoHolder" type="id"/>
+    <item name="radioCurrentSession" type="id"/>
+    <item name="radioAllSessions" type="id"/>
+    <item name="radioTimeBased" type="id"/>
+</resources>

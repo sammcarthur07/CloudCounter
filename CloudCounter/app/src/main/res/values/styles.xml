@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="CustomOutlinedChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/chip_background_state</item>
+        <item name="android:textColor">@color/chip_text_color_state</item>
+
+        <item name="chipStrokeColor">@color/chip_outline_unselected</item>
+        <item name="chipStrokeWidth">1dp</item>
+
+        <item name="chipIconTint">@color/chip_text_color_state</item>
+
+
+        <item name="rippleColor">#4098FB98</item> <item name="ensureMinTouchTargetSize">false</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:minWidth">0dp</item>
+    </style>
+
+    <style name="CompactChip" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipMinHeight">28dp</item>
+        <item name="chipMinTouchTargetSize">0dp</item>
+        <item name="chipSpacingHorizontal">2dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="chipCornerRadius">14dp</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+    <style name="FullyTransparentDialog" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">true</item>
+    </style>
+
+    <style name="TransparentDialog" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+    </style>
+
+    <style name="RoundedSquareImage">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20%</item>
+    </style>
+
+    <style name="TabTextAppearance" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">12sp</item>  <!-- Set consistent size -->
+        <item name="textAllCaps">false</item>  <!-- or false if you prefer -->
+    </style>
+
+    <style name="SmallRadioButton" parent="Widget.AppCompat.CompoundButton.RadioButton">
+        <item name="android:textSize">12sp</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">2dp</item>  <!-- Reduced padding -->
+        <item name="android:paddingEnd">2dp</item>   <!-- Reduced padding -->
+        <item name="android:scaleX">0.85</item>  <!-- Scale down the button circle -->
+        <item name="android:scaleY">0.85</item>  <!-- Scale down the button circle -->
+    </style>
+
+    <!-- add goal popup -->
+
+    <style name="SectionHeader" parent="Widget.AppCompat.TextView">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">#98FB98</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_marginTop">16dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+
+    <style name="ThemedEditText" parent="Widget.AppCompat.EditText">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textColorHint">#B0B0B0</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:background">@drawable/edit_text_background_modern</item>
+    </style>
+
+    <style name="ThemedRadioButton" parent="Widget.AppCompat.CompoundButton.RadioButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="buttonTint">#98FB98</item>
+    </style>
+
+    <style name="ThemedCheckBox" parent="Widget.AppCompat.CompoundButton.CheckBox">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="buttonTint">#98FB98</item>
+    </style>
+
+    <style name="ThemedButton.Primary" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">4dp</item>
+        <item name="cardBackgroundColor">#98FB98</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+    </style>
+
+    <style name="ThemedButton.Secondary" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">20dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardBackgroundColor">#33FFFFFF</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:foreground">?attr/selectableItemBackground</item>
+    </style>
+
+    <style name="ThemedButtonText">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="ThemedButtonText.Primary" parent="ThemedButtonText">
+        <item name="android:textColor">#424242</item>
+    </style>
+
+    <style name="ThemedButtonText.Secondary" parent="ThemedButtonText">
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+</resources>

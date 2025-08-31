@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:descendantFocusability="blocksDescendants"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/textName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_gravity="center_vertical"
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:text="Smoker Name"
+        android:paddingEnd="4dp" />
+
+    <View
+        android:id="@+id/syncStatusDot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="24dp"
+        android:background="@drawable/circle_shape"
+        android:visibility="gone" />
+
+    <ImageButton
+        android:id="@+id/btnPassword"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="4dp"
+        android:layout_gravity="center_vertical"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_lock"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:contentDescription="Change Password"
+        android:visibility="gone" />
+
+    <ImageButton
+        android:id="@+id/btnSync"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="4dp"
+        android:layout_gravity="center_vertical"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_sync"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:contentDescription="Sync to Cloud"
+        android:visibility="gone" />
+
+    <ImageButton
+        android:id="@+id/btnEdit"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="4dp"
+        android:layout_gravity="center_vertical"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_edit"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:contentDescription="Edit Name" />
+
+    <ImageButton
+        android:id="@+id/btnPausePlay"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_marginEnd="4dp"
+        android:layout_gravity="center_vertical"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Pause or Resume Smoker"
+        android:src="@android:drawable/ic_media_pause"
+        android:visibility="gone"
+        android:scaleType="centerInside"
+        android:padding="4dp" />
+
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_gravity="center_vertical"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_delete"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:contentDescription="Delete Smoker" />
+
+</LinearLayout>

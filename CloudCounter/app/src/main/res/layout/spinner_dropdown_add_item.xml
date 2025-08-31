@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/add_smoker_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:gravity="center_vertical">
+
+    <!-- Add Smoker Button - White themed -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddSmokerDropdown"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="32dp"
+        android:layout_weight="1"
+        android:layout_marginEnd="8dp"
+        android:text="Add Smoker"
+        android:textSize="12sp"
+        android:textAllCaps="false"
+        android:textColor="@android:color/white"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        app:strokeColor="@android:color/white"
+        app:strokeWidth="1dp"
+        app:backgroundTint="@android:color/transparent"
+        app:rippleColor="@android:color/white" />
+
+    <!-- Delete All Button - Neon Orange themed -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDeleteAllDropdown"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="32dp"
+        android:layout_weight="1"
+        android:text="Delete All"
+        android:textSize="12sp"
+        android:textAllCaps="false"
+        android:textColor="@color/neon_orange"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        app:strokeColor="@color/neon_orange"
+        app:strokeWidth="1dp"
+        app:backgroundTint="@android:color/transparent"
+        app:rippleColor="@color/neon_orange" />
+
+    <!-- Hidden TextView for shimmer animation (only shown when no smokers) -->
+    <TextView
+        android:id="@+id/textAddSmokerShimmer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Add smoker..."
+        android:textSize="24sp"
+        android:textColor="@android:color/white"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>

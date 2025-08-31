@@ -1,0 +1,169 @@
+<!-- res/values/strings.xml -->
+<resources>
+    <string name="app_name">CloudCounter</string>
+
+    <!-- Tabs -->
+    <string name="tab_history">History</string>
+    <string name="tab_sesh">Sesh</string>
+    <string name="tab_stats">Stats</string>
+    <string name="tab_graph">Graph</string>
+
+    <!-- Buttons -->
+    <string name="button_add_joint">Add Joint</string>
+    <string name="button_add_cone">Add Cone</string>
+    <string name="button_add_bowl">Add Bowl</string>
+    <string name="button_start_sesh">Start Session</string>
+    <string name="button_end_sesh">End Session</string>
+    <string name="increment_rounds">Increase rounds</string>
+    <string name="decrement_rounds">Decrease rounds</string>
+
+    <!-- Placeholders -->
+    <string name="placeholder_history_fragment">History Screen</string>
+    <string name="placeholder_stats_fragment">Stats Screen</string>
+    <string name="placeholder_graph_fragment">Graph Screen</string>
+
+    <!-- Toasts -->
+    <string name="toast_joint_added">Joint activity logged</string>
+    <string name="toast_cone_added">Cone activity logged</string>
+    <string name="toast_bowl_added">Bowl activity logged</string>
+
+    <!-- Smoker dialog -->
+    <string name="prompt_select_smoker">Select Smoker</string>
+    <string name="add_smoker">Add Smoker</string>
+    <string name="save">Save</string>
+    <string name="delete_smoker">Delete Smoker</string>
+    <string name="delete_smoker_confirm">
+        Are you sure you want to delete this smoker and all its logs?
+    </string>
+
+    <!-- History item content descriptions -->
+    <string name="edit_log_entry">Edit log entry</string>
+    <string name="duplicate_log_entry">Duplicate log entry</string>
+    <string name="delete_log_entry">Delete log entry</string>
+    <string name="resume_summary_entry">Resume session</string>
+    <string name="delete_summary_entry">Delete summary entry</string>
+
+    <!-- Toolbar -->
+    <string name="toolbar_title">CloudCounter</string>
+
+    <!-- Firebase default web client ID -->
+    <string name="default_web_client_id">778271181918-d5mnhcsoee4qk1ra7f0s9plrl5km2el0.apps.googleusercontent.com</string>
+
+    <!-- Auto-add feature strings -->
+    <string name="auto_add_checkbox">Auto</string>
+    <string name="timer_sound_button_description">Toggle timer sound</string>
+    <string name="timer_sound_enabled">Timer sound enabled</string>
+    <string name="timer_sound_disabled">Timer sound disabled</string>
+    <string name="timer_sound_updated">Timer sound updated</string>
+    <string name="auto_add_sync_failed">Failed to sync auto-add setting</string>
+
+    <!-- Timer sound notification channel -->
+    <string name="timer_sound_channel_name">Timer Sounds</string>
+    <string name="timer_sound_channel_description">Sounds for countdown timers</string>
+
+    <!-- Auto-add notifications -->
+    <string name="auto_add_cone">Auto-added cone</string>
+    <string name="auto_add_joint">Auto-added joint</string>
+    <string name="auto_add_bowl">Auto-added bowl</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <!-- Stash Tab -->
+    <string name="tab_stash">Stash</string>
+
+    <!-- Stash UI -->
+    <string name="stash_sign_in_prompt">Sign in to track your stash</string>
+    <string name="stash_logout">Logout</string>
+    <string name="stash_add_button">+stash</string>
+    <string name="stash_ratio_button">ratio</string>
+    <string name="stash_source_my">My stash</string>
+    <string name="stash_source_their">Their stash</string>
+    <string name="stash_source_each">Each to own</string>
+
+    <!-- Stash Stats -->
+    <string name="stash_filter_individual">Individual</string>
+    <string name="stash_filter_shared">Shared</string>
+    <string name="stash_filter_combined">Combined</string>
+    <string name="stash_period_hour">Hour</string>
+    <string name="stash_period_day">Day</string>
+    <string name="stash_period_week">Week</string>
+    <string name="stash_time_last">Last</string>
+    <string name="stash_time_current">Current</string>
+    <string name="stash_time_projected">Projected</string>
+
+    <!-- Stash Labels -->
+    <string name="stash_label_cones">Cones:</string>
+    <string name="stash_label_joints">Joints:</string>
+    <string name="stash_label_bowls">Bowls:</string>
+    <string name="stash_label_total">Total:</string>
+    <string name="stash_label_given_to">Given to:</string>
+    <string name="stash_no_consumption">No consumption</string>
+
+    <!-- Stash Dialogs -->
+    <string name="stash_dialog_add_title">Add to Stash</string>
+    <string name="stash_dialog_ratio_title">Set Consumption Ratio</string>
+    <string name="stash_dialog_grams_label">Enter amount in grams</string>
+    <string name="stash_dialog_bowl_ratio_label">Grams per bowl</string>
+    <string name="stash_dialog_add_button">Add</string>
+    <string name="stash_dialog_set_button">Set</string>
+    <string name="stash_dialog_cancel">Cancel</string>
+
+    <!-- Stash Messages -->
+    <string name="stash_invalid_amount">Please enter a valid amount</string>
+    <string name="stash_invalid_ratio">Please enter a valid ratio</string>
+    <string name="stash_sign_in_failed">Sign in failed: %1$s</string>
+    <string name="stash_added_grams">Added %1$.2f grams to stash</string>
+    <string name="stash_ratio_set">Ratio set to %1$.2f grams per bowl</string>
+
+    <!-- Goals -->
+    <string name="tab_goals">Goals</string>
+
+    <string name="tab_chat">Chat</string>
+    <string name="chat_sign_in_required">Sign In Required</string>
+    <string name="chat_sign_in_message">To use chat features, please sign in with your Google account</string>
+    <string name="chat_sesh_chat">Sesh Chat</string>
+    <string name="chat_public_chat">Public Chat</string>
+    <string name="chat_text_chat">Text Chat</string>
+    <string name="chat_video_chat">Video Chat</string>
+    <string name="chat_back">Back</string>
+    <string name="chat_type_message">Type a message...</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_online_users">Online: %s</string>
+    <string name="chat_typing_single">%s is typing...</string>
+    <string name="chat_typing_multiple">Several people are typing...</string>
+    <string name="chat_no_active_session">No active session. Start a session first.</string>
+    <string name="chat_delete_message">Delete Message</string>
+    <string name="chat_delete_message_confirm">Are you sure you want to delete this message?</string>
+
+    <string name="about_app_title">About the App</string>
+    <string name="about_message_hint">Type your message...</string>
+    <string name="about_send_button">Send</string>
+    <string name="about_sign_in_required">Sign In Required</string>
+    <string name="about_sign_in_message">Please sign in to send a message</string>
+    <string name="about_sign_in_button">Sign In</string>
+    <string name="about_message_sent">Message sent successfully!</string>
+    <string name="about_message_queued">Message queued - will send when online</string>
+    <string name="about_message_failed">Failed to send: %1$s</string>
+    <string name="about_message_empty">Please enter a message</string>
+    <string name="about_message_cooldown">Please wait 30 seconds between messages</string>
+    <string name="about_location_permission_title">Location Permission</string>
+    <string name="about_location_permission_message">We use your location to show when it\'s 4:20 in your area!</string>
+    <string name="about_location_grant">Grant</string>
+    <string name="about_location_no_thanks">No Thanks</string>
+
+    <!-- Inbox -->
+    <string name="inbox_empty">No messages yet</string>
+    <string name="inbox_delete_title">Delete Message</string>
+    <string name="inbox_delete_message">Are you sure you want to delete this message?</string>
+    <string name="inbox_delete_button">Delete</string>
+    <string name="inbox_message_deleted">Message deleted</string>
+    <string name="inbox_delete_failed">Failed to delete message</string>
+    <string name="inbox_load_failed">Failed to load messages</string>
+    <string name="inbox_no_email_app">No email app found</string>
+    <string name="inbox_reply_subject">CloudCounter support</string>
+
+    <!-- Admin Toggle -->
+    <string name="admin_view_as_user">View as User</string>
+    <string name="admin_view_as_admin">View as Admin</string>
+
+</resources>

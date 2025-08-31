@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    android:elevation="8dp"
+    android:padding="8dp">
+
+    <!-- Edit button -->
+    <Button
+        android:id="@+id/btnEdit"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:text="Edit"
+        android:textSize="14sp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        android:gravity="center"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/dividerEdit"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginVertical="4dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnReport"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:text="Report"
+        android:textSize="14sp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        android:gravity="center" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginVertical="4dp" />
+
+    <Button
+        android:id="@+id/btnDelete"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:text="Delete"
+        android:textSize="14sp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        android:gravity="center" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginVertical="4dp" />
+
+    <Button
+        android:id="@+id/btnCopyText"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:text="Copy Text"
+        android:textSize="14sp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        android:gravity="center" />
+
+    <View
+        android:id="@+id/dividerCopy"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@android:color/darker_gray"
+        android:layout_marginVertical="4dp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnCopyAll"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:text="Copy All My Messages"
+        android:textSize="14sp"
+        android:background="?attr/selectableItemBackground"
+        android:padding="8dp"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>

@@ -1,0 +1,16 @@
+
+Ï
+;
+android*http://schemas.android.com/apk/res/androidLinearLayout"K
+*http://schemas.android.com/apk/res/androidpadding16dp"(Õ„2:h "`
+*http://schemas.android.com/apk/res/androidlayout_widthmatch_parent"(ô„2:0ÿÿÿÿÿÿÿÿÿ"a
+*http://schemas.android.com/apk/res/androidlayout_heightwrap_content"(õ„2:0şÿÿÿÿÿÿÿÿ"R
+*http://schemas.android.com/apk/res/androidorientationvertical"(Ä„2:0*›
+’)androidx.recyclerview.widget.RecyclerView"R
+*http://schemas.android.com/apk/res/android
+scrollbarsvertical"(Ş„2:8€"O
+*http://schemas.android.com/apk/res/android	maxHeight400dp"( ‚„2:h "`
+*http://schemas.android.com/apk/res/androidlayout_widthmatch_parent"(ô„2:0ÿÿÿÿÿÿÿÿÿ"a
+*http://schemas.android.com/apk/res/androidlayout_heightwrap_content"(õ„2:0şÿÿÿÿÿÿÿÿ"{
+*http://schemas.android.com/apk/res/androidid@+id/recyclerSearchResults"(Ğ„2$
+"£ƒ øid/recyclerSearchResults0)
