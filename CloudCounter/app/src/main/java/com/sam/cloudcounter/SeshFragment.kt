@@ -304,6 +304,9 @@ class SeshFragment : Fragment() {
 
         // Collect all activities for this smoker
         val activities = mutableListOf<Triple<String, String, List<String>>>()
+        
+        // Track if we've added the smoker name yet
+        var nameAdded = false
 
         if (stat.totalCones > 0) {
             val lastGap = if (stat.totalCones > 1) formatTime(stat.avgGapMs) else "-"
@@ -317,12 +320,13 @@ class SeshFragment : Fragment() {
                     if (stat.totalCones > 1) formatTime(stat.longestGapMs) else "-"  // Longest
                 )
             ))
+            nameAdded = true
         }
 
         if (stat.totalJoints > 0) {
             val lastGap = if (stat.totalJoints > 1) formatTime(stat.avgJointGapMs) else "-"
             activities.add(Triple(
-                "",  // Empty for subsequent rows
+                if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalJoints} Joints",
                 listOf(
                     lastGap,
@@ -331,12 +335,13 @@ class SeshFragment : Fragment() {
                     if (stat.totalJoints > 1) formatTime(stat.longestJointGapMs) else "-"
                 )
             ))
+            if (!nameAdded) nameAdded = true
         }
 
         if (stat.totalBowls > 0) {
             val lastGap = if (stat.totalBowls > 1) formatTime(stat.avgBowlGapMs) else "-"
             activities.add(Triple(
-                "",  // Empty for subsequent rows
+                if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalBowls} Bowls",
                 listOf(
                     lastGap,
@@ -345,6 +350,7 @@ class SeshFragment : Fragment() {
                     if (stat.totalBowls > 1) formatTime(stat.longestBowlGapMs) else "-"
                 )
             ))
+            if (!nameAdded) nameAdded = true
         }
 
         // Create rows - name appears on SAME ROW as first activity
