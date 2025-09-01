@@ -1039,7 +1039,7 @@ class MainActivity : AppCompatActivity() {
                         if (!isLongPressing) {
                             isLongPressing = true
                             // Long press detected - show retroactive dialog
-                            vibrateFeedback(1500) // 1.5 second vibration for long press
+                            vibrateFeedback(2000) // 2 second vibration for long press
                             showRetroactiveAddDialog(activityType)
                         }
                     }
@@ -1178,11 +1178,11 @@ class MainActivity : AppCompatActivity() {
             val btn = Button(this).apply {
                 text = if (qty == -1) "More" else qty.toString()
                 textSize = 16f
-                setTextColor(Color.WHITE)
+                setTextColor(if (qty == 1) Color.parseColor("#1E1E1E") else Color.WHITE)
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
-                    setColor(Color.parseColor("#2C2C2C"))
+                    setColor(if (qty == 1) Color.parseColor("#98FB98") else Color.parseColor("#2C2C2C"))
                     setStroke(2.dpToPx(this@MainActivity), Color.parseColor("#444444"))
                 }
                 layoutParams = GridLayout.LayoutParams().apply {
@@ -1200,6 +1200,7 @@ class MainActivity : AppCompatActivity() {
                             // Update button visuals
                             quantityButtons.forEach { b ->
                                 (b.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                                b.setTextColor(Color.WHITE)
                             }
                             (background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
                             setTextColor(Color.parseColor("#1E1E1E")) // Dark grey text when selected
@@ -1210,11 +1211,13 @@ class MainActivity : AppCompatActivity() {
                         // Update button visuals
                         quantityButtons.forEach { b ->
                             (b.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                            b.setTextColor(Color.WHITE)
                             if (b.text == "More" && b.text.toString().toIntOrNull() != null) {
                                 b.text = "More"
                             }
                         }
-                        (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                        (background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
+                        setTextColor(Color.parseColor("#1E1E1E"))
                     }
                 }
             }
@@ -1222,9 +1225,7 @@ class MainActivity : AppCompatActivity() {
             quantityGrid.addView(btn)
         }
         
-        // Select first button by default
-        (quantityButtons[0].background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
-        quantityButtons[0].setTextColor(Color.parseColor("#1E1E1E")) // Dark grey text when selected
+        // First button already selected by default initialization above
         
         contentLayout.addView(quantityGrid)
         
@@ -1304,9 +1305,9 @@ class MainActivity : AppCompatActivity() {
                     // Update visuals
                     timeModeButtons.forEach { layout ->
                         (layout.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
-                        // Reset text color for all children
-                        for (i in 0 until childCount) {
-                            (getChildAt(i) as? TextView)?.setTextColor(Color.WHITE)
+                        // Reset text color for all children to white
+                        for (i in 0 until layout.childCount) {
+                            (layout.getChildAt(i) as? TextView)?.setTextColor(Color.WHITE)
                         }
                     }
                     (background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
@@ -1320,7 +1321,7 @@ class MainActivity : AppCompatActivity() {
             val optionTitle = TextView(this).apply {
                 text = title
                 textSize = 14f
-                setTextColor(Color.WHITE)
+                setTextColor(if (index == 0) Color.parseColor("#1E1E1E") else Color.WHITE)
                 typeface = Typeface.DEFAULT_BOLD
             }
             optionLayout.addView(optionTitle)
@@ -1328,7 +1329,7 @@ class MainActivity : AppCompatActivity() {
             val optionDesc = TextView(this).apply {
                 text = desc
                 textSize = 12f
-                setTextColor(Color.parseColor("#808080"))
+                setTextColor(if (index == 0) Color.parseColor("#1E1E1E") else Color.parseColor("#808080"))
             }
             optionLayout.addView(optionDesc)
             
@@ -1468,7 +1469,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     2 -> { // No Spacing - add small offset to prevent treating as one
-                        List(quantity) { index -> now - (index * 10) } // 10ms apart to ensure uniqueness
+                        List(quantity) { index -> now - (index * 100) } // 100ms apart to ensure uniqueness
                     }
                     else -> List(quantity) { now }
                 }
@@ -1483,8 +1484,20 @@ class MainActivity : AppCompatActivity() {
                     return@launch
                 }
                 
+                // Store original auto mode and spinner position
+                val wasAutoMode = isAutoMode
+                val originalPosition = selectedPosition
+                
+                // Temporarily disable auto-advance for bulk adds
+                isAutoMode = false
+                
                 // Add activities with calculated timestamps
                 timestamps.forEachIndexed { index, timestamp ->
+                    // Ensure spinner stays on same smoker
+                    if (binding.spinnerSmoker.selectedItemPosition != originalPosition) {
+                        binding.spinnerSmoker.setSelection(originalPosition)
+                    }
+                    
                     // Use the internal logHit function with specific timestamp
                     logHit(activityType, timestamp)
                     
@@ -1496,6 +1509,9 @@ class MainActivity : AppCompatActivity() {
                         delay(50)
                     }
                 }
+                
+                // Re-enable auto-advance if it was on
+                isAutoMode = wasAutoMode
                 
                 // Update all stats immediately
                 withContext(Dispatchers.Main) {
