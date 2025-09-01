@@ -5023,7 +5023,8 @@ class MainActivity : AppCompatActivity() {
         Log.d("WELCOME_DEBUG", "🔎 checkAndShowWelcomeForFirstCloudSmoker() called")
         lifecycleScope.launch {
             // Check if there are any existing cloud smokers
-            val existingCloudSmokers = smokerViewModel.getAllSmokers().first().filter { it.isCloudSmoker }
+            val allSmokers = smokerManager.getSortedSmokers().first()
+            val existingCloudSmokers = allSmokers.filter { smoker -> smoker.isCloudSmoker }
             Log.d("WELCOME_DEBUG", "☁️ Found ${existingCloudSmokers.size} existing cloud smokers")
             
             // Only show welcome if this is the FIRST cloud smoker (none existed before)
