@@ -317,6 +317,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var autoAddManager: AutoAddManager
     private var lastMiddleTimerValue: Long = 0L // Track when timer crosses zero
     private var wasMiddleTimerPositive = true
+    
+    // Retroactive activity logging properties
+    private var countdownStartTime: Long = 0L // When countdown started (when last activity was logged)
+    private var countdownEndTime: Long = 0L // When countdown reached 0
+    private var longPressStartTime: Long = 0L
+    private var isLongPressing = false
+    private val LONG_PRESS_DURATION = 2000L // 2 seconds for long press
+    private var retroactiveDialog: Dialog? = null
+    private val retroactiveActivities = mutableListOf<ActivityLog>() // Track bulk added activities for undo
 
     // pausing functions
     private var isPaused = false
@@ -398,6 +407,8 @@ class MainActivity : AppCompatActivity() {
                 if (wasMiddleTimerPositive && !isCurrentlyPositive) {
                     Log.d(TAG, "🔔 Middle timer hit zero - playing sound")
                     timerSoundHelper.playTimerSound()
+                    // Track when countdown reaches zero for retroactive time travel
+                    countdownEndTime = System.currentTimeMillis()
                 }
                 wasMiddleTimerPositive = isCurrentlyPositive
 
@@ -1007,6 +1018,524 @@ class MainActivity : AppCompatActivity() {
         pendingBowlQuantity = 1
     }
 
+    // Setup button with both click and long-press support for retroactive logging
+    private fun setupRetroactiveButton(button: View, activityType: ActivityType) {
+        var longPressHandler: Handler? = null
+        var longPressRunnable: Runnable? = null
+        
+        // Handle both touch down and up events to detect long press
+        button.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    // Start tracking long press
+                    longPressStartTime = System.currentTimeMillis()
+                    isLongPressing = false
+                    
+                    // Vibrate on touch down
+                    vibrateFeedback(25)
+                    
+                    // Create handler for long press detection
+                    longPressHandler = Handler(Looper.getMainLooper())
+                    longPressRunnable = Runnable {
+                        if (!isLongPressing) {
+                            isLongPressing = true
+                            // Long press detected - show retroactive dialog
+                            vibrateFeedback(100) // Strong vibration for long press
+                            showRetroactiveAddDialog(activityType)
+                        }
+                    }
+                    longPressHandler?.postDelayed(longPressRunnable!!, LONG_PRESS_DURATION)
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    // Cancel long press detection
+                    longPressHandler?.removeCallbacks(longPressRunnable!!)
+                    
+                    if (!isLongPressing) {
+                        // It was a regular click (not long press)
+                        val pressDuration = System.currentTimeMillis() - longPressStartTime
+                        if (pressDuration < LONG_PRESS_DURATION) {
+                            // Regular click action
+                            vibrateFeedback(50)
+                            
+                            // Reset previous button
+                            lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
+                            
+                            // Set this button as selected
+                            setActivityButtonSelected(button, true)
+                            lastSelectedActivityButton = button
+                            
+                            // Your existing code
+                            confettiHelper.showConfettiFromButton(button)
+                            
+                            // Track countdown timing when activity is logged
+                            val now = System.currentTimeMillis()
+                            countdownStartTime = now
+                            
+                            logHitSafe(activityType)
+                        }
+                    }
+                    isLongPressing = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    // Show retroactive add dialog
+    private fun showRetroactiveAddDialog(activityType: ActivityType) {
+        // Prevent showing dialog if session is not active
+        if (!sessionActive) {
+            Toast.makeText(this, "Please start a session first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        if (retroactiveDialog?.isShowing == true) {
+            return
+        }
+        
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        retroactiveDialog = dialog
+        
+        // Create the main container with semi-transparent background
+        val container = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#CC000000")) // Darker background
+            isClickable = true
+            setOnClickListener { dialog.dismiss() }
+        }
+        
+        // Create card for the popup content
+        val card = CardView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                350.dpToPx(this@MainActivity),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            radius = 16.dpToPx(this@MainActivity).toFloat()
+            cardElevation = 8.dpToPx(this@MainActivity).toFloat()
+            setCardBackgroundColor(Color.parseColor("#1E1E1E"))
+        }
+        
+        // Main content layout
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity),
+                24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity))
+        }
+        
+        // Title
+        val title = TextView(this).apply {
+            text = "Add ${activityType.name.lowercase().capitalize()} Activities"
+            textSize = 20f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 20.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(title)
+        
+        // Quantity section
+        val quantityTitle = TextView(this).apply {
+            text = "How many?"
+            textSize = 14f
+            setTextColor(Color.parseColor("#B0B0B0"))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(quantityTitle)
+        
+        // Quantity buttons in a grid
+        val quantityGrid = GridLayout(this).apply {
+            columnCount = 4
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 8.dpToPx(this@MainActivity)
+            }
+        }
+        
+        var selectedQuantity = 1
+        val quantityButtons = mutableListOf<Button>()
+        
+        // Create quantity buttons (1, 2, 3, More)
+        val quantities = listOf(1, 2, 3, -1) // -1 represents "More"
+        quantities.forEach { qty ->
+            val btn = Button(this).apply {
+                text = if (qty == -1) "More" else qty.toString()
+                textSize = 16f
+                setTextColor(Color.WHITE)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
+                    setColor(Color.parseColor("#2C2C2C"))
+                    setStroke(2.dpToPx(this@MainActivity), Color.parseColor("#444444"))
+                }
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = 70.dpToPx(this@MainActivity)
+                    height = 50.dpToPx(this@MainActivity)
+                    setMargins(4.dpToPx(this@MainActivity), 4.dpToPx(this@MainActivity),
+                        4.dpToPx(this@MainActivity), 4.dpToPx(this@MainActivity))
+                }
+                
+                setOnClickListener {
+                    if (qty == -1) {
+                        // Show number input dialog
+                        showQuantityInputDialog { inputQty ->
+                            selectedQuantity = inputQty
+                            // Update button visuals
+                            quantityButtons.forEach { b ->
+                                (b.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                            }
+                            (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                            text = inputQty.toString()
+                        }
+                    } else {
+                        selectedQuantity = qty
+                        // Update button visuals
+                        quantityButtons.forEach { b ->
+                            (b.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                            if (b.text == "More" && b.text.toString().toIntOrNull() != null) {
+                                b.text = "More"
+                            }
+                        }
+                        (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                    }
+                }
+            }
+            quantityButtons.add(btn)
+            quantityGrid.addView(btn)
+        }
+        
+        // Select first button by default
+        (quantityButtons[0].background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+        
+        contentLayout.addView(quantityGrid)
+        
+        // Custom quantity input
+        val customQuantityLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 20.dpToPx(this@MainActivity)
+            }
+            visibility = View.GONE // Hidden by default
+        }
+        
+        val customQuantityInput = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Enter quantity"
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.parseColor("#808080"))
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        }
+        customQuantityLayout.addView(customQuantityInput)
+        
+        contentLayout.addView(customQuantityLayout)
+        
+        // Time control section
+        val timeTitle = TextView(this).apply {
+            text = "Time Control"
+            textSize = 14f
+            setTextColor(Color.parseColor("#B0B0B0"))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 12.dpToPx(this@MainActivity)
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(timeTitle)
+        
+        // Time mode options
+        var selectedTimeMode = 0 // 0=Time Travel, 1=Current Time (spaced), 2=Current Time (instant)
+        val timeModeOptions = listOf(
+            "⏪ Time Travel Back" to "Go back to when timer hit 0",
+            "⏰ Stay at Current Time" to "Space between last activity",
+            "🚫 No Spacing" to "Add all at current timestamp"
+        )
+        
+        val timeModeButtons = mutableListOf<LinearLayout>()
+        
+        timeModeOptions.forEachIndexed { index, (title, desc) ->
+            val optionLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
+                    setColor(if (index == 0) Color.parseColor("#00FF00") else Color.parseColor("#2C2C2C"))
+                    setStroke(2.dpToPx(this@MainActivity), Color.parseColor("#444444"))
+                }
+                setPadding(12.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity),
+                    12.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 8.dpToPx(this@MainActivity)
+                }
+                isClickable = true
+                
+                setOnClickListener {
+                    selectedTimeMode = index
+                    // Update visuals
+                    timeModeButtons.forEach { layout ->
+                        (layout.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                    }
+                    (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                }
+            }
+            
+            val optionTitle = TextView(this).apply {
+                text = title
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            optionLayout.addView(optionTitle)
+            
+            val optionDesc = TextView(this).apply {
+                text = desc
+                textSize = 12f
+                setTextColor(Color.parseColor("#808080"))
+            }
+            optionLayout.addView(optionDesc)
+            
+            timeModeButtons.add(optionLayout)
+            contentLayout.addView(optionLayout)
+        }
+        
+        // Add button
+        val addButton = Button(this).apply {
+            text = "ADD ACTIVITIES"
+            textSize = 16f
+            setTextColor(Color.BLACK)
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
+                setColor(Color.parseColor("#00FF00"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                56.dpToPx(this@MainActivity)
+            ).apply {
+                topMargin = 20.dpToPx(this@MainActivity)
+            }
+            
+            setOnClickListener {
+                // Vibrate on add
+                vibrateFeedback(50)
+                
+                // Get custom quantity if needed
+                val finalQuantity = if (customQuantityInput.text.isNotEmpty()) {
+                    customQuantityInput.text.toString().toIntOrNull() ?: selectedQuantity
+                } else {
+                    selectedQuantity
+                }
+                
+                // Add retroactive activities based on selected mode
+                addRetroactiveActivities(activityType, finalQuantity, selectedTimeMode)
+                
+                // Dismiss dialog
+                dialog.dismiss()
+            }
+        }
+        contentLayout.addView(addButton)
+        
+        // Cancel button
+        val cancelButton = TextView(this).apply {
+            text = "CANCEL"
+            textSize = 14f
+            setTextColor(Color.parseColor("#808080"))
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 12.dpToPx(this@MainActivity)
+            }
+            
+            setOnClickListener {
+                dialog.dismiss()
+            }
+        }
+        contentLayout.addView(cancelButton)
+        
+        card.addView(contentLayout)
+        container.addView(card)
+        
+        dialog.setContentView(container)
+        
+        // Animate dialog entry
+        card.scaleX = 0.8f
+        card.scaleY = 0.8f
+        card.alpha = 0f
+        card.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .alpha(1f)
+            .setDuration(200)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        
+        dialog.show()
+    }
+    
+    // Show quantity input dialog for "More" option
+    private fun showQuantityInputDialog(onQuantitySelected: (Int) -> Unit) {
+        val inputDialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Enter Quantity")
+            .setView(EditText(this).apply {
+                inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                hint = "Number of activities"
+                id = android.R.id.edit
+            })
+            .setPositiveButton("OK") { dialog, _ ->
+                val input = (dialog as AlertDialog).findViewById<EditText>(android.R.id.edit)
+                val quantity = input?.text?.toString()?.toIntOrNull() ?: 1
+                onQuantitySelected(quantity.coerceIn(1, 99))
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+        
+        inputDialog.show()
+    }
+    
+    // Add retroactive activities based on selected mode
+    private fun addRetroactiveActivities(activityType: ActivityType, quantity: Int, timeMode: Int) {
+        lifecycleScope.launch {
+            try {
+                val now = System.currentTimeMillis()
+                retroactiveActivities.clear() // Clear previous bulk add for undo
+                
+                // Calculate timestamps based on time mode
+                val timestamps = when (timeMode) {
+                    0 -> { // Time Travel Back
+                        // Space activities between countdownStartTime and countdownEndTime
+                        if (countdownEndTime > 0 && countdownStartTime > 0 && quantity > 1) {
+                            val interval = (countdownEndTime - countdownStartTime) / quantity
+                            List(quantity) { i ->
+                                countdownStartTime + (interval * i)
+                            }
+                        } else {
+                            // Fallback: add all at countdown end time or current time
+                            val baseTime = if (countdownEndTime > 0) countdownEndTime else now
+                            List(quantity) { baseTime - (it * 1000) } // 1 second apart
+                        }
+                    }
+                    1 -> { // Stay at Current Time (spaced)
+                        // Space between last activity and now
+                        val lastActivityTime = activitiesTimestamps.maxOrNull() ?: sessionStart
+                        if (quantity > 1 && lastActivityTime < now) {
+                            val interval = (now - lastActivityTime) / quantity
+                            List(quantity) { i ->
+                                lastActivityTime + (interval * (i + 1))
+                            }
+                        } else {
+                            List(quantity) { now - (it * 1000) } // 1 second apart
+                        }
+                    }
+                    2 -> { // No Spacing - all at current time
+                        List(quantity) { now }
+                    }
+                    else -> List(quantity) { now }
+                }
+                
+                // Get current selected smoker
+                val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+                val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+                val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
+                
+                if (selectedSmoker == null) {
+                    Toast.makeText(this@MainActivity, "Please select a smoker", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                // Add activities with calculated timestamps
+                timestamps.forEachIndexed { index, timestamp ->
+                    // Use the internal logHit function with specific timestamp
+                    logHit(activityType, timestamp)
+                    
+                    // Track for undo
+                    val activityLog = ActivityLog(
+                        id = 0,
+                        type = activityType,
+                        timestamp = timestamp,
+                        smokerUid = selectedSmoker.uid,
+                        smokerName = selectedSmoker.name,
+                        sessionId = sessionStart,
+                        stashId = null,
+                        shareCode = currentShareCode
+                    )
+                    retroactiveActivities.add(activityLog)
+                    
+                    // Small delay between additions for visual feedback
+                    if (index < timestamps.size - 1) {
+                        delay(50)
+                    }
+                }
+                
+                // Update all stats immediately
+                withContext(Dispatchers.Main) {
+                    // Force refresh all stats
+                    refreshLocalSessionStatsIfNeeded()
+                    sessionStatsVM.recalculateGaps()
+                    val historyFragment = supportFragmentManager.findFragmentByTag("history") as? HistoryFragment
+                    historyFragment?.refreshHistory()
+                    val graphFragment = supportFragmentManager.findFragmentByTag("graph") as? GraphFragment
+                    graphFragment?.refreshGraph()
+                    
+                    // Show confirmation
+                    val message = when (timeMode) {
+                        0 -> "Added $quantity ${activityType.name.lowercase()} activities (time traveled)"
+                        1 -> "Added $quantity ${activityType.name.lowercase()} activities (spaced)"
+                        2 -> "Added $quantity ${activityType.name.lowercase()} activities"
+                        else -> "Added $quantity ${activityType.name.lowercase()} activities"
+                    }
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                    
+                    // Advance to next smoker if in auto mode
+                    if (isAutoMode && quantity > 0) {
+                        handler.postDelayed({
+                            advanceToNextSmoker()
+                        }, 100)
+                    }
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error adding retroactive activities", e)
+                Toast.makeText(this@MainActivity, "Error adding activities", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    // Helper function to convert dp to pixels
+    private fun Int.dpToPx(context: Context): Int {
+        return (this * context.resources.displayMetrics.density).toInt()
+    }
 
     // In MainActivity onCreate, after binding = ActivityMainBinding.inflate(layoutInflater)
 // The binding.btnNotificationToggle will be automatically available if you add the button to your layout
@@ -1089,38 +1618,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Setup button click listeners [KEEP ALL YOUR EXISTING BUTTON LISTENERS HERE]
-        binding.btnAddJoint.setOnClickListener {
-            // Vibrate for 50ms (strong vibration)
-            vibrateFeedback(50)
-
-            // Reset previous button
-            lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
-
-            // Set this button as selected
-            setActivityButtonSelected(binding.btnAddJoint, true)
-            lastSelectedActivityButton = binding.btnAddJoint
-
-            // Your existing code
-            confettiHelper.showConfettiFromButton(binding.btnAddJoint)
-            logHitSafe(ActivityType.JOINT)
-        }
-
-        binding.btnAddCone.setOnClickListener {
-            // Vibrate for 50ms (strong vibration)
-            vibrateFeedback(50)
-
-            // Reset previous button
-            lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
-
-            // Set this button as selected
-            setActivityButtonSelected(binding.btnAddCone, true)
-            lastSelectedActivityButton = binding.btnAddCone
-
-            // Your existing code
-            confettiHelper.showConfettiFromButton(binding.btnAddCone)
-            logHitSafe(ActivityType.CONE)
-        }
+        // Setup button click listeners with long-press support for retroactive logging
+        setupRetroactiveButton(binding.btnAddJoint, ActivityType.JOINT)
+        setupRetroactiveButton(binding.btnAddCone, ActivityType.CONE)
 
         binding.btnAddBowl.setOnClickListener {
             // Vibrate for 50ms (strong vibration)
@@ -1140,23 +1640,11 @@ class MainActivity : AppCompatActivity() {
 
         setupBowlLongPress()
 
-        // Bowl button to debug offline queue
+        // Bowl button to debug offline queue (commented out)
       //  binding.btnAddBowl.setOnLongClickListener {
        //     debugOfflineQueue()
        //     true
       //  }
-        
-        // Debug functionality - long press cone button
-        binding.btnAddCone.setOnLongClickListener {
-            // Existing debug hooks
-            sessionStatsVM.debugCurrentState()
-            lifecycleScope.launch {
-                debugSyncStatus()
-            }
-            // Add this to debug duplicate smokers
-            debugLocalSmokers()
-            true
-        }
 
         // [KEEP ALL YOUR EXISTING TOUCH LISTENERS AND OTHER SETUP CODE HERE]
 
@@ -7515,7 +8003,15 @@ class MainActivity : AppCompatActivity() {
     private fun undoLastActivity() {
         Log.d(TAG, "🔙 === UNDO START ===")
         Log.d(TAG, "🔙 Activity history size: ${activityHistory.size}")
+        Log.d(TAG, "🔙 Retroactive activities size: ${retroactiveActivities.size}")
         Log.d(TAG, "🔙 Current share code: $currentShareCode")
+
+        // Check if we should undo bulk retroactive activities
+        if (retroactiveActivities.isNotEmpty()) {
+            // Undo all retroactive activities from the last bulk add
+            undoBulkRetroactiveActivities()
+            return
+        }
 
         if (activityHistory.isEmpty()) {
             Toast.makeText(this, "No recent activity to undo", Toast.LENGTH_SHORT).show()
@@ -7736,10 +8232,80 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Undo all retroactive activities from the last bulk add
+    private fun undoBulkRetroactiveActivities() {
+        Log.d(TAG, "🔙 === BULK UNDO START ===")
+        Log.d(TAG, "🔙 Undoing ${retroactiveActivities.size} retroactive activities")
+        
+        if (retroactiveActivities.isEmpty()) {
+            return
+        }
+        
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val activitiesToUndo = retroactiveActivities.toList()
+                retroactiveActivities.clear()
+                
+                // Delete all activities from database
+                activitiesToUndo.forEach { activity ->
+                    Log.d(TAG, "🔙 Deleting retroactive activity: ${activity.type} at ${activity.timestamp}")
+                    
+                    // Find and delete from database
+                    val dbActivities = repo.getActivitiesForSessionBetween(
+                        sessionStart, 
+                        activity.timestamp - 100, 
+                        activity.timestamp + 100
+                    )
+                    
+                    dbActivities.firstOrNull { 
+                        it.type == activity.type && 
+                        it.smokerId == activity.smokerUid 
+                    }?.let { dbActivity ->
+                        repo.deleteActivityLog(dbActivity)
+                        
+                        // Remove from activity history and timestamps
+                        activityHistory.removeAll { it.id == dbActivity.id }
+                        activitiesTimestamps.remove(dbActivity.timestamp)
+                    }
+                }
+                
+                // Update UI on main thread
+                withContext(Dispatchers.Main) {
+                    // Force refresh all stats
+                    refreshLocalSessionStatsIfNeeded()
+                    
+                    // Refresh fragments
+                    sessionStatsVM.recalculateGaps()
+                    val historyFragment = supportFragmentManager.findFragmentByTag("history") as? HistoryFragment
+                    historyFragment?.refreshHistory()
+                    val graphFragment = supportFragmentManager.findFragmentByTag("graph") as? GraphFragment
+                    graphFragment?.refreshGraph()
+                    
+                    // Update undo button visibility
+                    updateUndoButtonVisibility()
+                    
+                    Toast.makeText(
+                        this@MainActivity, 
+                        "Undid ${activitiesToUndo.size} retroactive activities", 
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    
+                    Log.d(TAG, "🔙 === BULK UNDO COMPLETE ===")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "🔙 Error undoing bulk activities", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Error undoing activities", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     private fun updateUndoButtonVisibility() {
-        val shouldShow = sessionActive && activityHistory.isNotEmpty()
+        val shouldShow = sessionActive && (activityHistory.isNotEmpty() || retroactiveActivities.isNotEmpty())
         binding.btnUndoLastActivity.visibility = if (shouldShow) View.VISIBLE else View.GONE
-        Log.d(TAG, "Undo button visibility: ${if (shouldShow) "VISIBLE" else "GONE"}, history size: ${activityHistory.size}")
+        Log.d(TAG, "Undo button visibility: ${if (shouldShow) "VISIBLE" else "GONE"}, history size: ${activityHistory.size}, retroactive size: ${retroactiveActivities.size}")
     }
 
     // Helper data class for gap statistics
