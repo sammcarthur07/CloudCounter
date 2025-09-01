@@ -2240,7 +2240,8 @@ class MainActivity : AppCompatActivity() {
                     // Update the smokers list with the new smoker
                     if (newSmoker != null) {
                         smokers = listOf(newSmoker)
-                        updateSmokerSpinner()
+                        smokerAdapterNew.refreshOrganizedList(smokers, currentShareCode, pausedSmokerIds, awaySmokers)
+                        binding.spinnerSmoker.setSelection(0, false)
                     }
 
                     // Start session after smoker is created
