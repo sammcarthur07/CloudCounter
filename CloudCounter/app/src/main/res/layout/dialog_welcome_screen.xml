@@ -5,25 +5,6 @@
     android:layout_height="wrap_content"
     android:padding="16dp">
 
-    <!-- Particle container (behind card) -->
-    <FrameLayout
-        android:id="@+id/particleContainer"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <!-- Electric surge effect layer -->
-    <View
-        android:id="@+id/electricSurgeEffect"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/electric_surge_border" />
-
-    <!-- Dissolve effect layer -->
-    <View
-        android:id="@+id/dissolveEffect"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0.7" />
 
     <!-- Main Card -->
     <androidx.cardview.widget.CardView
@@ -34,12 +15,6 @@
         app:cardCornerRadius="20dp"
         app:cardElevation="12dp">
 
-        <!-- Animated border overlay -->
-        <View
-            android:id="@+id/animatedBorder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/animated_gradient_border" />
 
         <LinearLayout
             android:layout_width="match_parent"

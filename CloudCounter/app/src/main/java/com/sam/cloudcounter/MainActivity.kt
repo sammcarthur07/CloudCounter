@@ -1940,6 +1940,19 @@ class MainActivity : AppCompatActivity() {
             onSmokerAdded = { smoker ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     repo.insertOrUpdateSmoker(smoker)
+                    
+                    // Check if this is the first cloud smoker and show welcome screen
+                    if (smoker.isCloudSmoker) {
+                        val allSmokers = repo.getAllSmokersSync()
+                        val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+                        
+                        // Show welcome screen only for the first cloud smoker
+                        if (cloudSmokerCount == 1) {
+                            withContext(Dispatchers.Main) {
+                                showWelcomeScreenForFirstCloudSmoker()
+                            }
+                        }
+                    }
                 }
             },
             getCurrentShareCode = { currentShareCode },
@@ -4969,13 +4982,17 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showWelcomeScreenIfNeeded() {
-        // Check if we should show the welcome screen
+        // No longer showing on first launch - now triggered when first cloud smoker is added
+    }
+    
+    private fun showWelcomeScreenForFirstCloudSmoker() {
+        // Check if we should show the welcome screen (hasn't been shown before)
         if (WelcomeScreenDialog.shouldShowWelcomeScreen(this)) {
             // Show the welcome screen after a short delay to ensure UI is ready
             handler.postDelayed({
                 val welcomeDialog = WelcomeScreenDialog(this) {
                     // On completion callback - nothing special needed here
-                    Log.d(TAG, "Welcome screen completed")
+                    Log.d(TAG, "Welcome screen completed for first cloud smoker")
                 }
                 welcomeDialog.show()
             }, 500)
@@ -4984,33 +5001,66 @@ class MainActivity : AppCompatActivity() {
     
     // Public methods for showing dialogs from WelcomeScreenDialog
     fun showAddStashDialog() {
-        // Navigate to stash tab and show dialog
-        binding.viewPager.currentItem = 5 // Stash tab index
+        // Navigate to stash tab (index 4) and show dialog
+        binding.viewPager.currentItem = 4
         handler.postDelayed({
-            // Get the stash fragment and trigger its dialog
-            val fragment = supportFragmentManager.findFragmentByTag("f5") as? StashFragment
-            fragment?.showAddStashDialogPublic()
-        }, 300)
+            // Get all fragments and find StashFragment
+            val fragments = supportFragmentManager.fragments
+            val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
+            
+            if (stashFragment != null) {
+                stashFragment.showAddStashDialogPublic()
+            } else {
+                // If fragment not found, try again after a delay
+                handler.postDelayed({
+                    val retryFragments = supportFragmentManager.fragments
+                    val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
+                    retryStashFragment?.showAddStashDialogPublic()
+                }, 500)
+            }
+        }, 500)
     }
     
     fun showSetRatioDialog() {
-        // Navigate to stash tab and show ratio dialog
-        binding.viewPager.currentItem = 5 // Stash tab index
+        // Navigate to stash tab (index 4) and show ratio dialog
+        binding.viewPager.currentItem = 4
         handler.postDelayed({
-            // Get the stash fragment and trigger its dialog
-            val fragment = supportFragmentManager.findFragmentByTag("f5") as? StashFragment
-            fragment?.showSetRatioDialogPublic()
-        }, 300)
+            // Get all fragments and find StashFragment
+            val fragments = supportFragmentManager.fragments
+            val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
+            
+            if (stashFragment != null) {
+                stashFragment.showSetRatioDialogPublic()
+            } else {
+                // If fragment not found, try again after a delay
+                handler.postDelayed({
+                    val retryFragments = supportFragmentManager.fragments
+                    val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
+                    retryStashFragment?.showSetRatioDialogPublic()
+                }, 500)
+            }
+        }, 500)
     }
     
     fun showAddGoalDialog() {
-        // Navigate to goals tab and show dialog
-        binding.viewPager.currentItem = 4 // Goals tab index
+        // Navigate to goals tab (index 6) and show dialog
+        binding.viewPager.currentItem = 6
         handler.postDelayed({
-            // Get the goals fragment and trigger its dialog
-            val fragment = supportFragmentManager.findFragmentByTag("f4") as? GoalFragment
-            fragment?.showAddGoalDialogPublic()
-        }, 300)
+            // Get all fragments and find GoalFragment
+            val fragments = supportFragmentManager.fragments
+            val goalFragment = fragments.filterIsInstance<GoalFragment>().firstOrNull()
+            
+            if (goalFragment != null) {
+                goalFragment.showAddGoalDialogPublic()
+            } else {
+                // If fragment not found, try again after a delay
+                handler.postDelayed({
+                    val retryFragments = supportFragmentManager.fragments
+                    val retryGoalFragment = retryFragments.filterIsInstance<GoalFragment>().firstOrNull()
+                    retryGoalFragment?.showAddGoalDialogPublic()
+                }, 500)
+            }
+        }, 500)
     }
 
     // Save session state when starting/resuming
