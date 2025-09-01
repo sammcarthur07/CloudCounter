@@ -132,7 +132,8 @@ class SmokerAdapter(
     }
 
     private fun setupSmokerView(textName: TextView?, item: Smoker) {
-        textName?.text = smokerManager.formatSmokerNameWithStatus(item)
+        // Show only the name without icons in the spinner display
+        textName?.text = item.name
         textName?.textSize = 32f
 
         val smokerId = if (item.isCloudSmoker) item.cloudUserId else "local_${item.smokerId}"
