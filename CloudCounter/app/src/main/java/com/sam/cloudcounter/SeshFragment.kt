@@ -114,7 +114,7 @@ class SeshFragment : Fragment() {
             // Build the stats with line breaks
             val spannableStats = SpannableStringBuilder()
 
-            // First line: Total cones | Rounds (with bold counters)
+            // First line: Total cones | Rounds | Last cone (with bold counters)
             spannableStats.append("Total cones: ")
             val conesStart = spannableStats.length
             spannableStats.append(gs.totalCones.toString())
@@ -136,12 +136,9 @@ class SeshFragment : Fragment() {
                 roundsEnd,
                 SpannableString.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-
-            // Add two line breaks
-            spannableStats.append("\n\n")
-
-            // Second line: Last cone | Last gap | Longest | Shortest (with bold timers)
-            spannableStats.append("Last cone ")
+            
+            // Add Last cone on same line
+            spannableStats.append("  |  Last cone: ")
             val lastConeStart = spannableStats.length
             spannableStats.append(formatTime(gs.sinceLastGapMs))
             val lastConeEnd = spannableStats.length
@@ -153,12 +150,17 @@ class SeshFragment : Fragment() {
             )
             spannableStats.append(" ago")
 
+            // Add two line breaks
+            spannableStats.append("\n\n")
+
+            // Second line: Last gap | Longest | Shortest (with bold timers)
+            spannableStats.append("Last gap: ")
+
             // DEBUG: Log before adding last gap
             Log.d("SeshFragment", "🔍 About to add last gap - value: ${gs.lastGapMs}, check: ${gs.lastGapMs != null && gs.lastGapMs > 0}")
 
-            // Add Last gap with comparison (only if we have a last gap)
+            // Add last gap value (only if we have a last gap)
             if (gs.lastGapMs != null && gs.lastGapMs > 0) {
-                spannableStats.append("  |  Last gap: ")
                 val lastGapStart = spannableStats.length
                 val formattedGap = formatTime(gs.lastGapMs)
                 spannableStats.append(formattedGap)
@@ -218,10 +220,29 @@ class SeshFragment : Fragment() {
 
             binding.textGroupTotalCones.text = spannableStats
 
-            // Update last cone info with smoker name (optional separate line)
+            // Build text for who had last activities
+            val lastActivitiesText = StringBuilder()
+            
+            // Add last cone info
             if (gs.lastConeSmokerName != null && gs.sinceLastGapMs > 0) {
-                val lastConeText = "${gs.lastConeSmokerName} had the last cone ${formatTime(gs.sinceLastGapMs)} ago"
-                binding.textLastConeInfo.text = lastConeText
+                lastActivitiesText.append("${gs.lastConeSmokerName} had the last cone ${formatTime(gs.sinceLastGapMs)} ago")
+            }
+            
+            // Add last joint info
+            if (gs.lastJointSmokerName != null && gs.sinceLastJointMs > 0) {
+                if (lastActivitiesText.isNotEmpty()) lastActivitiesText.append("\n")
+                lastActivitiesText.append("${gs.lastJointSmokerName} had the last joint ${formatTime(gs.sinceLastJointMs)} ago")
+            }
+            
+            // Add last bowl info
+            if (gs.lastBowlSmokerName != null && gs.sinceLastBowlMs > 0) {
+                if (lastActivitiesText.isNotEmpty()) lastActivitiesText.append("\n")
+                lastActivitiesText.append("${gs.lastBowlSmokerName} had the last bowl ${formatTime(gs.sinceLastBowlMs)} ago")
+            }
+            
+            // Update the text view with all last activity info
+            if (lastActivitiesText.isNotEmpty()) {
+                binding.textLastConeInfo.text = lastActivitiesText.toString()
                 binding.textLastConeInfo.visibility = View.VISIBLE
             } else {
                 binding.textLastConeInfo.visibility = View.GONE
