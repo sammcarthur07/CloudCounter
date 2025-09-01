@@ -22,35 +22,22 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- Title with pulsing glow -->
-            <FrameLayout
+            <!-- Title without glow -->
+            <TextView
+                android:id="@+id/dialogTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp">
-
-                <!-- Glow effect behind text -->
-                <View
-                    android:id="@+id/titleGlow"
-                    android:layout_width="match_parent"
-                    android:layout_height="40dp"
-                    android:layout_gravity="center"
-                    android:background="@drawable/glow_effect" />
-
-                <TextView
-                    android:id="@+id/dialogTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="WELCOME TO THE CLOUD"
-                    android:textColor="@color/my_light_primary"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.15"
-                    android:shadowColor="@color/my_light_primary"
-                    android:shadowDx="0"
-                    android:shadowDy="0"
-                    android:shadowRadius="20" />
-            </FrameLayout>
+                android:layout_marginBottom="24dp"
+                android:gravity="center"
+                android:text="WELCOME TO THE CLOUD"
+                android:textColor="@color/my_light_primary"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.15"
+                android:shadowColor="@color/my_light_primary"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="20" />
 
             <!-- Instructions Text -->
             <TextView

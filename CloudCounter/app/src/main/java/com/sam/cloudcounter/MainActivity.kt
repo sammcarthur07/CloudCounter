@@ -5022,10 +5022,19 @@ class MainActivity : AppCompatActivity() {
     private fun checkAndShowWelcomeForFirstCloudSmoker() {
         Log.d("WELCOME_DEBUG", "🔎 checkAndShowWelcomeForFirstCloudSmoker() called")
         lifecycleScope.launch {
-            // Always show welcome screen after Google login
-            Log.d("WELCOME_DEBUG", "🎉 Showing welcome after Google login...")
-            withContext(Dispatchers.Main) {
-                showWelcomeScreenAfterGoogleLogin()
+            // Check if there are any existing cloud smokers
+            val existingCloudSmokers = smokerViewModel.getAllSmokers().first().filter { it.isCloudSmoker }
+            Log.d("WELCOME_DEBUG", "☁️ Found ${existingCloudSmokers.size} existing cloud smokers")
+            
+            // Only show welcome if this is the FIRST cloud smoker (none existed before)
+            // We check for size == 1 because the new one was just added
+            if (existingCloudSmokers.size == 1) {
+                Log.d("WELCOME_DEBUG", "🎉 This is the first cloud smoker! Showing welcome...")
+                withContext(Dispatchers.Main) {
+                    showWelcomeScreenAfterGoogleLogin()
+                }
+            } else {
+                Log.d("WELCOME_DEBUG", "⏭️ Not the first cloud smoker (found ${existingCloudSmokers.size}), skipping welcome")
             }
         }
     }

@@ -97,12 +97,6 @@ class WelcomeScreenDialog(
         shimmerSetupStash.visibility = View.GONE
         shimmerSetupRatios.visibility = View.GONE
         shimmerCreateGoal.visibility = View.GONE
-        
-        // Title glow animation - make it subtler
-        findViewById<View>(R.id.titleGlow)?.apply {
-            val glowAnimation = AnimationUtils.loadAnimation(activity, R.anim.glow_pulse_animation)
-            startAnimation(glowAnimation)
-        }
     }
     
     private fun setupClickListeners() {
