@@ -827,15 +827,27 @@ class AddSmokerDialog(
             val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
             android.util.Log.d("WELCOME_DEBUG", "📊 Current cloud smoker count before adding: $cloudSmokerCount")
 
-            // If smoker already exists and is properly set up, just return
+            // If smoker already exists and is properly set up, check for welcome screen and return
             if (existingSmoker != null && existingSmoker.isPasswordVerified) {
                 Log.d(TAG, "Smoker already exists and is verified, skipping dialog")
                 android.util.Log.d("WELCOME_DEBUG", "⚠️ Smoker already verified, skipping add dialog")
+                
+                // Still check if we should show welcome screen for first cloud smoker
+                checkAndShowWelcomeScreen()
                 return@launch
             }
 
             val userName = authManager.getCurrentUserName() ?: ""
             val isExistingUser = cloudProfile != null  // Check cloud profile, not just local
+            
+            android.util.Log.d("WELCOME_DEBUG", "📝 Preparing dialog - isExistingUser: $isExistingUser, hasPassword: ${cloudProfile?.passwordHash != null}")
+            
+            // AUTO-LOGIN: If cloud profile exists without password, auto-login without dialog
+            if (cloudProfile != null && cloudProfile.passwordHash == null) {
+                android.util.Log.d("WELCOME_DEBUG", "🚀 Auto-login for passwordless cloud profile")
+                handleExistingCloudProfile(cloudProfile, cloudProfile.name, "")
+                return@launch
+            }
 
             val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_add_smoker_or_login, null)
             val nameInput = dialogView.findViewById<EditText>(R.id.editSmokerName)
@@ -860,11 +872,14 @@ class AddSmokerDialog(
 
             val dialogTitle = if (isExistingUser) "Login to Cloud Smoker" else "Create Cloud Smoker"
             val positiveButtonText = if (isExistingUser) "Login" else "Create"
+            
+            android.util.Log.d("WELCOME_DEBUG", "📋 Showing dialog: $dialogTitle")
 
             AlertDialog.Builder(context)
                 .setTitle(dialogTitle)
                 .setView(dialogView)
                 .setPositiveButton(positiveButtonText) { _, _ ->
+                    android.util.Log.d("WELCOME_DEBUG", "✅ User clicked $positiveButtonText")
                     val name = nameInput.text.toString().trim()
                     val password = passwordInput.text.toString()
 
