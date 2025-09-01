@@ -15,9 +15,9 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 
 class WelcomeScreenDialog(
-    context: Context,
+    private val activity: MainActivity,
     private val onComplete: () -> Unit
-) : Dialog(context) {
+) : Dialog(activity) {
 
     private lateinit var checkboxSetupStash: CheckBox
     private lateinit var checkboxSetupRatios: CheckBox
@@ -40,7 +40,7 @@ class WelcomeScreenDialog(
     private lateinit var cardSetupRatios: CardView
     private lateinit var cardCreateGoal: CardView
     
-    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
+    private val sharedPreferences: SharedPreferences = activity.getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +51,7 @@ class WelcomeScreenDialog(
         
         window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         window?.setLayout(
-            context.resources.displayMetrics.widthPixels - (32 * context.resources.displayMetrics.density).toInt(),
+            activity.resources.displayMetrics.widthPixels - (32 * activity.resources.displayMetrics.density).toInt(),
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT
         )
         
@@ -88,7 +88,7 @@ class WelcomeScreenDialog(
     
     private fun setupAnimations() {
         // Start pulsing animations ONLY for the green dots
-        val pulseAnimation = AnimationUtils.loadAnimation(context, R.anim.pulse_animation)
+        val pulseAnimation = AnimationUtils.loadAnimation(activity, R.anim.pulse_animation)
         pulseStash.startAnimation(pulseAnimation)
         pulseRatios.startAnimation(pulseAnimation)
         pulseGoal.startAnimation(pulseAnimation)
@@ -100,7 +100,7 @@ class WelcomeScreenDialog(
         
         // Title glow animation - make it subtler
         findViewById<View>(R.id.titleGlow)?.apply {
-            val glowAnimation = AnimationUtils.loadAnimation(context, R.anim.glow_pulse_animation)
+            val glowAnimation = AnimationUtils.loadAnimation(activity, R.anim.glow_pulse_animation)
             startAnimation(glowAnimation)
         }
     }
@@ -225,38 +225,20 @@ class WelcomeScreenDialog(
     
     private fun showAddStashDialog() {
         android.util.Log.d("WELCOME_DEBUG", "🏦 showAddStashDialog() called")
-        // Use MainActivity method to show stash dialog
-        val activity = context as? MainActivity
-        if (activity != null) {
-            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddStashDialog()")
-            activity.showAddStashDialog()
-        } else {
-            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
-        }
+        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddStashDialog()")
+        activity.showAddStashDialog()
     }
     
     private fun showSetRatioDialog() {
         android.util.Log.d("WELCOME_DEBUG", "⚖️ showSetRatioDialog() called")
-        // Use MainActivity method to show ratio dialog
-        val activity = context as? MainActivity
-        if (activity != null) {
-            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showSetRatioDialog()")
-            activity.showSetRatioDialog()
-        } else {
-            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
-        }
+        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showSetRatioDialog()")
+        activity.showSetRatioDialog()
     }
     
     private fun showCreateGoalDialog() {
         android.util.Log.d("WELCOME_DEBUG", "🎯 showCreateGoalDialog() called")
-        // Use MainActivity method to show goal dialog
-        val activity = context as? MainActivity
-        if (activity != null) {
-            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddGoalDialog()")
-            activity.showAddGoalDialog()
-        } else {
-            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
-        }
+        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddGoalDialog()")
+        activity.showAddGoalDialog()
     }
     
     private fun markWelcomeShown() {
