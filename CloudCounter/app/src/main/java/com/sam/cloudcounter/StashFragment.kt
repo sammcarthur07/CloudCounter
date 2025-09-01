@@ -476,6 +476,16 @@ class StashFragment : Fragment() {
         }
     }
 
+    // Public method for showing dialog from outside the fragment
+    fun showAddStashDialogPublic() {
+        showAddStashDialog()
+    }
+    
+    // Public method for showing ratio dialog from outside the fragment
+    fun showSetRatioDialogPublic() {
+        showSetRatioDialog()
+    }
+    
     private fun showAddStashDialog() {
         val dialog = Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
 

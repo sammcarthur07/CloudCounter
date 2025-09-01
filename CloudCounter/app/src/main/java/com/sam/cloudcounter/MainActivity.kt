@@ -1664,9 +1664,9 @@ class MainActivity : AppCompatActivity() {
 
 // After all initialization is done, check for active session
         checkAndRestoreActiveSession()
-
-        // After all initialization is done, check for active session
-        checkAndRestoreActiveSession()
+        
+        // Show welcome screen on first launch
+        showWelcomeScreenIfNeeded()
     }
 
     private fun initializeSmokerManager() {
@@ -4966,6 +4966,51 @@ class MainActivity : AppCompatActivity() {
                 Log.e(TAG, "Error restoring session", e)
             }
         }
+    }
+    
+    private fun showWelcomeScreenIfNeeded() {
+        // Check if we should show the welcome screen
+        if (WelcomeScreenDialog.shouldShowWelcomeScreen(this)) {
+            // Show the welcome screen after a short delay to ensure UI is ready
+            handler.postDelayed({
+                val welcomeDialog = WelcomeScreenDialog(this) {
+                    // On completion callback - nothing special needed here
+                    Log.d(TAG, "Welcome screen completed")
+                }
+                welcomeDialog.show()
+            }, 500)
+        }
+    }
+    
+    // Public methods for showing dialogs from WelcomeScreenDialog
+    fun showAddStashDialog() {
+        // Navigate to stash tab and show dialog
+        binding.viewPager.currentItem = 5 // Stash tab index
+        handler.postDelayed({
+            // Get the stash fragment and trigger its dialog
+            val fragment = supportFragmentManager.findFragmentByTag("f5") as? StashFragment
+            fragment?.showAddStashDialogPublic()
+        }, 300)
+    }
+    
+    fun showSetRatioDialog() {
+        // Navigate to stash tab and show ratio dialog
+        binding.viewPager.currentItem = 5 // Stash tab index
+        handler.postDelayed({
+            // Get the stash fragment and trigger its dialog
+            val fragment = supportFragmentManager.findFragmentByTag("f5") as? StashFragment
+            fragment?.showSetRatioDialogPublic()
+        }, 300)
+    }
+    
+    fun showAddGoalDialog() {
+        // Navigate to goals tab and show dialog
+        binding.viewPager.currentItem = 4 // Goals tab index
+        handler.postDelayed({
+            // Get the goals fragment and trigger its dialog
+            val fragment = supportFragmentManager.findFragmentByTag("f4") as? GoalFragment
+            fragment?.showAddGoalDialogPublic()
+        }, 300)
     }
 
     // Save session state when starting/resuming

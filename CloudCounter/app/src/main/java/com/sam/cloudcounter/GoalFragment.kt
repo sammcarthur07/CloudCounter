@@ -67,19 +67,24 @@ class GoalFragment : Fragment() {
         startRefreshTimer()
 
         binding.fabAddGoal.setOnClickListener {
-            val dialog = AddGoalDialog()
-
-            dialog.setOnGoalCreatedListener { newGoal ->
-                lifecycleScope.launch {
-                    goalViewModel.insertGoal(newGoal)
-                    Toast.makeText(requireContext(), "Goal created!", Toast.LENGTH_SHORT).show()
-                    confettiHelper?.showRainConfetti()
-                    Log.d("GoalFragment", "🎯 Created new goal: ${newGoal.goalName} for ${newGoal.selectedSmokers}")
-                }
-            }
-
-            dialog.show(childFragmentManager, "AddGoalDialog")
+            showAddGoalDialogPublic()
         }
+    }
+    
+    // Public method for showing dialog from outside the fragment
+    fun showAddGoalDialogPublic() {
+        val dialog = AddGoalDialog()
+
+        dialog.setOnGoalCreatedListener { newGoal ->
+            lifecycleScope.launch {
+                goalViewModel.insertGoal(newGoal)
+                Toast.makeText(requireContext(), "Goal created!", Toast.LENGTH_SHORT).show()
+                confettiHelper?.showRainConfetti()
+                Log.d("GoalFragment", "🎯 Created new goal: ${newGoal.goalName} for ${newGoal.selectedSmokers}")
+            }
+        }
+
+        dialog.show(childFragmentManager, "AddGoalDialog")
     }
 
     private fun setupRecyclerView() {

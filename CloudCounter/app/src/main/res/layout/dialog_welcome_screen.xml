@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <!-- Particle container (behind card) -->
+    <FrameLayout
+        android:id="@+id/particleContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Electric surge effect layer -->
+    <View
+        android:id="@+id/electricSurgeEffect"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/electric_surge_border" />
+
+    <!-- Dissolve effect layer -->
+    <View
+        android:id="@+id/dissolveEffect"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.7" />
+
+    <!-- Main Card -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/mainCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="#E64A4A4A"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="12dp">
+
+        <!-- Animated border overlay -->
+        <View
+            android:id="@+id/animatedBorder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/animated_gradient_border" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Title with pulsing glow -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp">
+
+                <!-- Glow effect behind text -->
+                <View
+                    android:id="@+id/titleGlow"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/glow_effect" />
+
+                <TextView
+                    android:id="@+id/dialogTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="WELCOME TO THE CLOUD"
+                    android:textColor="@color/my_light_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.15"
+                    android:shadowColor="@color/my_light_primary"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="20" />
+            </FrameLayout>
+
+            <!-- Instructions Text -->
+            <TextView
+                android:id="@+id/instructionsText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:gravity="center"
+                android:text="Hey there, cloud traveler! 🌿\n\nLet's get your journey set up right.\nPick what you'd like to configure:"
+                android:textColor="@color/tab_unselected_text_color_on_grey"
+                android:textSize="14sp"
+                android:lineSpacingMultiplier="1.3" />
+
+            <!-- Option 1: Set up stash -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardSetupStash"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="#33FFFFFF"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <!-- Shimmer overlay -->
+                    <View
+                        android:id="@+id/shimmerSetupStash"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shimmer_gradient" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp">
+
+                        <CheckBox
+                            android:id="@+id/checkboxSetupStash"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:buttonTint="@color/my_light_primary"
+                            android:layout_marginEnd="12dp" />
+
+                        <TextView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/option_icon_background"
+                            android:gravity="center"
+                            android:text="🍃"
+                            android:textSize="24sp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Set up my stash"
+                                android:textColor="@color/white"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Track your supply"
+                                android:textColor="@color/tab_unselected_text_color_on_grey"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/pulseStash"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/pulse_dot_green" />
+                    </LinearLayout>
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Option 2: Configure ratios -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardSetupRatios"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="#33FFFFFF"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <View
+                        android:id="@+id/shimmerSetupRatios"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shimmer_gradient" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp">
+
+                        <CheckBox
+                            android:id="@+id/checkboxSetupRatios"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:buttonTint="@color/my_light_primary"
+                            android:layout_marginEnd="12dp" />
+
+                        <TextView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/option_icon_background"
+                            android:gravity="center"
+                            android:text="⚖️"
+                            android:textSize="24sp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Configure ratios"
+                                android:textColor="@color/white"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Set consumption amounts"
+                                android:textColor="@color/tab_unselected_text_color_on_grey"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/pulseRatios"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/pulse_dot_green" />
+                    </LinearLayout>
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Option 3: Create goal -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardCreateGoal"
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="#33FFFFFF"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <View
+                        android:id="@+id/shimmerCreateGoal"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/shimmer_gradient" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingHorizontal="16dp">
+
+                        <CheckBox
+                            android:id="@+id/checkboxCreateGoal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:buttonTint="@color/my_light_primary"
+                            android:layout_marginEnd="12dp" />
+
+                        <TextView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/option_icon_background"
+                            android:gravity="center"
+                            android:text="🎯"
+                            android:textSize="24sp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Create my first goal"
+                                android:textColor="@color/white"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Set session targets"
+                                android:textColor="@color/tab_unselected_text_color_on_grey"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:id="@+id/pulseGoal"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/pulse_dot_green" />
+                    </LinearLayout>
+                </FrameLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Divider with glow -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginVertical="16dp">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:background="@drawable/gradient_divider" />
+            </LinearLayout>
+
+            <!-- Helper text -->
+            <TextView
+                android:id="@+id/helperText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:gravity="center"
+                android:text="You can always change these later in settings.\nJust vibe with it! ✨"
+                android:textColor="@color/tab_unselected_text_color_on_grey"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.2"
+                android:alpha="0.8" />
+
+            <!-- Button Container from add goal popup -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:clipChildren="true"
+                android:clipToPadding="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:clipChildren="true"
+                    android:clipToPadding="true">
+
+                    <!-- Skip Button with Image Press Effect -->
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:clipChildren="true"
+                        android:clipToPadding="true">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/buttonSkip"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="#33FFFFFF"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="0dp">
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:clipChildren="true"
+                                android:clipToPadding="true">
+
+                                <!-- Fixed size container for image -->
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:clipChildren="true"
+                                    android:clipToPadding="true">
+
+                                    <ImageView
+                                        android:id="@+id/imageSkipBackground"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:adjustViewBounds="false"
+                                        android:scaleType="centerCrop"
+                                        android:src="@drawable/button_pressed_background"
+                                        android:visibility="gone" />
+                                </FrameLayout>
+
+                                <!-- Text on top -->
+                                <TextView
+                                    android:id="@+id/textSkip"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:text="Skip"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+
+                    <!-- Next Button with Image Press Effect -->
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:clipChildren="true"
+                        android:clipToPadding="true">
+
+                        <androidx.cardview.widget.CardView
+                            android:id="@+id/buttonNext"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cardBackgroundColor="#98FB98"
+                            app:cardCornerRadius="20dp"
+                            app:cardElevation="4dp">
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:clipChildren="true"
+                                android:clipToPadding="true">
+
+                                <!-- Fixed size container for image -->
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:clipChildren="true"
+                                    android:clipToPadding="true">
+
+                                    <ImageView
+                                        android:id="@+id/imageNextBackground"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:adjustViewBounds="false"
+                                        android:scaleType="centerCrop"
+                                        android:src="@drawable/button_pressed_background"
+                                        android:visibility="gone" />
+                                </FrameLayout>
+
+                                <!-- Text on top -->
+                                <TextView
+                                    android:id="@+id/textNext"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:text="Next"
+                                    android:textColor="#424242"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold" />
+                            </FrameLayout>
+                        </androidx.cardview.widget.CardView>
+                    </FrameLayout>
+                </LinearLayout>
+            </FrameLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>
