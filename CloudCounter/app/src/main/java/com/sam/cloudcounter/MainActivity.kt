@@ -5022,87 +5022,134 @@ class MainActivity : AppCompatActivity() {
     private fun checkAndShowWelcomeForFirstCloudSmoker() {
         Log.d("WELCOME_DEBUG", "🔎 checkAndShowWelcomeForFirstCloudSmoker() called")
         lifecycleScope.launch {
-            // Count cloud smokers
-            val allSmokers = withContext(Dispatchers.IO) {
-                repo.getAllSmokersSync()
-            }
-            val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
-            Log.d("WELCOME_DEBUG", "📊 Total smokers: ${allSmokers.size}, Cloud smokers: $cloudSmokerCount")
-            Log.d("WELCOME_DEBUG", "📋 All smokers: ${allSmokers.map { "${it.name}(cloud:${it.isCloudSmoker})" }}")
-            
-            if (cloudSmokerCount == 1) {
-                Log.d("WELCOME_DEBUG", "🎉 First cloud smoker detected! Showing welcome...")
-                withContext(Dispatchers.Main) {
-                    showWelcomeScreenForFirstCloudSmoker()
-                }
-            } else {
-                Log.d("WELCOME_DEBUG", "🔢 Not first cloud smoker (count: $cloudSmokerCount)")
+            // Always show welcome screen after Google login
+            Log.d("WELCOME_DEBUG", "🎉 Showing welcome after Google login...")
+            withContext(Dispatchers.Main) {
+                showWelcomeScreenAfterGoogleLogin()
             }
         }
     }
     
+    private fun showWelcomeScreenAfterGoogleLogin() {
+        Log.d("WELCOME_DEBUG", "🚀 showWelcomeScreenAfterGoogleLogin() called")
+        
+        // Always show after Google login, regardless of previous showing
+        Log.d("WELCOME_DEBUG", "⏰ Scheduling welcome screen to show in 500ms...")
+        handler.postDelayed({
+            Log.d("WELCOME_DEBUG", "🎭 Creating and showing WelcomeScreenDialog now!")
+            val welcomeDialog = WelcomeScreenDialog(this) {
+                // On completion callback - nothing special needed here
+                Log.d("WELCOME_DEBUG", "✨ Welcome screen completed after Google login")
+            }
+            welcomeDialog.show()
+            Log.d("WELCOME_DEBUG", "📱 WelcomeScreenDialog.show() called")
+        }, 1000)
+    }
+    
     // Public methods for showing dialogs from WelcomeScreenDialog
     fun showAddStashDialog() {
+        Log.d("WELCOME_DEBUG", "🏦 MainActivity.showAddStashDialog() called")
         // Navigate to stash tab (index 4) and show dialog
+        Log.d("WELCOME_DEBUG", "📍 Navigating to stash tab (index 4)")
         binding.viewPager.currentItem = 4
+        
         handler.postDelayed({
+            Log.d("WELCOME_DEBUG", "🔍 Looking for StashFragment...")
             // Get all fragments and find StashFragment
             val fragments = supportFragmentManager.fragments
+            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
             val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
             
             if (stashFragment != null) {
+                Log.d("WELCOME_DEBUG", "✅ Found StashFragment, calling showAddStashDialogPublic()")
                 stashFragment.showAddStashDialogPublic()
             } else {
+                Log.d("WELCOME_DEBUG", "⚠️ StashFragment not found, retrying in 500ms...")
                 // If fragment not found, try again after a delay
                 handler.postDelayed({
                     val retryFragments = supportFragmentManager.fragments
                     val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
-                    retryStashFragment?.showAddStashDialogPublic()
+                    if (retryStashFragment != null) {
+                        Log.d("WELCOME_DEBUG", "✅ Found StashFragment on retry")
+                        retryStashFragment.showAddStashDialogPublic()
+                    } else {
+                        Log.d("WELCOME_DEBUG", "❌ StashFragment still not found after retry")
+                    }
                 }, 500)
             }
-        }, 500)
+        }, 1000)
     }
     
     fun showSetRatioDialog() {
+        Log.d("WELCOME_DEBUG", "⚖️ MainActivity.showSetRatioDialog() called")
         // Navigate to stash tab (index 4) and show ratio dialog
+        Log.d("WELCOME_DEBUG", "📍 Navigating to stash tab (index 4)")
         binding.viewPager.currentItem = 4
+        
         handler.postDelayed({
+            Log.d("WELCOME_DEBUG", "🔍 Looking for StashFragment...")
             // Get all fragments and find StashFragment
             val fragments = supportFragmentManager.fragments
+            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
             val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
             
             if (stashFragment != null) {
+                Log.d("WELCOME_DEBUG", "✅ Found StashFragment, calling showSetRatioDialogPublic()")
                 stashFragment.showSetRatioDialogPublic()
             } else {
+                Log.d("WELCOME_DEBUG", "⚠️ StashFragment not found, retrying in 500ms...")
                 // If fragment not found, try again after a delay
                 handler.postDelayed({
+                    Log.d("WELCOME_DEBUG", "🔄 Retry: Looking for StashFragment...")
                     val retryFragments = supportFragmentManager.fragments
+                    Log.d("WELCOME_DEBUG", "📋 Retry: Found ${retryFragments.size} fragments total")
                     val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
-                    retryStashFragment?.showSetRatioDialogPublic()
+                    
+                    if (retryStashFragment != null) {
+                        Log.d("WELCOME_DEBUG", "✅ Retry: Found StashFragment, calling showSetRatioDialogPublic()")
+                        retryStashFragment.showSetRatioDialogPublic()
+                    } else {
+                        Log.d("WELCOME_DEBUG", "❌ Retry: StashFragment still not found!")
+                    }
                 }, 500)
             }
-        }, 500)
+        }, 1000)
     }
     
     fun showAddGoalDialog() {
+        Log.d("WELCOME_DEBUG", "🎯 MainActivity.showAddGoalDialog() called")
         // Navigate to goals tab (index 6) and show dialog
+        Log.d("WELCOME_DEBUG", "📍 Navigating to goals tab (index 6)")
         binding.viewPager.currentItem = 6
+        
         handler.postDelayed({
+            Log.d("WELCOME_DEBUG", "🔍 Looking for GoalFragment...")
             // Get all fragments and find GoalFragment
             val fragments = supportFragmentManager.fragments
+            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
             val goalFragment = fragments.filterIsInstance<GoalFragment>().firstOrNull()
             
             if (goalFragment != null) {
+                Log.d("WELCOME_DEBUG", "✅ Found GoalFragment, calling showAddGoalDialogPublic()")
                 goalFragment.showAddGoalDialogPublic()
             } else {
+                Log.d("WELCOME_DEBUG", "⚠️ GoalFragment not found, retrying in 500ms...")
                 // If fragment not found, try again after a delay
                 handler.postDelayed({
+                    Log.d("WELCOME_DEBUG", "🔄 Retry: Looking for GoalFragment...")
                     val retryFragments = supportFragmentManager.fragments
+                    Log.d("WELCOME_DEBUG", "📋 Retry: Found ${retryFragments.size} fragments total")
                     val retryGoalFragment = retryFragments.filterIsInstance<GoalFragment>().firstOrNull()
-                    retryGoalFragment?.showAddGoalDialogPublic()
+                    
+                    if (retryGoalFragment != null) {
+                        Log.d("WELCOME_DEBUG", "✅ Retry: Found GoalFragment, calling showAddGoalDialogPublic()")
+                        retryGoalFragment.showAddGoalDialogPublic()
+                    } else {
+                        Log.d("WELCOME_DEBUG", "❌ Retry: GoalFragment still not found!")
+                    }
                 }, 500)
             }
-        }, 500)
+        }, 1000)
     }
 
     // Save session state when starting/resuming

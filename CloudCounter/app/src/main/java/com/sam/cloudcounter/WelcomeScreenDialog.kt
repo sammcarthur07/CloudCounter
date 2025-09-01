@@ -121,7 +121,7 @@ class WelcomeScreenDialog(
         
         // Skip button
         buttonSkip.setOnClickListener {
-            markWelcomeShown()
+            // Don't mark as shown - we want it to appear every Google login
             dismiss()
             onComplete()
         }
@@ -138,13 +138,11 @@ class WelcomeScreenDialog(
                 !checkboxCreateGoal.isChecked) {
                 android.util.Log.d("WELCOME_DEBUG", "❌ Nothing selected, closing dialog")
                 // Nothing selected, just close
-                markWelcomeShown()
                 dismiss()
                 onComplete()
             } else {
                 android.util.Log.d("WELCOME_DEBUG", "✅ Options selected, showing dialogs...")
                 // Show dialogs in sequence based on selections
-                markWelcomeShown()
                 dismiss()
                 showNextDialog()
             }
@@ -182,20 +180,26 @@ class WelcomeScreenDialog(
     }
     
     private fun showNextDialog() {
+        android.util.Log.d("WELCOME_DEBUG", "🚀 showNextDialog() called")
+        
         // Build list of dialogs to show
         val stashSelected = checkboxSetupStash.isChecked
         val ratiosSelected = checkboxSetupRatios.isChecked
         val goalSelected = checkboxCreateGoal.isChecked
         
+        android.util.Log.d("WELCOME_DEBUG", "📋 Selections - Stash: $stashSelected, Ratios: $ratiosSelected, Goal: $goalSelected")
+        
         // For now, show dialogs directly without chaining
         // This is simpler and will work better
         if (stashSelected) {
+            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling stash dialog immediately")
             showAddStashDialog()
         }
         
         if (ratiosSelected) {
             // Show ratio dialog after a delay if stash was also selected
-            val delay = if (stashSelected) 300L else 0L
+            val delay = if (stashSelected) 1000L else 0L
+            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling ratio dialog with ${delay}ms delay")
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 showSetRatioDialog()
             }, delay)
@@ -204,35 +208,55 @@ class WelcomeScreenDialog(
         if (goalSelected) {
             // Show goal dialog after a delay if other dialogs were selected
             val delay = when {
-                stashSelected && ratiosSelected -> 600L
-                stashSelected || ratiosSelected -> 300L
+                stashSelected && ratiosSelected -> 2000L
+                stashSelected || ratiosSelected -> 1000L
                 else -> 0L
             }
+            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling goal dialog with ${delay}ms delay")
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 showCreateGoalDialog()
             }, delay)
         }
         
         // Call completion callback
+        android.util.Log.d("WELCOME_DEBUG", "🔚 Calling onComplete callback")
         onComplete()
     }
     
     private fun showAddStashDialog() {
+        android.util.Log.d("WELCOME_DEBUG", "🏦 showAddStashDialog() called")
         // Use MainActivity method to show stash dialog
         val activity = context as? MainActivity
-        activity?.showAddStashDialog()
+        if (activity != null) {
+            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddStashDialog()")
+            activity.showAddStashDialog()
+        } else {
+            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
+        }
     }
     
     private fun showSetRatioDialog() {
+        android.util.Log.d("WELCOME_DEBUG", "⚖️ showSetRatioDialog() called")
         // Use MainActivity method to show ratio dialog
         val activity = context as? MainActivity
-        activity?.showSetRatioDialog()
+        if (activity != null) {
+            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showSetRatioDialog()")
+            activity.showSetRatioDialog()
+        } else {
+            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
+        }
     }
     
     private fun showCreateGoalDialog() {
+        android.util.Log.d("WELCOME_DEBUG", "🎯 showCreateGoalDialog() called")
         // Use MainActivity method to show goal dialog
         val activity = context as? MainActivity
-        activity?.showAddGoalDialog()
+        if (activity != null) {
+            android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddGoalDialog()")
+            activity.showAddGoalDialog()
+        } else {
+            android.util.Log.d("WELCOME_DEBUG", "❌ MainActivity is null!")
+        }
     }
     
     private fun markWelcomeShown() {

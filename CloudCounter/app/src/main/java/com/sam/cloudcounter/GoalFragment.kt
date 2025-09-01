@@ -73,6 +73,7 @@ class GoalFragment : Fragment() {
     
     // Public method for showing dialog from outside the fragment
     fun showAddGoalDialogPublic() {
+        Log.d("WELCOME_DEBUG", "🎯 GoalFragment.showAddGoalDialogPublic() called")
         val dialog = AddGoalDialog()
 
         dialog.setOnGoalCreatedListener { newGoal ->

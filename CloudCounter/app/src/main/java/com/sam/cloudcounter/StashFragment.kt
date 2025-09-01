@@ -478,15 +478,18 @@ class StashFragment : Fragment() {
 
     // Public method for showing dialog from outside the fragment
     fun showAddStashDialogPublic() {
+        Log.d("WELCOME_DEBUG", "💊 StashFragment.showAddStashDialogPublic() called")
         showAddStashDialog()
     }
     
     // Public method for showing ratio dialog from outside the fragment
     fun showSetRatioDialogPublic() {
+        Log.d("WELCOME_DEBUG", "⚖️ StashFragment.showSetRatioDialogPublic() called")
         showSetRatioDialog()
     }
     
     private fun showAddStashDialog() {
+        Log.d("WELCOME_DEBUG", "💊 StashFragment.showAddStashDialog() - Creating dialog")
         val dialog = Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
 
         // Root container - full screen
