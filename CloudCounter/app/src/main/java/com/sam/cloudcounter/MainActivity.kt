@@ -8226,22 +8226,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
+        val timestampsToUndo = retroactiveActivities.toList()
+        retroactiveActivities.clear()
+        
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val timestampsToUndo = retroactiveActivities.toList()
-                retroactiveActivities.clear()
-                
                 // Delete all activities from database
                 timestampsToUndo.forEach { timestamp ->
                     Log.d(TAG, "🔙 Deleting retroactive activity at timestamp: $timestamp")
                     
-                    // Find activities at this timestamp
-                    val activities = repo.getActivitiesForSession(sessionStart)
-                    activities.filter { 
-                        Math.abs(it.timestamp - timestamp) < 100 // Within 100ms 
+                    // Find activities at this timestamp for this session
+                    val activities = repo.getActivitiesBySessionId(sessionStart)
+                    activities.filter { activity ->
+                        Math.abs(activity.timestamp - timestamp) < 100 // Within 100ms 
                     }.forEach { activity ->
                         Log.d(TAG, "🔙 Found and deleting activity: ${activity.type} by ${activity.smokerId}")
-                        repo.deleteActivityLog(activity)
+                        repo.delete(activity)
                         
                         // Remove from activity history and timestamps
                         activityHistory.removeAll { it.id == activity.id }
@@ -8266,7 +8266,7 @@ class MainActivity : AppCompatActivity() {
                     
                     Toast.makeText(
                         this@MainActivity, 
-                        "Undid ${activitiesToUndo.size} retroactive activities", 
+                        "Undid ${timestampsToUndo.size} retroactive activities", 
                         Toast.LENGTH_SHORT
                     ).show()
                     
