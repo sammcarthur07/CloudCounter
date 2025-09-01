@@ -189,33 +189,47 @@ class WelcomeScreenDialog(
         
         android.util.Log.d("WELCOME_DEBUG", "📋 Selections - Stash: $stashSelected, Ratios: $ratiosSelected, Goal: $goalSelected")
         
-        // For now, show dialogs directly without chaining
-        // This is simpler and will work better
-        if (stashSelected) {
-            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling stash dialog immediately")
-            showAddStashDialog()
+        // Build queue of dialogs to show in REVERSE order so stash ends up on top
+        // We add them in reverse: goal -> ratios -> stash
+        // This way stash will be the last to show and therefore on top
+        val dialogQueue = mutableListOf<() -> Unit>()
+        
+        if (goalSelected) {
+            dialogQueue.add {
+                android.util.Log.d("WELCOME_DEBUG", "🎯 Showing goal dialog (will be at bottom)")
+                showCreateGoalDialog()
+            }
         }
         
         if (ratiosSelected) {
-            // Show ratio dialog after a delay if stash was also selected
-            val delay = if (stashSelected) 1000L else 0L
-            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling ratio dialog with ${delay}ms delay")
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            dialogQueue.add {
+                android.util.Log.d("WELCOME_DEBUG", "⚖️ Showing ratios dialog (will be in middle)")
                 showSetRatioDialog()
-            }, delay)
+            }
         }
         
-        if (goalSelected) {
-            // Show goal dialog after a delay if other dialogs were selected
-            val delay = when {
-                stashSelected && ratiosSelected -> 2000L
-                stashSelected || ratiosSelected -> 1000L
-                else -> 0L
+        if (stashSelected) {
+            dialogQueue.add {
+                android.util.Log.d("WELCOME_DEBUG", "📦 Showing stash dialog (will be on top)")
+                showAddStashDialog()
             }
-            android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling goal dialog with ${delay}ms delay")
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                showCreateGoalDialog()
-            }, delay)
+        }
+        
+        // Show dialogs with staggered delays
+        // The last one to appear (stash) will be on top and interactive
+        if (dialogQueue.isNotEmpty()) {
+            // Show first dialog (goal) immediately - it will be at the bottom
+            dialogQueue[0]()
+            
+            // Show remaining dialogs with small delays
+            // Each subsequent dialog will appear on top of the previous
+            for (i in 1 until dialogQueue.size) {
+                val delay = i * 300L  // Small delay between each to ensure proper stacking
+                android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling dialog ${i+1} with ${delay}ms delay")
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    dialogQueue[i]()
+                }, delay)
+            }
         }
         
         // Call completion callback
