@@ -797,11 +797,15 @@ class AddSmokerDialog(
     }
 
     fun onGoogleSignInComplete() {
+        android.util.Log.d("WELCOME_DEBUG", "🌟 onGoogleSignInComplete() called")
         debugPasswordStorage()
         lifecycleScope.launch {
             val userId = authManager.getCurrentUserId()
             val userEmail = authManager.getCurrentUserEmail()
+            android.util.Log.d("WELCOME_DEBUG", "📧 Google sign-in - userId: $userId, email: $userEmail")
+            
             if (userId == null || userEmail == null) {
+                android.util.Log.d("WELCOME_DEBUG", "❌ Authentication failed - null userId or email")
                 Toast.makeText(context, "Authentication failed.", Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -810,13 +814,23 @@ class AddSmokerDialog(
             val existingSmoker = withContext(Dispatchers.IO) {
                 repository.getSmokerByCloudUserId(userId)
             }
+            android.util.Log.d("WELCOME_DEBUG", "🔍 Existing smoker: ${existingSmoker?.name}, verified: ${existingSmoker?.isPasswordVerified}")
 
             // Check cloud profile
             val cloudProfile = cloudSyncService.getCloudSmokerProfile(userId).getOrNull()
+            android.util.Log.d("WELCOME_DEBUG", "☁️ Cloud profile exists: ${cloudProfile != null}")
+
+            // Check if this is potentially the first cloud smoker (for logging)
+            val allSmokers = withContext(Dispatchers.IO) {
+                repository.getAllSmokersSync()
+            }
+            val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+            android.util.Log.d("WELCOME_DEBUG", "📊 Current cloud smoker count before adding: $cloudSmokerCount")
 
             // If smoker already exists and is properly set up, just return
             if (existingSmoker != null && existingSmoker.isPasswordVerified) {
                 Log.d(TAG, "Smoker already exists and is verified, skipping dialog")
+                android.util.Log.d("WELCOME_DEBUG", "⚠️ Smoker already verified, skipping add dialog")
                 return@launch
             }
 
@@ -877,6 +891,27 @@ class AddSmokerDialog(
         }
     }
 
+    private suspend fun checkAndShowWelcomeScreen() {
+        android.util.Log.d("WELCOME_DEBUG", "🔎 Checking if should show welcome screen...")
+        
+        // Check how many cloud smokers we have now
+        val allSmokers = withContext(Dispatchers.IO) {
+            repository.getAllSmokersSync()
+        }
+        val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+        android.util.Log.d("WELCOME_DEBUG", "📊 Cloud smoker count after adding: $cloudSmokerCount")
+        
+        // Show welcome screen if this is the first cloud smoker
+        if (cloudSmokerCount == 1) {
+            android.util.Log.d("WELCOME_DEBUG", "🎊 This is the first cloud smoker! Triggering welcome screen...")
+            withContext(Dispatchers.Main) {
+                (context as? MainActivity)?.showWelcomeScreenForFirstCloudSmoker()
+            }
+        } else {
+            android.util.Log.d("WELCOME_DEBUG", "🔢 Not the first cloud smoker (count: $cloudSmokerCount)")
+        }
+    }
+    
     private fun handleExistingCloudProfile(cloudProfile: CloudSmokerData, name: String, password: String) {
         lifecycleScope.launch {
             val userId = authManager.getCurrentUserId() ?: return@launch
@@ -906,6 +941,7 @@ class AddSmokerDialog(
                     repository.updateSmoker(updated)
                 }
                 onSmokerAdded(updated)
+                android.util.Log.d("WELCOME_DEBUG", "📝 Updated existing smoker")
             } else {
                 // Create new local entry
                 val newSmoker = Smoker(
@@ -922,6 +958,10 @@ class AddSmokerDialog(
                     repository.insertSmoker(newSmoker)
                 }
                 onSmokerAdded(newSmoker.copy(smokerId = id))
+                android.util.Log.d("WELCOME_DEBUG", "✨ Created new cloud smoker: $name")
+                
+                // Check if this was the first cloud smoker and show welcome
+                checkAndShowWelcomeScreen()
             }
 
             Toast.makeText(context, "Logged in as $name", Toast.LENGTH_SHORT).show()
@@ -1058,6 +1098,7 @@ class AddSmokerDialog(
                 withContext(Dispatchers.Main) {
                     onSmokerAdded(finalSmoker)
                     Toast.makeText(context, "Created cloud smoker: $name", Toast.LENGTH_SHORT).show()
+                    android.util.Log.d("WELCOME_DEBUG", "🆕 Created brand new cloud smoker: $name")
 
                     // Save the password for future use
                     if (!password.isNullOrEmpty()) {
@@ -1065,6 +1106,9 @@ class AddSmokerDialog(
                         prefs.edit().putString(userId, password).apply()
                         Log.d(TAG, "Saved password for user $userId")
                     }
+                    
+                    // Check if this was the first cloud smoker and show welcome
+                    checkAndShowWelcomeScreen()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
