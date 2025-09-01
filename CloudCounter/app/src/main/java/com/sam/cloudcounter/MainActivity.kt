@@ -325,7 +325,7 @@ class MainActivity : AppCompatActivity() {
     private var isLongPressing = false
     private val LONG_PRESS_DURATION = 2000L // 2 seconds for long press
     private var retroactiveDialog: Dialog? = null
-    private val retroactiveActivities = mutableListOf<ActivityLog>() // Track bulk added activities for undo
+    private val retroactiveActivities = mutableListOf<Long>() // Track bulk added activity timestamps for undo
 
     // pausing functions
     private var isPaused = false
@@ -1062,8 +1062,8 @@ class MainActivity : AppCompatActivity() {
                             lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
                             
                             // Set this button as selected
-                            setActivityButtonSelected(button, true)
-                            lastSelectedActivityButton = button
+                            setActivityButtonSelected(button as Button, true)
+                            lastSelectedActivityButton = button as Button
                             
                             // Your existing code
                             confettiHelper.showConfettiFromButton(button)
@@ -1479,18 +1479,8 @@ class MainActivity : AppCompatActivity() {
                     // Use the internal logHit function with specific timestamp
                     logHit(activityType, timestamp)
                     
-                    // Track for undo
-                    val activityLog = ActivityLog(
-                        id = 0,
-                        type = activityType,
-                        timestamp = timestamp,
-                        smokerUid = selectedSmoker.uid,
-                        smokerName = selectedSmoker.name,
-                        sessionId = sessionStart,
-                        stashId = null,
-                        shareCode = currentShareCode
-                    )
-                    retroactiveActivities.add(activityLog)
+                    // Track timestamp for undo
+                    retroactiveActivities.add(timestamp)
                     
                     // Small delay between additions for visual feedback
                     if (index < timestamps.size - 1) {
@@ -1520,7 +1510,7 @@ class MainActivity : AppCompatActivity() {
                     // Advance to next smoker if in auto mode
                     if (isAutoMode && quantity > 0) {
                         handler.postDelayed({
-                            advanceToNextSmoker()
+                            nextSmoker()
                         }, 100)
                     }
                 }
@@ -1530,11 +1520,6 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Error adding activities", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-    
-    // Helper function to convert dp to pixels
-    private fun Int.dpToPx(context: Context): Int {
-        return (this * context.resources.displayMetrics.density).toInt()
     }
 
     // In MainActivity onCreate, after binding = ActivityMainBinding.inflate(layoutInflater)
@@ -8243,29 +8228,24 @@ class MainActivity : AppCompatActivity() {
         
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val activitiesToUndo = retroactiveActivities.toList()
+                val timestampsToUndo = retroactiveActivities.toList()
                 retroactiveActivities.clear()
                 
                 // Delete all activities from database
-                activitiesToUndo.forEach { activity ->
-                    Log.d(TAG, "🔙 Deleting retroactive activity: ${activity.type} at ${activity.timestamp}")
+                timestampsToUndo.forEach { timestamp ->
+                    Log.d(TAG, "🔙 Deleting retroactive activity at timestamp: $timestamp")
                     
-                    // Find and delete from database
-                    val dbActivities = repo.getActivitiesForSessionBetween(
-                        sessionStart, 
-                        activity.timestamp - 100, 
-                        activity.timestamp + 100
-                    )
-                    
-                    dbActivities.firstOrNull { 
-                        it.type == activity.type && 
-                        it.smokerId == activity.smokerUid 
-                    }?.let { dbActivity ->
-                        repo.deleteActivityLog(dbActivity)
+                    // Find activities at this timestamp
+                    val activities = repo.getActivitiesForSession(sessionStart)
+                    activities.filter { 
+                        Math.abs(it.timestamp - timestamp) < 100 // Within 100ms 
+                    }.forEach { activity ->
+                        Log.d(TAG, "🔙 Found and deleting activity: ${activity.type} by ${activity.smokerId}")
+                        repo.deleteActivityLog(activity)
                         
                         // Remove from activity history and timestamps
-                        activityHistory.removeAll { it.id == dbActivity.id }
-                        activitiesTimestamps.remove(dbActivity.timestamp)
+                        activityHistory.removeAll { it.id == activity.id }
+                        activitiesTimestamps.remove(activity.timestamp)
                     }
                 }
                 
