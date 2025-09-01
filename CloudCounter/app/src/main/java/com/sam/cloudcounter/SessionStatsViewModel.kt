@@ -236,6 +236,10 @@ class SessionStatsViewModel : ViewModel() {
         val current = _groupStats.value ?: return
         _groupStats.postValue(current.copy(sinceLastGapMs = sinceLastMs))
     }
+    
+    fun updateGroupStats(stats: GroupStats) {
+        _groupStats.postValue(stats)
+    }
 
     fun refreshTimer() {
         val isActive = _isSessionActive.value ?: false

@@ -254,6 +254,9 @@ class MainActivity : AppCompatActivity() {
 
     private var actualLastLogTime = 0L  // The actual last activity timestamp (not affected by rewind)
     private var lastLogTimeBeforeRewind = 0L  // Store the last log time when we start rewinding
+    private var lastConeTimestamp = 0L  // Track last cone timestamp for live timer
+    private var lastJointTimestamp = 0L  // Track last joint timestamp for live timer
+    private var lastBowlTimestamp = 0L  // Track last bowl timestamp for live timer
 
     // Remember the room we're in
     private var currentShareCode: String? = null
@@ -433,11 +436,15 @@ class MainActivity : AppCompatActivity() {
             // Update session timer in ViewModel
             sessionStatsVM.refreshTimerWithOffset(rewindOffset)
 
-            // Update the "since last" stats
-            if (effectiveLastLogTime > 0) {
-                sessionStatsVM.updateSinceLastCone((rewindedNow - effectiveLastLogTime).coerceAtLeast(0))
-            } else {
-                sessionStatsVM.updateSinceLastCone(0L)
+            // Update the "since last" stats for all activity types
+            val current = sessionStatsVM.groupStats.value
+            if (current != null) {
+                val updatedStats = current.copy(
+                    sinceLastGapMs = if (lastConeTimestamp > 0) (rewindedNow - lastConeTimestamp).coerceAtLeast(0) else 0L,
+                    sinceLastJointMs = if (lastJointTimestamp > 0) (rewindedNow - lastJointTimestamp).coerceAtLeast(0) else 0L,
+                    sinceLastBowlMs = if (lastBowlTimestamp > 0) (rewindedNow - lastBowlTimestamp).coerceAtLeast(0) else 0L
+                )
+                sessionStatsVM.updateGroupStats(updatedStats)
             }
 
             handler.postDelayed(this, 1000)
@@ -4446,6 +4453,9 @@ class MainActivity : AppCompatActivity() {
         lastLogTime = startTime
         actualLastLogTime = 0L
         lastLogTimeBeforeRewind = 0L
+        lastConeTimestamp = 0L
+        lastJointTimestamp = 0L
+        lastBowlTimestamp = 0L
         lastIntervalMillis = 0L
         intervalsList.clear()
         activitiesTimestamps.clear()
@@ -4534,6 +4544,9 @@ class MainActivity : AppCompatActivity() {
         sessionActive = false
         rewindOffset = 0L
         actualLastLogTime = 0L
+        lastConeTimestamp = 0L
+        lastJointTimestamp = 0L
+        lastBowlTimestamp = 0L
         activitiesTimestamps.clear()
         lastLogTimeBeforeRewind = 0L
         handler.removeCallbacks(timerRunnable)
@@ -4759,6 +4772,9 @@ class MainActivity : AppCompatActivity() {
         lastLogTime = resumeTime
         actualLastLogTime = 0L
         lastLogTimeBeforeRewind = 0L
+        lastConeTimestamp = 0L
+        lastJointTimestamp = 0L
+        lastBowlTimestamp = 0L
         lastIntervalMillis = 0L
         intervalsList.clear()
         activitiesTimestamps.clear()
@@ -5345,6 +5361,16 @@ class MainActivity : AppCompatActivity() {
             }
         activitiesTimestamps.sort()
         actualLastLogTime = activitiesTimestamps.maxOrNull() ?: 0L
+        
+        // Load last timestamps for each activity type
+        val roomActivities = room.safeActivities()
+        val coneLogs = roomActivities.filter { it.type == "CONE" }
+        val jointLogs = roomActivities.filter { it.type == "JOINT" }
+        val bowlLogs = roomActivities.filter { it.type == "BOWL" }
+        
+        lastConeTimestamp = coneLogs.maxOfOrNull { it.timestamp } ?: 0L
+        lastJointTimestamp = jointLogs.maxOfOrNull { it.timestamp } ?: 0L
+        lastBowlTimestamp = bowlLogs.maxOfOrNull { it.timestamp } ?: 0L
 
         // Rebuild activity history from room activities for current session
         lifecycleScope.launch(Dispatchers.IO) {
@@ -6409,6 +6435,14 @@ class MainActivity : AppCompatActivity() {
             activitiesTimestamps.sort()
             actualLastLogTime = activitiesTimestamps.maxOrNull() ?: now
             lastLogTime = now
+            
+            // Update specific activity type timestamps
+            when (type) {
+                ActivityType.CONE -> lastConeTimestamp = now
+                ActivityType.JOINT -> lastJointTimestamp = now
+                ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
+            }
 
             // Notify auto-add manager about the manual activity - FIXED: Added timestamp parameter
             if (::autoAddManager.isInitialized) {
@@ -6850,11 +6884,29 @@ class MainActivity : AppCompatActivity() {
             } else {
                 0L
             }
+            
+            // Calculate time since last joint
+            val lastJointTimestamp = jointLogs.lastOrNull()?.timestamp ?: 0L
+            val sinceLastJointMs = if (lastJointTimestamp > 0) {
+                now - lastJointTimestamp
+            } else {
+                0L
+            }
+            
+            // Calculate time since last bowl
+            val sinceLastBowlMs = if (lastBowlTimestamp > 0) {
+                now - lastBowlTimestamp
+            } else {
+                0L
+            }
 
             Log.d(TAG, "🔍🔴 DEBUG: Creating GroupStats with:")
             Log.d(TAG, "🔍🔴   - lastConeSmokerName = $lastConeSmokerName")
             Log.d(TAG, "🔍🔴   - lastJointSmokerName = $lastJointSmokerName")
             Log.d(TAG, "🔍🔴   - lastBowlSmokerName = $lastBowlSmokerName")
+            Log.d(TAG, "🔍🔴   - sinceLastConeMs = $sinceLastConeMs")
+            Log.d(TAG, "🔍🔴   - sinceLastJointMs = $sinceLastJointMs")
+            Log.d(TAG, "🔍🔴   - sinceLastBowlMs = $sinceLastBowlMs")
             
             val groupStats = GroupStats(
                 totalCones = totalCones,
@@ -6863,8 +6915,8 @@ class MainActivity : AppCompatActivity() {
                 longestGapMs = longestConeGapMs,  // This is specifically for cones
                 shortestGapMs = shortestConeGapMs,  // This is specifically for cones
                 sinceLastGapMs = sinceLastConeMs,
-                sinceLastJointMs = 0L,
-                sinceLastBowlMs = 0L,
+                sinceLastJointMs = sinceLastJointMs,
+                sinceLastBowlMs = sinceLastBowlMs,
                 totalRounds = actualRounds,
                 hitsInCurrentRound = hitsThisRound,
                 participantCount = perSmokerList.size,
@@ -7004,6 +7056,14 @@ class MainActivity : AppCompatActivity() {
             activitiesTimestamps.sort()
             actualLastLogTime = activitiesTimestamps.maxOrNull() ?: now
             lastLogTime = now
+            
+            // Update specific activity type timestamps
+            when (type) {
+                ActivityType.CONE -> lastConeTimestamp = now
+                ActivityType.JOINT -> lastJointTimestamp = now
+                ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
+            }
 
             activityHistory.add(activityLog)
             if (activityHistory.size > 10) {
@@ -7427,6 +7487,14 @@ class MainActivity : AppCompatActivity() {
             activitiesTimestamps.sort()
             actualLastLogTime = activitiesTimestamps.maxOrNull() ?: now
             lastLogTime = now
+            
+            // Update specific activity type timestamps
+            when (type) {
+                ActivityType.CONE -> lastConeTimestamp = now
+                ActivityType.JOINT -> lastJointTimestamp = now
+                ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
+            }
 
             // Create activity log for history tracking using CAPTURED smoker
             val activityLog = ActivityLog(
