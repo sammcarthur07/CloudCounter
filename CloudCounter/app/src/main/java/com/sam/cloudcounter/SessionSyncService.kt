@@ -561,8 +561,10 @@ class SessionSyncService(
             coneActivities.size
         }
 
-        // Get last cone smoker name
+        // Get last smoker names for each activity type
         val lastConeSmokerName = coneActivities.lastOrNull()?.smokerName
+        val lastJointSmokerName = jointActivities.lastOrNull()?.smokerName
+        val lastBowlSmokerName = bowlActivities.lastOrNull()?.smokerName
 
         val totalHits = activities.size
 
@@ -620,6 +622,8 @@ class SessionSyncService(
             hitsInCurrentRound = hitsInCurrentRound,
             participantCount = activeParticipantCount,
             lastConeSmokerName = lastConeSmokerName,
+            lastJointSmokerName = lastJointSmokerName,
+            lastBowlSmokerName = lastBowlSmokerName,
             conesSinceLastBowl = conesSinceLastBowl
         )
     }
