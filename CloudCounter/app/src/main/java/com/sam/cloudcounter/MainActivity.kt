@@ -5019,6 +5019,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    private fun checkAndShowWelcomeForFirstCloudSmoker() {
+        Log.d("WELCOME_DEBUG", "🔎 checkAndShowWelcomeForFirstCloudSmoker() called")
+        lifecycleScope.launch {
+            // Count cloud smokers
+            val allSmokers = withContext(Dispatchers.IO) {
+                repo.getAllSmokersSync()
+            }
+            val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+            Log.d("WELCOME_DEBUG", "📊 Total smokers: ${allSmokers.size}, Cloud smokers: $cloudSmokerCount")
+            Log.d("WELCOME_DEBUG", "📋 All smokers: ${allSmokers.map { "${it.name}(cloud:${it.isCloudSmoker})" }}")
+            
+            if (cloudSmokerCount == 1) {
+                Log.d("WELCOME_DEBUG", "🎉 First cloud smoker detected! Showing welcome...")
+                withContext(Dispatchers.Main) {
+                    showWelcomeScreenForFirstCloudSmoker()
+                }
+            } else {
+                Log.d("WELCOME_DEBUG", "🔢 Not first cloud smoker (count: $cloudSmokerCount)")
+            }
+        }
+    }
+    
     // Public methods for showing dialogs from WelcomeScreenDialog
     fun showAddStashDialog() {
         // Navigate to stash tab (index 4) and show dialog
@@ -8869,11 +8891,13 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             Log.d(TAG, "🔐 Sign-in result received: resultCode=${result.resultCode}")
             Log.d(TAG, "🔐 Sign-in data: ${result.data}")
+            Log.d("WELCOME_DEBUG", "🌟 Google sign-in result received")
 
             lifecycleScope.launch {
                 authManager.handleSignInResult(result).fold(
                     onSuccess = { user ->
                         Log.d(TAG, "🔐 Sign-in successful: userId=${user.uid}")
+                        Log.d("WELCOME_DEBUG", "✅ Sign-in successful for user: ${user.uid}")
                         val userId = user.uid
                         val googleName = user.displayName
 
@@ -8898,6 +8922,7 @@ class MainActivity : AppCompatActivity() {
                         if (existingSmoker != null) {
                             // We already have this smoker locally
                             Log.d(TAG, "Using existing smoker: ${existingSmoker.name}")
+                            Log.d("WELCOME_DEBUG", "📋 Found existing smoker: ${existingSmoker.name}, isCloud: ${existingSmoker.isCloudSmoker}")
 
                             // Update to ensure password verification is correct
                             val updated = existingSmoker.copy(
@@ -8923,11 +8948,16 @@ class MainActivity : AppCompatActivity() {
                                     "Signed in as ${existingSmoker.name}",
                                     Toast.LENGTH_SHORT
                                 ).show()
+                                
+                                // Check if this is the first cloud smoker and show welcome
+                                Log.d("WELCOME_DEBUG", "🔍 Checking for first cloud smoker after existing smoker sign-in")
+                                checkAndShowWelcomeForFirstCloudSmoker()
                             }
 
                         } else if (cloudProfile != null) {
                             // No local smoker but cloud profile exists
                             Log.d(TAG, "Creating local smoker from cloud profile: ${cloudProfile.name}")
+                            Log.d("WELCOME_DEBUG", "🆕 Creating new smoker from cloud profile: ${cloudProfile.name}")
 
                             // When signing in with Google, we trust the user owns this account
                             // So we mark it as verified even if it has a password
@@ -8956,6 +8986,10 @@ class MainActivity : AppCompatActivity() {
                                     "Signed in as ${cloudProfile.name}",
                                     Toast.LENGTH_SHORT
                                 ).show()
+                                
+                                // Check if this is the first cloud smoker and show welcome
+                                Log.d("WELCOME_DEBUG", "🔍 Checking for first cloud smoker after creating from cloud profile")
+                                checkAndShowWelcomeForFirstCloudSmoker()
                             }
 
                             // Don't show the dialog - they're already authenticated via Google
