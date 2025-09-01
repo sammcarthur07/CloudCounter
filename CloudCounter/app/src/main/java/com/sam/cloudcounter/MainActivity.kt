@@ -4995,7 +4995,7 @@ class MainActivity : AppCompatActivity() {
         // No longer showing on first launch - now triggered when first cloud smoker is added
     }
     
-    private fun showWelcomeScreenForFirstCloudSmoker() {
+    fun showWelcomeScreenForFirstCloudSmoker() {
         Log.d("WELCOME_DEBUG", "🚀 showWelcomeScreenForFirstCloudSmoker() called")
         
         // Check if we should show the welcome screen (hasn't been shown before)
