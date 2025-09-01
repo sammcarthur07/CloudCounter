@@ -1938,20 +1938,30 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope = lifecycleScope,
             // THE CRITICAL FIX IS HERE: Use upsert() instead of insert()
             onSmokerAdded = { smoker ->
+                Log.d("WELCOME_DEBUG", "🎯 onSmokerAdded called - smoker: ${smoker.name}, isCloud: ${smoker.isCloudSmoker}")
                 lifecycleScope.launch(Dispatchers.IO) {
                     repo.insertOrUpdateSmoker(smoker)
+                    Log.d("WELCOME_DEBUG", "✅ Smoker inserted/updated in DB")
                     
                     // Check if this is the first cloud smoker and show welcome screen
+                    Log.d("WELCOME_DEBUG", "🔍 Checking if smoker is cloud smoker: ${smoker.isCloudSmoker}")
                     if (smoker.isCloudSmoker) {
                         val allSmokers = repo.getAllSmokersSync()
                         val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+                        Log.d("WELCOME_DEBUG", "📊 Total smokers: ${allSmokers.size}, Cloud smokers: $cloudSmokerCount")
+                        Log.d("WELCOME_DEBUG", "📋 All smokers: ${allSmokers.map { "${it.name}(cloud:${it.isCloudSmoker})" }}")
                         
                         // Show welcome screen only for the first cloud smoker
                         if (cloudSmokerCount == 1) {
+                            Log.d("WELCOME_DEBUG", "🎉 First cloud smoker detected! Showing welcome screen...")
                             withContext(Dispatchers.Main) {
                                 showWelcomeScreenForFirstCloudSmoker()
                             }
+                        } else {
+                            Log.d("WELCOME_DEBUG", "❌ Not first cloud smoker (count: $cloudSmokerCount), skipping welcome")
                         }
+                    } else {
+                        Log.d("WELCOME_DEBUG", "❌ Not a cloud smoker, skipping welcome check")
                     }
                 }
             },
@@ -4986,16 +4996,26 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun showWelcomeScreenForFirstCloudSmoker() {
+        Log.d("WELCOME_DEBUG", "🚀 showWelcomeScreenForFirstCloudSmoker() called")
+        
         // Check if we should show the welcome screen (hasn't been shown before)
-        if (WelcomeScreenDialog.shouldShowWelcomeScreen(this)) {
+        val shouldShow = WelcomeScreenDialog.shouldShowWelcomeScreen(this)
+        Log.d("WELCOME_DEBUG", "🔑 Should show welcome? $shouldShow")
+        
+        if (shouldShow) {
+            Log.d("WELCOME_DEBUG", "⏰ Scheduling welcome screen to show in 500ms...")
             // Show the welcome screen after a short delay to ensure UI is ready
             handler.postDelayed({
+                Log.d("WELCOME_DEBUG", "🎭 Creating and showing WelcomeScreenDialog now!")
                 val welcomeDialog = WelcomeScreenDialog(this) {
                     // On completion callback - nothing special needed here
-                    Log.d(TAG, "Welcome screen completed for first cloud smoker")
+                    Log.d("WELCOME_DEBUG", "✨ Welcome screen completed for first cloud smoker")
                 }
                 welcomeDialog.show()
+                Log.d("WELCOME_DEBUG", "📱 WelcomeScreenDialog.show() called")
             }, 500)
+        } else {
+            Log.d("WELCOME_DEBUG", "⚠️ Welcome screen already shown before, skipping")
         }
     }
     

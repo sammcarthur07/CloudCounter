@@ -44,6 +44,8 @@ class WelcomeScreenDialog(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        android.util.Log.d("WELCOME_DEBUG", "🎨 WelcomeScreenDialog.onCreate() called")
+        
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.dialog_welcome_screen)
         
@@ -55,9 +57,13 @@ class WelcomeScreenDialog(
         
         setCancelable(false)
         
+        android.util.Log.d("WELCOME_DEBUG", "🔧 Initializing views...")
         initViews()
+        android.util.Log.d("WELCOME_DEBUG", "🎬 Setting up animations...")
         setupAnimations()
+        android.util.Log.d("WELCOME_DEBUG", "👆 Setting up click listeners...")
         setupClickListeners()
+        android.util.Log.d("WELCOME_DEBUG", "✅ WelcomeScreenDialog setup complete")
     }
     
     private fun initViews() {
@@ -122,14 +128,21 @@ class WelcomeScreenDialog(
         
         // Next button - navigate through selected dialogs
         buttonNext.setOnClickListener {
+            android.util.Log.d("WELCOME_DEBUG", "📍 Next button clicked")
+            android.util.Log.d("WELCOME_DEBUG", "☑️ Stash checked: ${checkboxSetupStash.isChecked}")
+            android.util.Log.d("WELCOME_DEBUG", "☑️ Ratios checked: ${checkboxSetupRatios.isChecked}")
+            android.util.Log.d("WELCOME_DEBUG", "☑️ Goal checked: ${checkboxCreateGoal.isChecked}")
+            
             if (!checkboxSetupStash.isChecked && 
                 !checkboxSetupRatios.isChecked && 
                 !checkboxCreateGoal.isChecked) {
+                android.util.Log.d("WELCOME_DEBUG", "❌ Nothing selected, closing dialog")
                 // Nothing selected, just close
                 markWelcomeShown()
                 dismiss()
                 onComplete()
             } else {
+                android.util.Log.d("WELCOME_DEBUG", "✅ Options selected, showing dialogs...")
                 // Show dialogs in sequence based on selections
                 markWelcomeShown()
                 dismiss()
@@ -229,7 +242,11 @@ class WelcomeScreenDialog(
     companion object {
         fun shouldShowWelcomeScreen(context: Context): Boolean {
             val prefs = context.getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
-            return !prefs.getBoolean("welcome_screen_shown", false)
+            val wasShown = prefs.getBoolean("welcome_screen_shown", false)
+            android.util.Log.d("WELCOME_DEBUG", "🔍 Checking if welcome was shown before: $wasShown")
+            val shouldShow = !wasShown
+            android.util.Log.d("WELCOME_DEBUG", "💡 Should show welcome screen: $shouldShow")
+            return shouldShow
         }
     }
 }
