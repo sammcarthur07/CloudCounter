@@ -2230,8 +2230,18 @@ class MainActivity : AppCompatActivity() {
 
             lifecycleScope.launch(Dispatchers.IO) {
                 val newId = repo.insertSmoker(defaultSmoker)
+                
+                // Fetch the newly created smoker with its ID
+                val newSmoker = repo.getSmokerById(newId)
+                
                 withContext(Dispatchers.Main) {
                     Log.d(TAG, "🏠 Created default smoker with ID: $newId")
+                    
+                    // Update the smokers list with the new smoker
+                    if (newSmoker != null) {
+                        smokers = listOf(newSmoker)
+                        updateSmokerSpinner()
+                    }
 
                     // Start session after smoker is created
                     startSession(System.currentTimeMillis())
@@ -2242,7 +2252,11 @@ class MainActivity : AppCompatActivity() {
                     // Log pending activity if there is one
                     pendingActivityType?.let { type ->
                         Log.d(TAG, "🏠 Logging pending activity: $type")
-                        logHitSafe(type)
+                        // Small delay to ensure UI is updated
+                        lifecycleScope.launch {
+                            delay(100)
+                            logHitSafe(type)
+                        }
                         pendingActivityType = null
                     }
 
@@ -6261,8 +6275,21 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🔍🔴   - jointLogs.size = ${jointLogs.size}")
             val lastJoint = jointLogs.lastOrNull()
             if (lastJoint != null) {
+                Log.d(TAG, "🔍🔴 DEBUG: lastJoint.smokerId = ${lastJoint.smokerId}")
                 val jointSmoker = withContext(Dispatchers.IO) {
-                    repo.getSmokerById(lastJoint.smokerId)
+                    val smoker = repo.getSmokerById(lastJoint.smokerId)
+                    Log.d(TAG, "🔍🔴 DEBUG: getSmokerById(${lastJoint.smokerId}) returned: ${smoker?.name} (id: ${smoker?.smokerId})")
+                    
+                    // If smoker not found, log all available smokers
+                    if (smoker == null) {
+                        val allSmokers = repo.getAllSmokersList()
+                        Log.d(TAG, "🔍🔴 DEBUG: Available smokers in DB:")
+                        allSmokers.forEach { s ->
+                            Log.d(TAG, "🔍🔴 DEBUG:   - ${s.name} (id: ${s.smokerId})")
+                        }
+                    }
+                    
+                    smoker
                 }
                 lastJointSmokerName = jointSmoker?.name
                 Log.d(TAG, "🔍🟢 Found last JOINT smoker: $lastJointSmokerName")
@@ -6277,8 +6304,11 @@ class MainActivity : AppCompatActivity() {
 
             if (lastBowl != null) {
                 lastBowlTimestamp = lastBowl.timestamp
+                Log.d(TAG, "🔍🔴 DEBUG: lastBowl.smokerId = ${lastBowl.smokerId}")
                 val bowlSmoker = withContext(Dispatchers.IO) {
-                    repo.getSmokerById(lastBowl.smokerId)
+                    val smoker = repo.getSmokerById(lastBowl.smokerId)
+                    Log.d(TAG, "🔍🔴 DEBUG: getSmokerById(${lastBowl.smokerId}) returned: ${smoker?.name} (id: ${smoker?.smokerId})")
+                    smoker
                 }
                 lastBowlSmokerName = bowlSmoker?.name
                 Log.d(TAG, "🔍🟢 Found last BOWL smoker: $lastBowlSmokerName")
@@ -6846,9 +6876,10 @@ class MainActivity : AppCompatActivity() {
         )
 
         // ALWAYS store in local database first
-        withContext(Dispatchers.IO) {
-            val insertedId = repo.insert(activityLog)
-            Log.d(TAG, "🎯 INSERTED activity ID $insertedId for smoker ${capturedSmoker.name}")
+        val insertedId = withContext(Dispatchers.IO) {
+            val id = repo.insert(activityLog)
+            Log.d(TAG, "🎯 INSERTED activity ID $id for smoker ${capturedSmoker.name}")
+            id
         }
 
         // THEN handle cloud sync if in a cloud session
