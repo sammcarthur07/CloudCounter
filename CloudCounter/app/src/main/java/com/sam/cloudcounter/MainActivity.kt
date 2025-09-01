@@ -323,7 +323,7 @@ class MainActivity : AppCompatActivity() {
     private var countdownEndTime: Long = 0L // When countdown reached 0
     private var longPressStartTime: Long = 0L
     private var isLongPressing = false
-    private val LONG_PRESS_DURATION = 2000L // 2 seconds for long press
+    private val LONG_PRESS_DURATION = 1000L // 1 second for long press
     private var retroactiveDialog: Dialog? = null
     private val retroactiveActivities = mutableListOf<Long>() // Track bulk added activity timestamps for undo
 
@@ -1031,8 +1031,7 @@ class MainActivity : AppCompatActivity() {
                     longPressStartTime = System.currentTimeMillis()
                     isLongPressing = false
                     
-                    // Vibrate on touch down
-                    vibrateFeedback(25)
+                    // No vibration on touch down, only on long press
                     
                     // Create handler for long press detection
                     longPressHandler = Handler(Looper.getMainLooper())
@@ -1040,7 +1039,7 @@ class MainActivity : AppCompatActivity() {
                         if (!isLongPressing) {
                             isLongPressing = true
                             // Long press detected - show retroactive dialog
-                            vibrateFeedback(100) // Strong vibration for long press
+                            vibrateFeedback(1500) // 1.5 second vibration for long press
                             showRetroactiveAddDialog(activityType)
                         }
                     }
@@ -1202,7 +1201,8 @@ class MainActivity : AppCompatActivity() {
                             quantityButtons.forEach { b ->
                                 (b.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
                             }
-                            (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                            (background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
+                            setTextColor(Color.parseColor("#1E1E1E")) // Dark grey text when selected
                             text = inputQty.toString()
                         }
                     } else {
@@ -1223,7 +1223,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         // Select first button by default
-        (quantityButtons[0].background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+        (quantityButtons[0].background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
+        quantityButtons[0].setTextColor(Color.parseColor("#1E1E1E")) // Dark grey text when selected
         
         contentLayout.addView(quantityGrid)
         
@@ -1285,7 +1286,7 @@ class MainActivity : AppCompatActivity() {
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
-                    setColor(if (index == 0) Color.parseColor("#00FF00") else Color.parseColor("#2C2C2C"))
+                    setColor(if (index == 0) Color.parseColor("#98FB98") else Color.parseColor("#2C2C2C"))
                     setStroke(2.dpToPx(this@MainActivity), Color.parseColor("#444444"))
                 }
                 setPadding(12.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity),
@@ -1303,8 +1304,16 @@ class MainActivity : AppCompatActivity() {
                     // Update visuals
                     timeModeButtons.forEach { layout ->
                         (layout.background as? GradientDrawable)?.setColor(Color.parseColor("#2C2C2C"))
+                        // Reset text color for all children
+                        for (i in 0 until childCount) {
+                            (getChildAt(i) as? TextView)?.setTextColor(Color.WHITE)
+                        }
                     }
-                    (background as? GradientDrawable)?.setColor(Color.parseColor("#00FF00"))
+                    (background as? GradientDrawable)?.setColor(Color.parseColor("#98FB98"))
+                    // Set selected text color to dark grey
+                    for (i in 0 until childCount) {
+                        (getChildAt(i) as? TextView)?.setTextColor(Color.parseColor("#1E1E1E"))
+                    }
                 }
             }
             
@@ -1336,7 +1345,7 @@ class MainActivity : AppCompatActivity() {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
-                setColor(Color.parseColor("#00FF00"))
+                setColor(Color.parseColor("#98FB98"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1458,8 +1467,8 @@ class MainActivity : AppCompatActivity() {
                             List(quantity) { now - (it * 1000) } // 1 second apart
                         }
                     }
-                    2 -> { // No Spacing - all at current time
-                        List(quantity) { now }
+                    2 -> { // No Spacing - add small offset to prevent treating as one
+                        List(quantity) { index -> now - (index * 10) } // 10ms apart to ensure uniqueness
                     }
                     else -> List(quantity) { now }
                 }
@@ -1606,22 +1615,7 @@ class MainActivity : AppCompatActivity() {
         // Setup button click listeners with long-press support for retroactive logging
         setupRetroactiveButton(binding.btnAddJoint, ActivityType.JOINT)
         setupRetroactiveButton(binding.btnAddCone, ActivityType.CONE)
-
-        binding.btnAddBowl.setOnClickListener {
-            // Vibrate for 50ms (strong vibration)
-            vibrateFeedback(50)
-
-            // Reset previous button
-            lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
-
-            // Set this button as selected
-            setActivityButtonSelected(binding.btnAddBowl, true)
-            lastSelectedActivityButton = binding.btnAddBowl
-
-            // Your existing code
-            confettiHelper.showConfettiFromButton(binding.btnAddBowl)
-            logHitSafe(ActivityType.BOWL)
-        }
+        setupRetroactiveButton(binding.btnAddBowl, ActivityType.BOWL)
 
         setupBowlLongPress()
 
