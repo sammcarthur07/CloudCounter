@@ -2426,6 +2426,26 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+                    
+                    // Refresh About/Inbox tab when selected (position 7)
+                    if (tab.position == 7) {
+                        Log.d("MainActivity", "About/Inbox tab selected - refreshing auth state")
+                        val aboutOrInboxFragment = supportFragmentManager.findFragmentByTag("f7") as? AboutOrInboxFragment
+                        if (aboutOrInboxFragment != null) {
+                            Log.d("MainActivity", "Found AboutOrInboxFragment, refreshing auth state")
+                            aboutOrInboxFragment.refreshAuthStateAndUI()
+                        } else {
+                            Log.d("MainActivity", "AboutOrInboxFragment not found with tag, trying child fragments")
+                            val viewPagerFragment = supportFragmentManager.findFragmentById(binding.viewPager.id)
+                            if (viewPagerFragment != null) {
+                                val childFragments = viewPagerFragment.childFragmentManager.fragments
+                                childFragments.filterIsInstance<AboutOrInboxFragment>().firstOrNull()?.let {
+                                    Log.d("MainActivity", "Found AboutOrInboxFragment via child fragments")
+                                    it.refreshAuthStateAndUI()
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

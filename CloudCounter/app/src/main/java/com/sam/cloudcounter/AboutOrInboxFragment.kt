@@ -50,6 +50,50 @@ class AboutOrInboxFragment : Fragment() {
         setupStatsControlButton()
         showAppropriateFragment()
     }
+    
+    override fun onResume() {
+        super.onResume()
+        // Re-check auth state when fragment becomes visible again
+        // This ensures the inbox button visibility is updated after adding smokers
+        Log.d(TAG, "onResume - Refreshing auth state and UI")
+        refreshAuthStateAndUI()
+    }
+    
+    override fun setUserVisibleHint(isVisibleToUser: Boolean) {
+        super.setUserVisibleHint(isVisibleToUser)
+        if (isVisibleToUser && isResumed) {
+            Log.d(TAG, "Fragment became visible to user - refreshing auth state")
+            refreshAuthStateAndUI()
+        }
+    }
+    
+    fun refreshAuthStateAndUI() {
+        // Force a refresh of the auth state
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            currentUser.reload().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "Auth state reloaded successfully - UID: ${auth.currentUser?.uid}")
+                } else {
+                    Log.d(TAG, "Failed to reload auth state: ${task.exception?.message}")
+                }
+                // Update UI regardless
+                if (_binding != null) {
+                    setupToggleButton()
+                    setupStatsControlButton()
+                    showAppropriateFragment()
+                }
+            }
+        } else {
+            // No user logged in
+            Log.d(TAG, "No user logged in during refresh")
+            if (_binding != null) {
+                setupToggleButton()
+                setupStatsControlButton()
+                showAppropriateFragment()
+            }
+        }
+    }
 
     private fun loadLastViewState() {
         val prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
@@ -70,12 +114,18 @@ class AboutOrInboxFragment : Fragment() {
     private fun setupToggleButton() {
         // Only show toggle button for admin
         val currentUser = auth.currentUser
+        Log.d(TAG, "setupToggleButton - Current user UID: ${currentUser?.uid}, Admin UID: $ADMIN_UID")
+        Log.d(TAG, "setupToggleButton - User email: ${currentUser?.email}")
+        Log.d(TAG, "setupToggleButton - Is admin: ${currentUser?.uid == ADMIN_UID}")
+        
         if (currentUser?.uid == ADMIN_UID) {
+            Log.d(TAG, "Admin detected - showing inbox button")
             binding.btnToggleView.visibility = View.VISIBLE
             binding.btnToggleView.setOnClickListener {
                 toggleView()
             }
         } else {
+            Log.d(TAG, "Not admin - hiding inbox button")
             binding.btnToggleView.visibility = View.GONE
         }
     }
@@ -96,31 +146,41 @@ class AboutOrInboxFragment : Fragment() {
     private fun showAppropriateFragment() {
         val currentUser = auth.currentUser
         val isAdmin = currentUser?.uid == ADMIN_UID
+        
+        Log.d(TAG, "showAppropriateFragment - Current user: ${currentUser?.uid}")
+        Log.d(TAG, "showAppropriateFragment - Is admin: $isAdmin")
+        Log.d(TAG, "showAppropriateFragment - Current view state: $currentViewState")
 
         val fragment = when {
             !isAdmin -> {
                 // Non-admin users always see About
+                Log.d(TAG, "Showing About fragment for non-admin user")
                 binding.btnToggleView.visibility = View.GONE
                 binding.btnStatsControls.visibility = View.GONE
                 AboutFragment()
             }
             currentViewState == VIEW_STATE_INBOX -> {
                 // Admin viewing inbox
+                Log.d(TAG, "Showing Inbox fragment for admin user")
                 binding.btnToggleView.text = "View About"
                 binding.btnStatsControls.visibility = View.VISIBLE
                 InboxFragment()
             }
             else -> {
                 // Admin viewing About (default)
+                Log.d(TAG, "Showing About fragment for admin user")
                 binding.btnToggleView.text = "View Inbox"
                 binding.btnStatsControls.visibility = View.GONE
                 AboutFragment()
             }
         }
 
-        childFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, fragment)
-            .commit()
+        // Only replace fragment if the binding is still valid
+        if (_binding != null) {
+            childFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit()
+        }
     }
 
     private fun toggleView() {
