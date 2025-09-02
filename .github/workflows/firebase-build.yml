@@ -75,7 +75,7 @@ jobs:
         echo "🔨 Building APK..."
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
           echo "Building DEBUG APK..."
-          ./gradlew assembleDebug --stacktrace --info
+          ./gradlew assembleDebug --stacktrace || { echo "❌ Gradle build failed!"; exit 1; }
         else
           echo "Building RELEASE APK with signing..."
           if [ ! -f "keystore/release.jks" ]; then
@@ -84,12 +84,24 @@ jobs:
             exit 1
           fi
           echo "✅ Keystore found, building signed APK..."
+          echo "Debug: Using keystore at $(pwd)/keystore/release.jks"
+          echo "Debug: KEYSTORE_PASSWORD is ${KEYSTORE_PASSWORD:+set}"
+          echo "Debug: KEY_ALIAS is ${KEY_ALIAS:+set}"
+          echo "Debug: KEY_PASSWORD is ${KEY_PASSWORD:+set}"
+          
+          # Use absolute path for keystore
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=keystore/release.jks \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore/release.jks \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
-            --stacktrace --info
+            --stacktrace || { echo "❌ Gradle build failed!"; exit 1; }
+        fi
+        
+        # Check if build actually succeeded
+        if [ $? -ne 0 ]; then
+          echo "❌ Build failed!"
+          exit 1
         fi
         
         echo "📦 Build completed, checking outputs..."
