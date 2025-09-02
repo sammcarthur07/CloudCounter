@@ -174,18 +174,28 @@ trigger_github_cloud_build() {
     git checkout main 2>/dev/null
     git push origin main 2>/dev/null || git push origin HEAD:main 2>/dev/null
     
-    # Trigger GitHub Actions workflow using gh CLI or curl
-    if command -v gh &> /dev/null; then
-        # Use GitHub CLI if available
-        gh workflow run firebase-build.yml \
-            -f build_type="$build_type" \
-            -f distribution_notes="Mobile trigger - $(date '+%Y-%m-%d %H:%M')"
-        
-        if [ $? -eq 0 ]; then
-            print_status "Cloud build triggered via GitHub Actions!"
-            print_info "Check email in 5-10 minutes for the APK"
+    # Trigger GitHub Actions workflow using curl (more reliable in Termux)
+    if command -v curl &> /dev/null; then
+        # Use GitHub API directly
+        local token=$(gh config get -h github.com oauth_token 2>/dev/null)
+        if [ -n "$token" ]; then
+            local response_code=$(curl -X POST \
+                -H "Accept: application/vnd.github.v3+json" \
+                -H "Authorization: token $token" \
+                "https://api.github.com/repos/$GITHUB_USER/$REPO_NAME/actions/workflows/firebase-build.yml/dispatches" \
+                -d "{\"ref\": \"main\", \"inputs\": {\"build_type\": \"$build_type\", \"distribution_notes\": \"Mobile trigger - $(date '+%Y-%m-%d %H:%M')\"}}" \
+                -s -o /dev/null -w "%{http_code}")
+            
+            if [ "$response_code" = "204" ]; then
+                print_status "Cloud build triggered via GitHub Actions!"
+                print_info "Check email in 5-10 minutes for the APK"
+                print_info "Monitor status: https://github.com/$GITHUB_USER/$REPO_NAME/actions"
+            else
+                print_error "Failed to trigger GitHub Actions (HTTP $response_code)"
+                print_info "Try manual trigger at: https://github.com/$GITHUB_USER/$REPO_NAME/actions"
+            fi
         else
-            print_error "Failed to trigger GitHub Actions"
+            print_error "GitHub CLI not authenticated"
         fi
     else
         # Alternative: provide manual instructions
