@@ -9,23 +9,29 @@
     android:background="?android:attr/colorBackground"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="VERSION : AUG 25th v16"
-        android:textColor="#00FF40"
-        android:textSize="5sp"
-        android:textStyle="bold"
-        android:padding="8dp" />
-
     <LinearLayout
+        android:id="@+id/topSectionContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingTop="7dp"
-        android:paddingBottom="0dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="4dp" >
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="VERSION : AUG 25th v16"
+            android:textColor="#00FF40"
+            android:textSize="5sp"
+            android:textStyle="bold"
+            android:padding="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingTop="7dp"
+            android:paddingBottom="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="4dp" >
 
         <Spinner
             android:id="@+id/spinnerSmoker"
@@ -61,10 +67,22 @@
         </RadioGroup>
 
         <ImageButton
-            android:id="@+id/btnVibrationToggle"
+            android:id="@+id/btnLayoutRotation"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:scaleType="centerInside"
+            android:contentDescription="Toggle layout position"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+
+        <ImageButton
+            android:id="@+id/btnVibrationToggle"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_vibration_on"
             android:scaleType="centerInside"
@@ -431,6 +449,7 @@
             android:layout_height="wrap_content"
             android:src="@android:drawable/ic_media_next"
             android:contentDescription="Increase rounds" />
+    </LinearLayout>
     </LinearLayout>
 
     <com.google.android.material.tabs.TabLayout

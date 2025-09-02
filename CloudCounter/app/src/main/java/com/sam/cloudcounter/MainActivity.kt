@@ -231,6 +231,7 @@ class MainActivity : AppCompatActivity() {
     private var isInFirstConeDialog = false
 
     private var notificationsEnabled = true  // Track notification state
+    private var vibrationsEnabled = true  // Track vibration state
 
     private lateinit var addSmokerDialog: AddSmokerDialog
     private lateinit var passwordDialog: PasswordDialog
@@ -329,6 +330,7 @@ class MainActivity : AppCompatActivity() {
     private val LONG_PRESS_DURATION = 1000L // 1 second for long press
     private var retroactiveDialog: Dialog? = null
     private val retroactiveActivities = mutableListOf<Long>() // Track bulk added activity timestamps for undo
+    private var pendingBowlQuantity = 1 // Track pending bowl quantity
 
     // pausing functions
     private var isPaused = false
@@ -1578,6 +1580,7 @@ class MainActivity : AppCompatActivity() {
         initializeSupportMessagesWatcher()
 
         setupVibrationToggle()
+        setupLayoutRotation()
 
         // Initialize Stash ViewModel if not already initialized by delegation
         if (!::stashViewModel.isInitialized) {
@@ -2156,6 +2159,111 @@ class MainActivity : AppCompatActivity() {
         }
 
         colorAnimation.start()
+    }
+
+    private fun setupLayoutRotation() {
+        // Load layout position preference (false = top, true = bottom)
+        var isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        updateLayoutPosition(isLayoutAtBottom)
+        
+        binding.btnLayoutRotation.setOnClickListener {
+            isLayoutAtBottom = !isLayoutAtBottom
+            prefs.edit().putBoolean("layout_at_bottom", isLayoutAtBottom).apply()
+            
+            updateLayoutPosition(isLayoutAtBottom)
+            animateLayoutRotation()
+            
+            val message = if (isLayoutAtBottom) "Controls moved to bottom" else "Controls moved to top"
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun updateLayoutPosition(isAtBottom: Boolean) {
+        val rootLayout = binding.mainActivityRootLayout
+        val topSection = binding.topSectionContainer
+        val tabLayout = binding.tabLayout
+        val viewPager = binding.viewPager
+        
+        // Remove views first
+        rootLayout.removeView(topSection)
+        rootLayout.removeView(tabLayout)
+        rootLayout.removeView(viewPager)
+        
+        // Re-add in the correct order
+        if (isAtBottom) {
+            // Order: TabLayout, ViewPager, TopSection
+            rootLayout.addView(tabLayout)
+            rootLayout.addView(viewPager)
+            rootLayout.addView(topSection)
+            
+            // Set ViewPager to take remaining space
+            viewPager.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        } else {
+            // Order: TopSection, TabLayout, ViewPager (original)
+            rootLayout.addView(topSection)
+            rootLayout.addView(tabLayout)
+            rootLayout.addView(viewPager)
+            
+            // Set ViewPager to take remaining space
+            viewPager.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        }
+    }
+    
+    private fun vibrateFeedback(duration: Long = 50) {
+        if (!vibrationsEnabled) return
+        
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(duration)
+        }
+    }
+    
+    private fun animateLayoutRotation() {
+        // Animate the rotation button with a spin
+        val rotation = ObjectAnimator.ofFloat(binding.btnLayoutRotation, "rotation", 0f, 180f).apply {
+            duration = 500
+            interpolator = DecelerateInterpolator()
+        }
+        
+        // Flash with neon green color
+        val originalTint = ContextCompat.getColor(this, android.R.color.darker_gray)
+        val neonGreen = Color.parseColor("#98FB98")
+        
+        val colorAnimation = ValueAnimator.ofArgb(neonGreen, originalTint).apply {
+            duration = 1000
+            addUpdateListener { animator ->
+                val color = animator.animatedValue as Int
+                binding.btnLayoutRotation.setColorFilter(color)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    binding.btnLayoutRotation.setColorFilter(originalTint)
+                }
+            })
+        }
+        
+        AnimatorSet().apply {
+            playTogether(rotation, colorAnimation)
+            start()
+        }
     }
 
 
@@ -12160,4 +12268,9 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "📱 === END DEBUG ===")
     }
 
+}
+
+// Extension function for dp to px conversion
+fun Int.dpToPx(context: Context): Int {
+    return (this * context.resources.displayMetrics.density).toInt()
 }
