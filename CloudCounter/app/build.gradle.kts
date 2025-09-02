@@ -22,13 +22,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true  // Enable R8 optimization for smaller APK
+            isShrinkResources = true  // Remove unused resources
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use debug signing for release builds to make them installable
-            // In production, you would use a proper release keystore
+            // Note: Signing is handled by GitHub Actions for production builds
+            // For local builds, this will use debug signing
             signingConfig = signingConfigs.getByName("debug")
             
             // Firebase App Distribution configuration
