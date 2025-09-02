@@ -170,7 +170,9 @@ trigger_github_cloud_build() {
     
     # First, make sure we're pushed to GitHub
     print_info "Ensuring latest code is on GitHub..."
-    git push origin main 2>/dev/null || git push origin HEAD 2>/dev/null
+    # Always work with main branch for workflows
+    git checkout main 2>/dev/null
+    git push origin main 2>/dev/null || git push origin HEAD:main 2>/dev/null
     
     # Trigger GitHub Actions workflow using gh CLI or curl
     if command -v gh &> /dev/null; then

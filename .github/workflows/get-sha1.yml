@@ -1,0 +1,68 @@
+name: Get Debug SHA-1 Fingerprint
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-sha1:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Generate Debug Keystore
+      run: |
+        # GitHub Actions generates a debug keystore automatically
+        # But we'll create one explicitly to get its SHA-1
+        mkdir -p ~/.android
+        keytool -genkey -v -keystore ~/.android/debug.keystore \
+          -storepass android -alias androiddebugkey -keypass android \
+          -keyalg RSA -keysize 2048 -validity 10000 \
+          -dname "CN=Android Debug,O=Android,C=US" || true
+        
+    - name: Get SHA-1 Fingerprint
+      run: |
+        echo "========================================="
+        echo "GitHub Actions Debug SHA-1 Fingerprint"
+        echo "========================================="
+        keytool -list -v -keystore ~/.android/debug.keystore \
+          -alias androiddebugkey -storepass android -keypass android \
+          | grep SHA1
+        echo "========================================="
+        echo ""
+        echo "📋 COPY THE SHA1 ABOVE AND ADD IT TO FIREBASE!"
+        echo ""
+        echo "Steps:"
+        echo "1. Go to: https://console.firebase.google.com/project/cloudcounter-sam/settings/general"
+        echo "2. Scroll down to 'Your apps' section"
+        echo "3. Click on your Android app"
+        echo "4. Click 'Add fingerprint'"
+        echo "5. Paste the SHA1 value (without 'SHA1:' prefix)"
+        echo "6. Save"
+        echo "========================================="
+        
+    - name: Build Debug APK to Verify
+      run: |
+        cd CloudCounter
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        
+    - name: Get APK SHA-1
+      run: |
+        echo "========================================="
+        echo "Verifying APK SHA-1 (should match above)"
+        echo "========================================="
+        APK_PATH="CloudCounter/app/build/outputs/apk/debug/app-debug.apk"
+        if [ -f "$APK_PATH" ]; then
+          # Extract certificate from APK
+          unzip -p "$APK_PATH" META-INF/*.RSA | keytool -printcert | grep SHA1 || \
+          unzip -p "$APK_PATH" META-INF/*.DSA | keytool -printcert | grep SHA1 || \
+          echo "Could not extract SHA-1 from APK"
+        fi
