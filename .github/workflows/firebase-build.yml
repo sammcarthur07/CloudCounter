@@ -69,17 +69,31 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
         cd CloudCounter
+        echo "🧹 Cleaning project..."
         ./gradlew clean
+        
+        echo "🔨 Building APK..."
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
-          ./gradlew assembleDebug --stacktrace
+          echo "Building DEBUG APK..."
+          ./gradlew assembleDebug --stacktrace --info
         else
+          echo "Building RELEASE APK with signing..."
+          if [ ! -f "keystore/release.jks" ]; then
+            echo "❌ Keystore file not found!"
+            ls -la keystore/ || echo "Keystore directory not found"
+            exit 1
+          fi
+          echo "✅ Keystore found, building signed APK..."
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=keystore/release.jks \
-            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$KEY_PASSWORD \
-            --stacktrace
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            --stacktrace --info
         fi
+        
+        echo "📦 Build completed, checking outputs..."
+        find app/build/outputs -name "*.apk" -type f -exec ls -la {} \; || echo "No APK files found in outputs"
         
     - name: List built APKs
       run: |
@@ -132,6 +146,9 @@ jobs:
         npm install -g firebase-tools
         
         # Find the APK - check multiple possible locations
+        echo "🔍 Looking for APK files..."
+        find . -name "*.apk" -type f -exec ls -la {} \;
+        
         APK_PATH=""
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
           # Check for debug APK in various locations
@@ -139,8 +156,10 @@ jobs:
             "app/build/outputs/apk/debug/app-debug.apk" \
             "app/build/outputs/apk/debug/CloudCounter-debug.apk" \
             "app/build/outputs/apk/app-debug.apk"; do
+            echo "Checking: $path"
             if [ -f "$path" ]; then
               APK_PATH="$path"
+              echo "✅ Found APK at: $path"
               break
             fi
           done
@@ -150,11 +169,22 @@ jobs:
             "app/build/outputs/apk/release/app-release.apk" \
             "app/build/outputs/apk/release/CloudCounter-release.apk" \
             "app/build/outputs/apk/app-release.apk"; do
+            echo "Checking: $path"
             if [ -f "$path" ]; then
               APK_PATH="$path"
+              echo "✅ Found APK at: $path"
               break
             fi
           done
+        fi
+        
+        # If no APK found in expected locations, try to find any APK
+        if [ -z "$APK_PATH" ]; then
+          echo "❌ No APK found in expected locations, searching..."
+          APK_PATH=$(find . -name "*.apk" -type f | head -1)
+          if [ -n "$APK_PATH" ]; then
+            echo "📦 Found APK at: $APK_PATH"
+          fi
         fi
         
         # List all APK files for debugging
