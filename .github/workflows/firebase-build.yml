@@ -30,30 +30,70 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v2
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
     - name: Grant execute permission for gradlew
       run: |
         cd CloudCounter
         chmod +x gradlew
         
+    - name: Check project structure
+      run: |
+        ls -la
+        ls -la CloudCounter/
+        ls -la CloudCounter/app/
+        
     - name: Build APK
       run: |
         cd CloudCounter
+        ./gradlew clean
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
         else
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease --stacktrace
         fi
         
-    - name: Upload APK to Firebase App Distribution
+    - name: List built APKs
+      run: |
+        find CloudCounter -name "*.apk" -type f
+        
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-${{ github.event.inputs.build_type }}
+        path: |
+          CloudCounter/app/build/outputs/apk/**/*.apk
+          
+    - name: Upload APK to Firebase App Distribution (using gradle)
+      run: |
+        cd CloudCounter
+        if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
+          ./gradlew appDistributionUploadDebug --stacktrace
+        else
+          ./gradlew appDistributionUploadRelease --stacktrace
+        fi
+      env:
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      continue-on-error: true
+      
+    - name: Alternative Firebase Distribution
+      if: failure()
       run: |
         cd CloudCounter
         
         # Install Firebase CLI
         npm install -g firebase-tools
-        
-        # Set up Firebase credentials
-        echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > firebase-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS="firebase-key.json"
         
         # Find the APK
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
@@ -62,15 +102,22 @@ jobs:
           APK_PATH="app/build/outputs/apk/release/app-release.apk"
         fi
         
-        # Distribute via Firebase
-        firebase appdistribution:distribute "$APK_PATH" \
-          --app 1:778271181918:android:2225b29f4fe7cea4d338cf \
-          --release-notes "${{ github.event.inputs.distribution_notes }}" \
-          --testers "mcarthur.sp@gmail.com"
+        # Check if APK exists
+        if [ -f "$APK_PATH" ]; then
+          echo "Found APK at: $APK_PATH"
+          ls -la "$APK_PATH"
           
-    - name: Upload APK as artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: app-${{ github.event.inputs.build_type }}
-        path: |
-          CloudCounter/app/build/outputs/apk/**/*.apk
+          # Try distributing with token
+          if [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            firebase appdistribution:distribute "$APK_PATH" \
+              --app 1:778271181918:android:2225b29f4fe7cea4d338cf \
+              --release-notes "${{ github.event.inputs.distribution_notes }}" \
+              --testers "mcarthur.sp@gmail.com" \
+              --token "${{ secrets.FIREBASE_TOKEN }}"
+          else
+            echo "FIREBASE_TOKEN not set, skipping Firebase distribution"
+          fi
+        else
+          echo "APK not found at: $APK_PATH"
+          exit 1
+        fi
