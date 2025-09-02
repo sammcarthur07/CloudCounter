@@ -69,11 +69,12 @@ jobs:
         find CloudCounter -name "*.apk" -type f
         
     - name: Upload APK as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.3.3
       with:
         name: app-${{ github.event.inputs.build_type }}
         path: |
           CloudCounter/app/build/outputs/apk/**/*.apk
+        if-no-files-found: warn
           
     - name: Upload APK to Firebase App Distribution (using gradle)
       run: |

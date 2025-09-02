@@ -1,0 +1,62 @@
+name: Build APK (Latest)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      run: |
+        echo "Android SDK setup handled by GitHub runner"
+        
+    - name: Grant execute permission
+      run: |
+        cd CloudCounter
+        chmod +x gradlew
+        ls -la gradlew
+        
+    - name: Build with Gradle
+      run: |
+        cd CloudCounter
+        echo "Building ${{ github.event.inputs.build_type }} APK..."
+        ./gradlew clean
+        
+        if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
+          ./gradlew assembleDebug --stacktrace
+        else
+          ./gradlew assembleRelease --stacktrace
+        fi
+        
+    - name: List APK files
+      run: |
+        echo "Looking for APK files..."
+        find CloudCounter -type f -name "*.apk" -ls
+        
+    - name: Store APK
+      uses: actions/upload-artifact@v4.3.3
+      with:
+        name: cloudcounter-${{ github.event.inputs.build_type }}-${{ github.run_number }}
+        path: CloudCounter/app/build/outputs/apk/**/*.apk
+        retention-days: 5
+        if-no-files-found: error
