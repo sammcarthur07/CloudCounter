@@ -22,7 +22,6 @@
             android:layout_marginBottom="-24dp"
             android:scaleType="centerCrop"
             android:src="@drawable/section_background"
-            android:alpha="0.3"
             android:contentDescription="Section background" />
         
         <LinearLayout
