@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - debug
+          - release
       distribution_notes:
         description: 'Release Notes'
         required: false

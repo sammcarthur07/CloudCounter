@@ -224,7 +224,7 @@ show_menu() {
     echo "5) Trigger Cloud Build (Debug)"
     echo "6) Trigger Cloud Build (Release)"
     echo "7) GitHub Actions Cloud Build (Debug)"
-    echo "8) GitHub Actions Cloud Build (Debug APK)"
+    echo "8) GitHub Actions Cloud Build (Release)"
     echo "9) Check Email for APK"
     echo "10) Install APK from Downloads"
     echo "11) Full Workflow (Sync → Build → Install)"
@@ -258,7 +258,7 @@ main() {
             5) trigger_cloud_build "debug" ;;
             6) trigger_cloud_build "release" ;;
             7) trigger_github_cloud_build "debug" ;;
-            8) trigger_github_cloud_build "debug" ;;
+            8) trigger_github_cloud_build "release" ;;
             9) download_apk ;;
             10) install_from_downloads ;;
             11) full_workflow ;;
