@@ -9,11 +9,27 @@
     android:background="?android:attr/colorBackground"
     tools:context=".MainActivity">
 
-    <LinearLayout
-        android:id="@+id/topSectionContainer"
+    <FrameLayout
+        android:id="@+id/topSectionWrapper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="wrap_content">
+        
+        <ImageView
+            android:id="@+id/sectionBackgroundImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="-24dp"
+            android:layout_marginBottom="-24dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/section_background"
+            android:alpha="0.3"
+            android:contentDescription="Section background" />
+        
+        <LinearLayout
+            android:id="@+id/topSectionContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
         <TextView
             android:layout_width="wrap_content"
@@ -451,6 +467,7 @@
             android:contentDescription="Increase rounds" />
     </LinearLayout>
     </LinearLayout>
+    </FrameLayout>
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"

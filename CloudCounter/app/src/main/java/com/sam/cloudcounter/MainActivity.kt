@@ -2179,12 +2179,13 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateLayoutPosition(isAtBottom: Boolean) {
         val rootLayout = binding.mainActivityRootLayout
+        val topSectionWrapper = binding.topSectionWrapper
         val topSection = binding.topSectionContainer
         val tabLayout = binding.tabLayout
         val viewPager = binding.viewPager
         
-        // Remove views first
-        rootLayout.removeView(topSection)
+        // Remove views first (remove wrapper, not container)
+        rootLayout.removeView(topSectionWrapper)
         rootLayout.removeView(tabLayout)
         rootLayout.removeView(viewPager)
         
@@ -2194,10 +2195,10 @@ class MainActivity : AppCompatActivity() {
         
         // Re-add in the correct order
         if (isAtBottom) {
-            // Order: TabLayout, ViewPager, TopSection
+            // Order: TabLayout, ViewPager, TopSectionWrapper
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
-            rootLayout.addView(topSection)
+            rootLayout.addView(topSectionWrapper)
             
             // Add top padding to TabLayout when it's at the top
             tabLayout.setPadding(
@@ -2222,8 +2223,8 @@ class MainActivity : AppCompatActivity() {
                 1f
             )
         } else {
-            // Order: TopSection, TabLayout, ViewPager (original)
-            rootLayout.addView(topSection)
+            // Order: TopSectionWrapper, TabLayout, ViewPager (original)
+            rootLayout.addView(topSectionWrapper)
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
             
