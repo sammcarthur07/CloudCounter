@@ -40,16 +40,26 @@ jobs:
       run: |
         cd CloudCounter
         echo "Building ${{ github.event.inputs.build_type }} APK..."
+        
+        # Show Gradle version and project info for debugging
+        ./gradlew --version
+        ./gradlew projects
+        
+        # Clean first
         ./gradlew clean
         
+        # Build based on type with detailed output
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
-          ./gradlew assembleDebug --stacktrace
+          echo "Building debug APK..."
+          ./gradlew assembleDebug --stacktrace --info
         else
-          # For release builds, use debug keystore if no release key is configured
-          # This makes the APK installable for testing
-          echo "Building release APK with debug signing for testing..."
-          ./gradlew assembleRelease --stacktrace || ./gradlew assembleDebug --stacktrace
+          echo "Building release APK..."
+          ./gradlew assembleRelease --stacktrace --info
         fi
+        
+        # Show build results
+        echo "Build completed. Checking output directories..."
+        ls -la app/build/outputs/ 2>/dev/null || echo "No build outputs directory"
         
     - name: List APK files
       run: |

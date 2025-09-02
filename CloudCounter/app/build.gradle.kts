@@ -20,12 +20,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        create("debug") {
-            // Default debug keystore configuration
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
