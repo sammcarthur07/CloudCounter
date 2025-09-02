@@ -20,6 +20,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("debug") {
+            // Default debug keystore configuration
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -27,6 +33,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Use debug signing for release builds to make them installable
+            // In production, you would use a proper release keystore
+            signingConfig = signingConfigs.getByName("debug")
+            
             // Firebase App Distribution configuration
             firebaseAppDistribution {
                 appId = "1:778271181918:android:2225b29f4fe7cea4d338cf"
