@@ -55,6 +55,9 @@ jobs:
       run: |
         echo "Looking for APK files..."
         find CloudCounter -type f -name "*.apk" -ls
+        echo "Checking specific build output directories:"
+        ls -la CloudCounter/app/build/outputs/apk/ 2>/dev/null || echo "apk directory not found"
+        ls -la CloudCounter/app/build/outputs/apk/*/ 2>/dev/null || echo "subdirectories not found"
         
     - name: Store APK
       uses: actions/upload-artifact@v4.3.3

@@ -96,12 +96,35 @@ jobs:
         # Install Firebase CLI
         npm install -g firebase-tools
         
-        # Find the APK
+        # Find the APK - check multiple possible locations
+        APK_PATH=""
         if [ "${{ github.event.inputs.build_type }}" == "debug" ]; then
-          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          # Check for debug APK in various locations
+          for path in \
+            "app/build/outputs/apk/debug/app-debug.apk" \
+            "app/build/outputs/apk/debug/CloudCounter-debug.apk" \
+            "app/build/outputs/apk/app-debug.apk"; do
+            if [ -f "$path" ]; then
+              APK_PATH="$path"
+              break
+            fi
+          done
         else
-          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          # Check for release APK in various locations  
+          for path in \
+            "app/build/outputs/apk/release/app-release.apk" \
+            "app/build/outputs/apk/release/CloudCounter-release.apk" \
+            "app/build/outputs/apk/app-release.apk"; do
+            if [ -f "$path" ]; then
+              APK_PATH="$path"
+              break
+            fi
+          done
         fi
+        
+        # List all APK files for debugging
+        echo "All APK files found:"
+        find . -name "*.apk" -type f
         
         # Check if APK exists
         if [ -f "$APK_PATH" ]; then
