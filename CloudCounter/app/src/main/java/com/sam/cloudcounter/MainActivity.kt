@@ -231,7 +231,6 @@ class MainActivity : AppCompatActivity() {
     private var isInFirstConeDialog = false
 
     private var notificationsEnabled = true  // Track notification state
-    private var vibrationsEnabled = true  // Track vibration state
 
     private lateinit var addSmokerDialog: AddSmokerDialog
     private lateinit var passwordDialog: PasswordDialog
@@ -330,7 +329,6 @@ class MainActivity : AppCompatActivity() {
     private val LONG_PRESS_DURATION = 1000L // 1 second for long press
     private var retroactiveDialog: Dialog? = null
     private val retroactiveActivities = mutableListOf<Long>() // Track bulk added activity timestamps for undo
-    private var pendingBowlQuantity = 1 // Track pending bowl quantity
 
     // pausing functions
     private var isPaused = false
@@ -2214,25 +2212,6 @@ class MainActivity : AppCompatActivity() {
                 0,
                 1f
             )
-        }
-    }
-    
-    private fun vibrateFeedback(duration: Long = 50) {
-        if (!vibrationsEnabled) return
-        
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
-            vibratorManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
-        }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(duration)
         }
     }
     
