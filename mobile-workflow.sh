@@ -77,16 +77,42 @@ trigger_cloud_build() {
     local build_type=$1
     print_status "Triggering Firebase cloud build ($build_type)..."
     
-    # This uses Firebase CLI to trigger a cloud build
-    firebase appdistribution:distribute \
-        --app 1:288437132062:android:d5fd623e97e79e0f9e4e16 \
-        --release-notes "Cloud build from mobile - $(date)" \
+    # First, we need to build the APK locally or download it
+    # Since we're on mobile, we'll use a different approach
+    
+    # Check if we have a pre-built APK or need to download one
+    APK_PATH=""
+    if [ "$build_type" == "debug" ]; then
+        APK_PATH="/storage/emulated/0/Download/app-debug.apk"
+        print_info "Looking for debug APK..."
+    else
+        APK_PATH="/storage/emulated/0/Download/app-release.apk"
+        print_info "Looking for release APK..."
+    fi
+    
+    # If APK doesn't exist, provide instructions
+    if [ ! -f "$APK_PATH" ]; then
+        print_error "APK not found at $APK_PATH"
+        print_info "To use Firebase App Distribution from mobile:"
+        print_info "1. Build APK on computer and upload to GitHub releases"
+        print_info "2. Download APK to /storage/emulated/0/Download/"
+        print_info "3. Run this command again"
+        print_info ""
+        print_info "Alternative: Use GitHub Actions for cloud builds"
+        return 1
+    fi
+    
+    # Distribute the APK via Firebase
+    firebase appdistribution:distribute "$APK_PATH" \
+        --app 1:778271181918:android:2225b29f4fe7cea4d338cf \
+        --release-notes "Mobile distribution - $(date '+%Y-%m-%d %H:%M')" \
         --testers "$EMAIL"
     
     if [ $? -eq 0 ]; then
-        print_status "Cloud build triggered! Check email for APK."
+        print_status "APK distributed successfully! Check email at $EMAIL"
     else
-        print_error "Cloud build failed!"
+        print_error "Distribution failed!"
+        print_info "Make sure you're logged in: firebase login"
     fi
 }
 
@@ -137,6 +163,41 @@ git_commit_push() {
     print_status "Changes pushed to GitHub!"
 }
 
+# Trigger GitHub Actions cloud build
+trigger_github_cloud_build() {
+    local build_type=$1
+    print_status "Triggering GitHub Actions cloud build ($build_type)..."
+    
+    # First, make sure we're pushed to GitHub
+    print_info "Ensuring latest code is on GitHub..."
+    git push origin main 2>/dev/null || git push origin HEAD 2>/dev/null
+    
+    # Trigger GitHub Actions workflow using gh CLI or curl
+    if command -v gh &> /dev/null; then
+        # Use GitHub CLI if available
+        gh workflow run firebase-build.yml \
+            -f build_type="$build_type" \
+            -f distribution_notes="Mobile trigger - $(date '+%Y-%m-%d %H:%M')"
+        
+        if [ $? -eq 0 ]; then
+            print_status "Cloud build triggered via GitHub Actions!"
+            print_info "Check email in 5-10 minutes for the APK"
+        else
+            print_error "Failed to trigger GitHub Actions"
+        fi
+    else
+        # Alternative: provide manual instructions
+        print_info "To trigger cloud build manually:"
+        print_info "1. Open: https://github.com/$GITHUB_USER/$REPO_NAME/actions"
+        print_info "2. Click 'Firebase Cloud Build & Distribution'"
+        print_info "3. Click 'Run workflow'"
+        print_info "4. Select build type: $build_type"
+        print_info "5. Click 'Run workflow' button"
+        print_info ""
+        print_info "APK will be emailed to $EMAIL in 5-10 minutes"
+    fi
+}
+
 # Main menu
 show_menu() {
     echo ""
@@ -150,9 +211,11 @@ show_menu() {
     echo "4) Commit & Push Changes"
     echo "5) Trigger Cloud Build (Debug)"
     echo "6) Trigger Cloud Build (Release)"
-    echo "7) Check Email for APK"
-    echo "8) Install APK from Downloads"
-    echo "9) Full Workflow (Sync → Build → Install)"
+    echo "7) GitHub Actions Cloud Build (Debug)"
+    echo "8) GitHub Actions Cloud Build (Release)"
+    echo "9) Check Email for APK"
+    echo "10) Install APK from Downloads"
+    echo "11) Full Workflow (Sync → Build → Install)"
     echo "0) Exit"
     echo "========================================="
 }
@@ -182,9 +245,11 @@ main() {
             4) git_commit_push ;;
             5) trigger_cloud_build "debug" ;;
             6) trigger_cloud_build "release" ;;
-            7) download_apk ;;
-            8) install_from_downloads ;;
-            9) full_workflow ;;
+            7) trigger_github_cloud_build "debug" ;;
+            8) trigger_github_cloud_build "release" ;;
+            9) download_apk ;;
+            10) install_from_downloads ;;
+            11) full_workflow ;;
             0) exit 0 ;;
             *) print_error "Invalid option!" ;;
         esac

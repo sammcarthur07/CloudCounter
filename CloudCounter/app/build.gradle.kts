@@ -29,7 +29,7 @@ android {
             )
             // Firebase App Distribution configuration
             firebaseAppDistribution {
-                appId = "1:288437132062:android:d5fd623e97e79e0f9e4e16"
+                appId = "1:778271181918:android:2225b29f4fe7cea4d338cf"
                 testers = "mcarthur.sp@gmail.com"
                 releaseNotes = "Latest build from hybrid workflow"
             }
@@ -37,7 +37,7 @@ android {
         debug {
             // Firebase App Distribution configuration for debug builds
             firebaseAppDistribution {
-                appId = "1:288437132062:android:d5fd623e97e79e0f9e4e16"
+                appId = "1:778271181918:android:2225b29f4fe7cea4d338cf"
                 testers = "mcarthur.sp@gmail.com"
                 releaseNotes = "Debug build from hybrid workflow"
             }

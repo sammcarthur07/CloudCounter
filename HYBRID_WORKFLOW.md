@@ -12,7 +12,7 @@ Complete hybrid development workflow for Cloud Counter Android app with seamless
 - **Firebase Project ID**: cloudcounter-sam
 - **Package Name**: com.sam.cloudcounter
 - **Email for APK**: mcarthur.sp@gmail.com
-- **Firebase App ID**: 1:288437132062:android:d5fd623e97e79e0f9e4e16
+- **Firebase App ID**: 1:778271181918:android:2225b29f4fe7cea4d338cf
 
 ## Quick Start Commands
 
@@ -87,11 +87,11 @@ cd CloudCounter
 # Interactive mobile menu
 ./mobile-workflow.sh
 
-# Firebase cloud build (sends APK to email)
-firebase appdistribution:distribute \
-  --app 1:288437132062:android:d5fd623e97e79e0f9e4e16 \
-  --release-notes "Mobile build $(date)" \
-  --testers mcarthur.sp@gmail.com
+# GitHub Actions cloud build (recommended)
+# Option 7 or 8 in mobile-workflow.sh menu
+
+# Or manually trigger from browser:
+# https://github.com/sammcarthur07/CloudCounter/actions
 
 # Quick sync and build
 cd ~/CloudCounter && git pull && ./mobile-workflow.sh
@@ -165,13 +165,13 @@ firebase use cloudcounter-sam
 ```bash
 # Distribute existing APK
 firebase appdistribution:distribute CloudCounter/app/build/outputs/apk/debug/app-debug.apk \
-  --app 1:288437132062:android:d5fd623e97e79e0f9e4e16 \
+  --app 1:778271181918:android:2225b29f4fe7cea4d338cf \
   --release-notes "Manual distribution" \
   --testers mcarthur.sp@gmail.com
 
 # With groups
 firebase appdistribution:distribute CloudCounter/app/build/outputs/apk/release/app-release.apk \
-  --app 1:288437132062:android:d5fd623e97e79e0f9e4e16 \
+  --app 1:778271181918:android:2225b29f4fe7cea4d338cf \
   --release-notes "Release version" \
   --groups "testers"
 ```
