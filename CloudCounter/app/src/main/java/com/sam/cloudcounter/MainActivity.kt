@@ -2162,6 +2162,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupLayoutRotation() {
         // Load layout position preference (false = top, true = bottom)
         var isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        // Apply saved position immediately on startup
         updateLayoutPosition(isLayoutAtBottom)
         
         binding.btnLayoutRotation.setOnClickListener {
@@ -2187,12 +2188,32 @@ class MainActivity : AppCompatActivity() {
         rootLayout.removeView(tabLayout)
         rootLayout.removeView(viewPager)
         
+        // Get system window insets for proper padding
+        val statusBarHeight = getStatusBarHeight()
+        val navigationBarHeight = getNavigationBarHeight()
+        
         // Re-add in the correct order
         if (isAtBottom) {
             // Order: TabLayout, ViewPager, TopSection
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
             rootLayout.addView(topSection)
+            
+            // Add top padding to TabLayout when it's at the top
+            tabLayout.setPadding(
+                tabLayout.paddingLeft,
+                statusBarHeight + 8.dpToPx(this), // Status bar + extra padding
+                tabLayout.paddingRight,
+                tabLayout.paddingBottom
+            )
+            
+            // Add bottom padding to topSection when it's at the bottom
+            topSection.setPadding(
+                topSection.paddingLeft,
+                topSection.paddingTop,
+                topSection.paddingRight,
+                navigationBarHeight + 16.dpToPx(this) // Nav bar + extra padding
+            )
             
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
@@ -2206,6 +2227,21 @@ class MainActivity : AppCompatActivity() {
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
             
+            // Reset padding when in normal position
+            tabLayout.setPadding(
+                tabLayout.paddingLeft,
+                0,
+                tabLayout.paddingRight,
+                tabLayout.paddingBottom
+            )
+            
+            topSection.setPadding(
+                topSection.paddingLeft,
+                topSection.paddingTop,
+                topSection.paddingRight,
+                0
+            )
+            
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2213,6 +2249,28 @@ class MainActivity : AppCompatActivity() {
                 1f
             )
         }
+    }
+    
+    private fun getStatusBarHeight(): Int {
+        var result = 0
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (resourceId > 0) {
+            result = resources.getDimensionPixelSize(resourceId)
+        }
+        return result
+    }
+    
+    private fun getNavigationBarHeight(): Int {
+        var result = 0
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        if (resourceId > 0) {
+            result = resources.getDimensionPixelSize(resourceId)
+        }
+        // Check if navigation bar is actually shown
+        val hasNavBar = resources.getBoolean(
+            resources.getIdentifier("config_showNavigationBar", "bool", "android")
+        )
+        return if (hasNavBar) result else 0
     }
     
     private fun animateLayoutRotation() {
