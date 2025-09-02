@@ -4,4 +4,5 @@ plugins {
     alias(libs.plugins.kotlinAndroid) apply false
     alias(libs.plugins.kotlin.kapt) apply false
     id("com.google.gms.google-services") version "4.4.0" apply false // <<< ADDED
+    id("com.google.firebase.appdistribution") version "4.0.1" apply false // Firebase App Distribution
 }

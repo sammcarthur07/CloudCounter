@@ -1,0 +1,20 @@
+[user]
+    name = sammcarthur07
+    email = mcarthur.sp@gmail.com
+
+[remote "origin"]
+    url = https://github.com/sammcarthur07/CloudCounter.git
+    
+[push]
+    default = current
+    
+[pull]
+    rebase = false
+    
+[alias]
+    # Quick commands for mobile workflow
+    quick-push = !git add -A && git commit -m 'Mobile update' && git push
+    sync = !git pull --no-edit && git push
+    mobile-save = !git add -A && git commit -m 'Saved from mobile - $(date)' && git push
+    computer-save = !git add -A && git commit -m 'Saved from computer - $(date)' && git push
+    status-short = status --short --branch

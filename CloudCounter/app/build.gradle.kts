@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlin.kapt)
     id("com.google.gms.google-services") // <<< ADDED: For Firebase
+    id("com.google.firebase.appdistribution") // Firebase App Distribution
 }
 
 android {
@@ -26,6 +27,20 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Firebase App Distribution configuration
+            firebaseAppDistribution {
+                appId = "1:288437132062:android:d5fd623e97e79e0f9e4e16"
+                testers = "mcarthur.sp@gmail.com"
+                releaseNotes = "Latest build from hybrid workflow"
+            }
+        }
+        debug {
+            // Firebase App Distribution configuration for debug builds
+            firebaseAppDistribution {
+                appId = "1:288437132062:android:d5fd623e97e79e0f9e4e16"
+                testers = "mcarthur.sp@gmail.com"
+                releaseNotes = "Debug build from hybrid workflow"
+            }
         }
     }
 
