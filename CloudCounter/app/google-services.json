@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "778271181918-tc186tedrf7gvql29oag43e2ejqv9epm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sam.cloudcounter",
+            "certificate_hash": "2771559520eeb24d0b8f375e4a8e75d96918143b"
+          }
+        },
+        {
           "client_id": "778271181918-d5mnhcsoee4qk1ra7f0s9plrl5km2el0.apps.googleusercontent.com",
           "client_type": 3
         }
