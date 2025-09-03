@@ -76,20 +76,34 @@ def create_simple_leaf_animation():
         if frame_num % 10 == 0:
             print(f"  Generated frame {frame_num + 1}/{TOTAL_FRAMES}")
     
-    # Save as WebP animation
-    output_path = "CloudCounter/app/src/main/res/drawable/leaf_reflection_1440x1600.webp"
+    # Save as GIF animation first
+    gif_path = "CloudCounter/app/src/main/res/drawable/leaf_reflection_1440x1600.gif"
     frames[0].save(
-        output_path,
+        gif_path,
         save_all=True,
         append_images=frames[1:],
         duration=int(1000 / FPS),  # Duration per frame in ms
         loop=0,  # Infinite loop
-        method=6,
-        quality=85
+        optimize=True
     )
+    print(f"✅ Saved animated GIF: {gif_path}")
     
-    print(f"✅ Saved animated WebP: {output_path}")
-    return True
+    # Try to convert to WebP
+    webp_path = "CloudCounter/app/src/main/res/drawable/leaf_reflection_1440x1600.webp"
+    try:
+        import subprocess
+        result = subprocess.run(['gif2webp', '-lossy', '-q', '85', gif_path, '-o', webp_path], 
+                              capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"✅ Converted to WebP: {webp_path}")
+            os.remove(gif_path)  # Remove GIF if WebP conversion successful
+            return True
+        else:
+            print("⚠️ WebP conversion failed, using GIF format")
+            return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        print("⚠️ gif2webp not available, using GIF format")
+        return True
 
 if __name__ == "__main__":
     create_simple_leaf_animation()
