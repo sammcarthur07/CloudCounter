@@ -2165,6 +2165,9 @@ class MainActivity : AppCompatActivity() {
         // Apply saved position immediately on startup
         updateLayoutPosition(isLayoutAtBottom)
         
+        // Setup background image with animation support
+        setupBackgroundImage()
+        
         binding.btnLayoutRotation.setOnClickListener {
             isLayoutAtBottom = !isLayoutAtBottom
             prefs.edit().putBoolean("layout_at_bottom", isLayoutAtBottom).apply()
@@ -2174,6 +2177,56 @@ class MainActivity : AppCompatActivity() {
             
             val message = if (isLayoutAtBottom) "Controls moved to bottom" else "Controls moved to top"
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun setupBackgroundImage() {
+        // Check if animations are enabled in system settings
+        val animationsEnabled = android.provider.Settings.Global.getFloat(
+            contentResolver,
+            android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f
+        ) > 0f
+        
+        if (animationsEnabled) {
+            // Try to use animated WebP first
+            try {
+                binding.sectionBackgroundImage.setImageResource(R.drawable.leaf_reflection_1440x1600)
+                Log.d(TAG, "🍃 Using animated WebP background")
+            } catch (e: Exception) {
+                Log.w(TAG, "Animated WebP not found, using static fallback")
+                useStaticBackground()
+            }
+        } else {
+            Log.d(TAG, "🍃 Animations disabled, using static background")
+            useStaticBackground()
+        }
+    }
+    
+    private fun useStaticBackground() {
+        // Use scattered leaves static image as fallback
+        try {
+            // Note: Android converts filenames with special chars, try both
+            val scatteredId = resources.getIdentifier("leaf_scattered_bg_1440x1600", "drawable", packageName)
+            if (scatteredId != 0) {
+                binding.sectionBackgroundImage.setImageResource(scatteredId)
+            } else {
+                throw Exception("Scattered background not found")
+            }
+        } catch (e: Exception) {
+            // Final fallback to halfway snapshot
+            try {
+                val halfwayId = resources.getIdentifier("leaf_reflection_halfway", "drawable", packageName)
+                if (halfwayId != 0) {
+                    binding.sectionBackgroundImage.setImageResource(halfwayId)
+                } else {
+                    throw Exception("Halfway background not found")
+                }
+            } catch (e2: Exception) {
+                // Ultimate fallback to gradient
+                binding.sectionBackgroundImage.setImageResource(R.drawable.section_background)
+                Log.w(TAG, "Using gradient fallback for background")
+            }
         }
     }
     
