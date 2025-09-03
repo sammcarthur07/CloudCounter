@@ -2206,19 +2206,20 @@ class MainActivity : AppCompatActivity() {
     private fun useStaticBackground() {
         // Use scattered leaves static image as fallback
         try {
-            // Note: Android converts filenames with special chars, try both
-            val scatteredId = resources.getIdentifier("leaf_scattered_bg_1440x1600", "drawable", packageName)
+            val scatteredId = resources.getIdentifier("leaf_scattered_bg_1440x1600_new", "drawable", packageName)
             if (scatteredId != 0) {
                 binding.sectionBackgroundImage.setImageResource(scatteredId)
+                Log.d(TAG, "🍃 Using scattered leaves background")
             } else {
                 throw Exception("Scattered background not found")
             }
         } catch (e: Exception) {
             // Final fallback to halfway snapshot
             try {
-                val halfwayId = resources.getIdentifier("leaf_reflection_halfway", "drawable", packageName)
+                val halfwayId = resources.getIdentifier("leaf_reflection_halfway_new", "drawable", packageName)
                 if (halfwayId != 0) {
                     binding.sectionBackgroundImage.setImageResource(halfwayId)
+                    Log.d(TAG, "🍃 Using halfway reflection background")
                 } else {
                     throw Exception("Halfway background not found")
                 }
