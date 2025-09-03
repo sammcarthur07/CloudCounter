@@ -231,7 +231,6 @@ class MainActivity : AppCompatActivity() {
     private var isInFirstConeDialog = false
 
     private var notificationsEnabled = true  // Track notification state
-    private var vibrationsEnabled = true  // Track vibration state
 
     private lateinit var addSmokerDialog: AddSmokerDialog
     private lateinit var passwordDialog: PasswordDialog
@@ -330,7 +329,6 @@ class MainActivity : AppCompatActivity() {
     private val LONG_PRESS_DURATION = 1000L // 1 second for long press
     private var retroactiveDialog: Dialog? = null
     private val retroactiveActivities = mutableListOf<Long>() // Track bulk added activity timestamps for undo
-    private var pendingBowlQuantity = 1 // Track pending bowl quantity
 
     // pausing functions
     private var isPaused = false
@@ -2094,7 +2092,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun vibrateFeedback(duration: Long) {
+    private fun vibrateFeedback(duration: Long = 50) {
         // Only vibrate if vibrations are enabled
         if (!vibrationsEnabled) return
 
@@ -2184,6 +2182,10 @@ class MainActivity : AppCompatActivity() {
         val tabLayout = binding.tabLayout
         val viewPager = binding.viewPager
         
+        // Get system window insets
+        val statusBarHeight = getStatusBarHeight()
+        val navigationBarHeight = getNavigationBarHeight()
+        
         // Remove views first
         rootLayout.removeView(topSection)
         rootLayout.removeView(tabLayout)
@@ -2195,6 +2197,22 @@ class MainActivity : AppCompatActivity() {
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
             rootLayout.addView(topSection)
+            
+            // Add top padding to TabLayout when it's at the top to avoid status bar
+            tabLayout.setPadding(
+                tabLayout.paddingLeft,
+                statusBarHeight,
+                tabLayout.paddingRight,
+                tabLayout.paddingBottom
+            )
+            
+            // Add bottom padding to topSection when it's at the bottom to avoid navigation bar
+            topSection.setPadding(
+                topSection.paddingLeft,
+                topSection.paddingTop,
+                topSection.paddingRight,
+                navigationBarHeight
+            )
             
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
@@ -2208,6 +2226,21 @@ class MainActivity : AppCompatActivity() {
             rootLayout.addView(tabLayout)
             rootLayout.addView(viewPager)
             
+            // Reset padding when in normal position
+            tabLayout.setPadding(
+                tabLayout.paddingLeft,
+                0,
+                tabLayout.paddingRight,
+                tabLayout.paddingBottom
+            )
+            
+            topSection.setPadding(
+                topSection.paddingLeft,
+                topSection.paddingTop,
+                topSection.paddingRight,
+                0
+            )
+            
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2217,23 +2250,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun vibrateFeedback(duration: Long = 50) {
-        if (!vibrationsEnabled) return
-        
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
-            vibratorManager.defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+    private fun getStatusBarHeight(): Int {
+        var result = 0
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        if (resourceId > 0) {
+            result = resources.getDimensionPixelSize(resourceId)
         }
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(duration)
+        return result
+    }
+    
+    private fun getNavigationBarHeight(): Int {
+        var result = 0
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        if (resourceId > 0) {
+            result = resources.getDimensionPixelSize(resourceId)
         }
+        return result
     }
     
     private fun animateLayoutRotation() {
