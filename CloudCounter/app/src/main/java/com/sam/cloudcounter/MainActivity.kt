@@ -2215,6 +2215,12 @@ class MainActivity : AppCompatActivity() {
                 navigationBarHeight
             )
             
+            // Adjust button container margin when at bottom (normal spacing)
+            val buttonContainer = findViewById<LinearLayout>(R.id.buttonContainer)
+            val layoutParams = buttonContainer.layoutParams as LinearLayout.LayoutParams
+            layoutParams.topMargin = (-19).dpToPx(this) // Original margin
+            buttonContainer.layoutParams = layoutParams
+            
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2241,6 +2247,12 @@ class MainActivity : AppCompatActivity() {
                 topSection.paddingRight,
                 0
             )
+            
+            // Adjust button container margin when at top (reduced spacing)
+            val buttonContainer = findViewById<LinearLayout>(R.id.buttonContainer)
+            val layoutParams = buttonContainer.layoutParams as LinearLayout.LayoutParams
+            layoutParams.topMargin = (-8).dpToPx(this) // Reduced margin for top position
+            buttonContainer.layoutParams = layoutParams
             
             // Set ViewPager to take remaining space
             viewPager.layoutParams = LinearLayout.LayoutParams(
