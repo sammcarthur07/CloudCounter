@@ -2159,6 +2159,7 @@ class MainActivity : AppCompatActivity() {
         colorAnimation.start()
     }
 
+    
     private fun setupLayoutRotation() {
         // Load layout position preference (false = top, true = bottom)
         var isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)

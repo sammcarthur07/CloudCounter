@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Simple gradient background that won't expand layout -->
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#2a5f3e"
+                android:centerColor="#3a6f4e"
+                android:endColor="#2a5f3e"
+                android:angle="135" />
+        </shape>
+    </item>
+</layer-list>

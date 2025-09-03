@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background image layer with fixed bounds -->
+    <item>
+        <bitmap
+            android:src="@drawable/section_background"
+            android:gravity="center|clip_vertical|clip_horizontal"
+            android:tileMode="disabled" />
+    </item>
+</layer-list>
