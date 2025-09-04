@@ -148,14 +148,26 @@ class StashStatsCalculator(
         return when (statsType) {
             StatsType.PAST -> {
                 Log.d(TAG, "  📜 PAST SESSION REQUESTED")
+                Log.d(TAG, "    Current session ID: $sessionStartTime")
+                Log.d(TAG, "    Last completed session ID provided: $lastCompletedSessionId")
+                
                 val targetSessionId = lastCompletedSessionId ?: run {
-                    Log.d(TAG, "  ❌ No last completed session ID, finding previous from DB...")
-                    val recentSessions = activityLogDao.getDistinctSessionIds(10)
-                    if (sessionStartTime != null && sessionStartTime > 0) {
-                        recentSessions.find { it != sessionStartTime }
+                    Log.d(TAG, "  🔍 No last completed session ID provided, finding previous from DB...")
+                    val recentSessions = activityLogDao.getDistinctSessionIds(20) // Get more sessions
+                    Log.d(TAG, "    Found ${recentSessions.size} distinct session IDs")
+                    
+                    // Find the most recent session that's not the current one
+                    val previousSession = if (sessionStartTime != null && sessionStartTime > 0) {
+                        // Filter out current session and get the most recent one before it
+                        recentSessions.filter { it != sessionStartTime && it < sessionStartTime }
+                            .maxOrNull() // Get the most recent one before current
                     } else {
-                        recentSessions.firstOrNull()
+                        // No current session, just get the most recent
+                        recentSessions.maxOrNull()
                     }
+                    
+                    Log.d(TAG, "    Selected previous session: $previousSession")
+                    previousSession
                 }
 
                 if (targetSessionId == null) {
@@ -163,13 +175,17 @@ class StashStatsCalculator(
                     return emptyStats(statsType, StashTimePeriod.THIS_SESH, dataScope)
                 }
 
-                Log.d(TAG, "  🔍 Querying activities for session ID: $targetSessionId")
+                Log.d(TAG, "  🔍 Querying activities for past session ID: $targetSessionId (${java.util.Date(targetSessionId)})")
                 val activities = activityLogDao.getActivitiesBySessionId(targetSessionId)
+                Log.d(TAG, "    Found ${activities.size} activities in past session")
+                
                 val filtered = filterActivitiesByScope(activities, dataScope, currentUserId)
+                Log.d(TAG, "    After filtering: ${filtered.size} activities")
+                
                 calculateActualStats(
                     filtered, statsType, StashTimePeriod.THIS_SESH, dataScope,
-                    activities.minOfOrNull { it.timestamp } ?: 0,
-                    activities.maxOfOrNull { it.timestamp } ?: 0,
+                    activities.minOfOrNull { it.timestamp } ?: targetSessionId,
+                    activities.maxOfOrNull { it.timestamp } ?: targetSessionId,
                     currentUserId
                 )
             }
@@ -195,38 +211,81 @@ class StashStatsCalculator(
 
             StatsType.PROJECTED -> {
                 Log.d(TAG, "  📊 PROJECTED SESSION REQUESTED")
-
-                // FIX: For session projection, show the maximum of current session or last completed session
-                // Get current session stats
-                val currentStats = calculateSessionStats(StatsType.CURRENT, dataScope, sessionStartTime, null, currentUserId)
-
-                // Get past session stats
-                val pastStats = calculateSessionStats(StatsType.PAST, dataScope, sessionStartTime, lastCompletedSessionId, currentUserId)
-
-                Log.d(TAG, "  📊 Projection Logic:")
-                Log.d(TAG, "    Current session total: ${currentStats.totalGrams}g")
-                Log.d(TAG, "    Past session total: ${pastStats.totalGrams}g")
-
-                // Return whichever is higher
-                if (pastStats.totalGrams > currentStats.totalGrams) {
-                    Log.d(TAG, "    Using PAST session (higher)")
-                    // Return past stats but marked as PROJECTED
-                    return pastStats.copy(
-                        statsType = StatsType.PROJECTED,
-                        projectionScale = if (currentStats.totalGrams > 0) {
-                            pastStats.totalGrams / currentStats.totalGrams
-                        } else {
-                            1.0
-                        }
-                    )
-                } else {
-                    Log.d(TAG, "    Using CURRENT session (higher or equal)")
-                    // Return current stats marked as PROJECTED
-                    return currentStats.copy(
-                        statsType = StatsType.PROJECTED,
-                        projectionScale = 1.0
-                    )
+                
+                // Get current session stats to calculate consumption rate
+                if (sessionStartTime == null || sessionStartTime == 0L) {
+                    Log.d(TAG, "    No active session to project")
+                    return emptyStats(statsType, StashTimePeriod.THIS_SESH, dataScope)
                 }
+                
+                val currentTimeNow = System.currentTimeMillis()
+                val sessionDuration = currentTimeNow - sessionStartTime
+                
+                Log.d(TAG, "    Session start: ${java.util.Date(sessionStartTime)}")
+                Log.d(TAG, "    Current time: ${java.util.Date(currentTimeNow)}")
+                Log.d(TAG, "    Session duration: ${sessionDuration / MINUTE_MS} minutes")
+                
+                // Get current session activities
+                var activities = activityLogDao.getActivitiesBySessionId(sessionStartTime)
+                if (activities.isEmpty()) {
+                    // Try fallback query by time range
+                    activities = activityLogDao.getLogsBetweenTimestamps(sessionStartTime, currentTimeNow)
+                    if (activities.isEmpty()) {
+                        Log.d(TAG, "    No activities in current session")
+                        return emptyStats(statsType, StashTimePeriod.THIS_SESH, dataScope)
+                    }
+                }
+                
+                val filtered = filterActivitiesByScope(activities, dataScope, currentUserId)
+                val currentStats = calculateActualStats(
+                    filtered, StatsType.CURRENT, StashTimePeriod.THIS_SESH, dataScope,
+                    sessionStartTime, currentTimeNow, currentUserId
+                )
+                
+                // Calculate consumption rate based on session duration
+                if (sessionDuration < MINUTE_MS || currentStats.totalGrams == 0) {
+                    Log.d(TAG, "    Session too short or no consumption yet")
+                    return currentStats.copy(statsType = StatsType.PROJECTED, projectionScale = 1.0)
+                }
+                
+                // Find first and last activity times for accurate rate calculation
+                val firstActivityTime = activities.minOfOrNull { it.timestamp } ?: sessionStartTime
+                val lastActivityTime = activities.maxOfOrNull { it.timestamp } ?: currentTimeNow
+                val activeConsumptionDuration = lastActivityTime - firstActivityTime
+                
+                // Calculate consumption rate based on active consumption period
+                val consumptionRatePerHour = if (activeConsumptionDuration > 0) {
+                    currentStats.totalGrams / (activeConsumptionDuration.toDouble() / HOUR_MS)
+                } else {
+                    currentStats.totalGrams // If instant, use total as hourly rate
+                }
+                
+                Log.d(TAG, "    First activity: ${java.util.Date(firstActivityTime)}")
+                Log.d(TAG, "    Last activity: ${java.util.Date(lastActivityTime)}")
+                Log.d(TAG, "    Active duration: ${activeConsumptionDuration / MINUTE_MS} minutes")
+                Log.d(TAG, "    Consumption rate: ${String.format("%.3f", consumptionRatePerHour)} g/hour")
+                
+                // Project based on how long the session has been running
+                // The projection grows as time passes in the session
+                val sessionElapsedHours = sessionDuration.toDouble() / HOUR_MS
+                val projectedAdditionalHours = kotlin.math.max(4.0 - sessionElapsedHours, 1.0) // Project at least 1 more hour
+                val projectedAdditionalGrams = consumptionRatePerHour * projectedAdditionalHours
+                val projectedTotalGrams = currentStats.totalGrams + projectedAdditionalGrams
+                
+                val projectedScale = if (currentStats.totalGrams > 0) {
+                    projectedTotalGrams / currentStats.totalGrams
+                } else {
+                    1.0
+                }
+                
+                Log.d(TAG, "    Session elapsed: ${String.format("%.2f", sessionElapsedHours)} hours")
+                Log.d(TAG, "    Projecting ${String.format("%.2f", projectedAdditionalHours)} more hours")
+                Log.d(TAG, "    Current total: ${String.format("%.3f", currentStats.totalGrams)}g")
+                Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}g")
+                Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}g")
+                Log.d(TAG, "    Projection scale: ${String.format("%.3f", projectedScale)}")
+                
+                return projectStats(currentStats, projectedScale)
             }
         }
     }
