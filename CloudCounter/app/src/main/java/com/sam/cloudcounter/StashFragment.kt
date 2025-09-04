@@ -142,12 +142,14 @@ class StashFragment : Fragment() {
     
     override fun onResume() {
         super.onResume()
+        Log.d("PROJ_TIMER", "StashFragment.onResume() called")
         // Start projection timer if needed when fragment becomes visible
         stashViewModel.onStashTabResumed()
     }
     
     override fun onPause() {
         super.onPause()
+        Log.d("PROJ_TIMER", "StashFragment.onPause() called")
         // Stop projection timer to save resources when fragment is not visible
         stashViewModel.onStashTabPaused()
     }
@@ -338,11 +340,13 @@ class StashFragment : Fragment() {
         }
 
         stashViewModel.stashStats.observe(viewLifecycleOwner) { stats ->
+            Log.d("PROJ_TIMER", "StashFragment stats observer triggered - stats is ${if (stats == null) "NULL" else "NOT NULL"}")
             if (stats == null) {
                 clearDistribution()
                 return@observe
             }
-
+            
+            Log.d("PROJ_TIMER", "Updating UI with stats - Type: ${stats.statsType}, Grams: ${stats.totalGrams}, Scale: ${stats.projectionScale}")
             updateStatsFromCalculator(stats)
 
             lifecycleScope.launch {
