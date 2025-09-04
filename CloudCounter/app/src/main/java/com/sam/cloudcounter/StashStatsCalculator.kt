@@ -554,43 +554,83 @@ class StashStatsCalculator(
             }
 
             StashTimePeriod.HOUR -> {
-                // Based on last hour of activities, project 60 minutes ahead from now
-                val endOfHourPeriod = actualCurrentTime + HOUR_MS  // 60 minutes from now
-                val timeRemainingInHour = HOUR_MS  // Always projecting full hour ahead
-
-                Log.d(TAG, "  HOUR Projection Debug:")
+                // Analyze activity patterns from last hour and project 1 hour ahead
+                val oneHourAgo = actualCurrentTime - HOUR_MS
+                val endOfHourPeriod = actualCurrentTime + HOUR_MS
+                
+                // Filter activities to only those in the last hour
+                val lastHourActivities = activities.filter { it.timestamp >= oneHourAgo }
+                
+                Log.d(TAG, "  HOUR Pattern-Based Projection Debug:")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of hour period: ${java.util.Date(endOfHourPeriod)}")
-                Log.d(TAG, "    Time remaining (projecting ahead): ${String.format("%.2f", timeRemainingInHour / MINUTE_MS.toDouble())} minutes")
-
-                // Calculate the consumption rate based on activities in the last hour
-                val consumptionRate = if (activeDuration > 0) {
-                    actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)  // grams per hour
-                } else {
-                    0.0
-                }
-
-                Log.d(TAG, "    Consumption rate: ${String.format("%.4f", consumptionRate)} g/hour")
-                Log.d(TAG, "    Active duration: ${activeDuration / MINUTE_MS} minutes")
-
-                if (consumptionRate > 0) {
-                    // Project: current consumption + (rate * 1 hour)
-                    val projectedAdditionalGrams = consumptionRate * 1.0  // 1 hour worth
+                Log.d(TAG, "    Looking back from: ${java.util.Date(oneHourAgo)}")
+                Log.d(TAG, "    Projecting to: ${java.util.Date(endOfHourPeriod)}")
+                Log.d(TAG, "    Activities in last hour: ${lastHourActivities.size}")
+                
+                if (lastHourActivities.size >= 2) {
+                    // Analyze the pattern of activities
+                    val activityCount = lastHourActivities.size
+                    val avgGramsPerActivity = actualStats.totalGrams / activityCount
+                    
+                    // Calculate average time between activities
+                    val timeBetweenActivities = if (activityCount > 1) {
+                        val firstTime = lastHourActivities.minOf { it.timestamp }
+                        val lastTime = lastHourActivities.maxOf { it.timestamp }
+                        (lastTime - firstTime) / (activityCount - 1).toDouble()
+                    } else {
+                        HOUR_MS.toDouble() // If only 1 activity, assume 1-hour interval
+                    }
+                    
+                    // Calculate how many activities we expect in the next hour
+                    val expectedActivitiesNextHour = if (timeBetweenActivities > 0) {
+                        HOUR_MS / timeBetweenActivities
+                    } else {
+                        activityCount.toDouble() // If no time between, assume same count
+                    }
+                    
+                    // Account for time since last activity (might be due for another soon)
+                    val timeSinceLastActivity = actualCurrentTime - lastHourActivities.maxOf { it.timestamp }
+                    val adjustedExpectedActivities = if (timeSinceLastActivity > timeBetweenActivities) {
+                        // Overdue for an activity, add one
+                        expectedActivitiesNextHour + 1
+                    } else {
+                        expectedActivitiesNextHour
+                    }
+                    
+                    // Project based on pattern
+                    val projectedAdditionalGrams = avgGramsPerActivity * adjustedExpectedActivities
                     val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-
+                    
                     val projectionScale = if (actualStats.totalGrams > 0) {
                         projectedTotalGrams / actualStats.totalGrams
                     } else {
                         1.0
                     }
-
+                    
+                    Log.d(TAG, "    Pattern Analysis:")
+                    Log.d(TAG, "      Activities in last hour: $activityCount")
+                    Log.d(TAG, "      Avg grams per activity: ${String.format("%.3f", avgGramsPerActivity)}")
+                    Log.d(TAG, "      Avg time between activities: ${String.format("%.2f", timeBetweenActivities / MINUTE_MS.toDouble())} minutes")
+                    Log.d(TAG, "      Time since last activity: ${String.format("%.2f", timeSinceLastActivity / MINUTE_MS.toDouble())} minutes")
+                    Log.d(TAG, "      Expected activities next hour: ${String.format("%.2f", adjustedExpectedActivities)}")
                     Log.d(TAG, "    Current grams: ${String.format("%.3f", actualStats.totalGrams)}")
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-
+                    
+                    projectionScale
+                } else if (lastHourActivities.size == 1) {
+                    // Only 1 activity in last hour, assume similar pattern
+                    val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next hour
+                    val projectionScale = 2.0
+                    
+                    Log.d(TAG, "    Only 1 activity in last hour, projecting 1 more")
+                    Log.d(TAG, "    Projection scale: 2.0")
+                    
                     projectionScale
                 } else {
+                    // No activities in last hour (shouldn't happen if actualStats has data)
+                    Log.d(TAG, "    No activities in last hour window")
                     1.0
                 }
             }
@@ -678,127 +718,247 @@ class StashStatsCalculator(
             }
             
             StashTimePeriod.YEAR -> {
-                // Based on last 365 days of activities, project 365 days ahead from now
-                val endOfYearPeriod = actualCurrentTime + YEAR_MS  // 365 days from now
-                val timeRemainingInYear = YEAR_MS  // Always projecting full year ahead
-
-                Log.d(TAG, "  YEAR Projection Debug:")
+                // Analyze activity patterns from last 365 days and project 365 days ahead
+                val oneYearAgo = actualCurrentTime - YEAR_MS
+                val endOfYearPeriod = actualCurrentTime + YEAR_MS
+                
+                // Filter activities to only those in the last year
+                val lastYearActivities = activities.filter { it.timestamp >= oneYearAgo }
+                
+                Log.d(TAG, "  YEAR Pattern-Based Projection Debug:")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of year period: ${java.util.Date(endOfYearPeriod)}")
-                Log.d(TAG, "    Time remaining (projecting ahead): ${String.format("%.2f", timeRemainingInYear / DAY_MS.toDouble())} days")
-
-                // Calculate the consumption rate based on activities in the last year
-                val consumptionRate = if (activeDuration > 0) {
-                    actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)  // grams per hour
-                } else {
-                    0.0
-                }
-
-                Log.d(TAG, "    Consumption rate: ${String.format("%.4f", consumptionRate)} g/hour")
-                Log.d(TAG, "    Active duration: ${String.format("%.2f", activeDuration / HOUR_MS.toDouble())} hours")
-
-                if (consumptionRate > 0) {
-                    // Project: current consumption + (rate * 365 days)
-                    val projectedAdditionalGrams = consumptionRate * (YEAR_MS.toDouble() / HOUR_MS)  // 365 days worth
+                Log.d(TAG, "    Looking back from: ${java.util.Date(oneYearAgo)}")
+                Log.d(TAG, "    Projecting to: ${java.util.Date(endOfYearPeriod)}")
+                Log.d(TAG, "    Activities in last year: ${lastYearActivities.size}")
+                
+                if (lastYearActivities.size >= 2) {
+                    // Analyze the pattern of activities
+                    val activityCount = lastYearActivities.size
+                    val avgGramsPerActivity = actualStats.totalGrams / activityCount
+                    
+                    // Calculate average time between activities
+                    val timeBetweenActivities = if (activityCount > 1) {
+                        val firstTime = lastYearActivities.minOf { it.timestamp }
+                        val lastTime = lastYearActivities.maxOf { it.timestamp }
+                        (lastTime - firstTime) / (activityCount - 1).toDouble()
+                    } else {
+                        YEAR_MS.toDouble() // If only 1 activity, assume 1-year interval
+                    }
+                    
+                    // Calculate how many activities we expect in the next year
+                    val expectedActivitiesNextYear = if (timeBetweenActivities > 0) {
+                        YEAR_MS / timeBetweenActivities
+                    } else {
+                        activityCount.toDouble() // If no time between, assume same count
+                    }
+                    
+                    // Account for time since last activity (might be due for another soon)
+                    val timeSinceLastActivity = actualCurrentTime - lastYearActivities.maxOf { it.timestamp }
+                    val adjustedExpectedActivities = if (timeSinceLastActivity > timeBetweenActivities) {
+                        // Overdue for an activity, add one
+                        expectedActivitiesNextYear + 1
+                    } else {
+                        expectedActivitiesNextYear
+                    }
+                    
+                    // Project based on pattern
+                    val projectedAdditionalGrams = avgGramsPerActivity * adjustedExpectedActivities
                     val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-
+                    
                     val projectionScale = if (actualStats.totalGrams > 0) {
                         projectedTotalGrams / actualStats.totalGrams
                     } else {
                         1.0
                     }
-
+                    
+                    Log.d(TAG, "    Pattern Analysis:")
+                    Log.d(TAG, "      Activities in last year: $activityCount")
+                    Log.d(TAG, "      Avg grams per activity: ${String.format("%.3f", avgGramsPerActivity)}")
+                    Log.d(TAG, "      Avg time between activities: ${String.format("%.2f", timeBetweenActivities / DAY_MS.toDouble())} days")
+                    Log.d(TAG, "      Time since last activity: ${String.format("%.2f", timeSinceLastActivity / DAY_MS.toDouble())} days")
+                    Log.d(TAG, "      Expected activities next year: ${String.format("%.2f", adjustedExpectedActivities)}")
                     Log.d(TAG, "    Current grams: ${String.format("%.3f", actualStats.totalGrams)}")
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-
+                    
+                    projectionScale
+                } else if (lastYearActivities.size == 1) {
+                    // Only 1 activity in last year, assume similar pattern
+                    val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next year
+                    val projectionScale = 2.0
+                    
+                    Log.d(TAG, "    Only 1 activity in last year, projecting 1 more")
+                    Log.d(TAG, "    Projection scale: 2.0")
+                    
                     projectionScale
                 } else {
+                    // No activities in last year (shouldn't happen if actualStats has data)
+                    Log.d(TAG, "    No activities in last year window")
                     1.0
                 }
             }
 
             StashTimePeriod.WEEK -> {
-                // Based on last 7 days of activities, project 7 days ahead from now
-                val endOfWeekPeriod = actualCurrentTime + WEEK_MS  // 7 days from now
-                val timeRemainingInWeek = WEEK_MS  // Always projecting full week ahead
-
-                Log.d(TAG, "  WEEK Projection Debug:")
+                // Analyze activity patterns from last 7 days and project 7 days ahead
+                val oneWeekAgo = actualCurrentTime - WEEK_MS
+                val endOfWeekPeriod = actualCurrentTime + WEEK_MS
+                
+                // Filter activities to only those in the last week
+                val lastWeekActivities = activities.filter { it.timestamp >= oneWeekAgo }
+                
+                Log.d(TAG, "  WEEK Pattern-Based Projection Debug:")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of week period: ${java.util.Date(endOfWeekPeriod)}")
-                Log.d(TAG, "    Time remaining (projecting ahead): ${String.format("%.2f", timeRemainingInWeek / DAY_MS.toDouble())} days")
-
-                // Calculate the consumption rate based on activities in the last week
-                val consumptionRate = if (activeDuration > 0) {
-                    actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)  // grams per hour
-                } else {
-                    0.0
-                }
-
-                Log.d(TAG, "    Consumption rate: ${String.format("%.4f", consumptionRate)} g/hour")
-                Log.d(TAG, "    Active duration: ${String.format("%.2f", activeDuration / HOUR_MS.toDouble())} hours")
-
-                if (consumptionRate > 0) {
-                    // Project: current consumption + (rate * 7 days)
-                    val projectedAdditionalGrams = consumptionRate * (WEEK_MS.toDouble() / HOUR_MS)  // 7 days worth
+                Log.d(TAG, "    Looking back from: ${java.util.Date(oneWeekAgo)}")
+                Log.d(TAG, "    Projecting to: ${java.util.Date(endOfWeekPeriod)}")
+                Log.d(TAG, "    Activities in last week: ${lastWeekActivities.size}")
+                
+                if (lastWeekActivities.size >= 2) {
+                    // Analyze the pattern of activities
+                    val activityCount = lastWeekActivities.size
+                    val avgGramsPerActivity = actualStats.totalGrams / activityCount
+                    
+                    // Calculate average time between activities
+                    val timeBetweenActivities = if (activityCount > 1) {
+                        val firstTime = lastWeekActivities.minOf { it.timestamp }
+                        val lastTime = lastWeekActivities.maxOf { it.timestamp }
+                        (lastTime - firstTime) / (activityCount - 1).toDouble()
+                    } else {
+                        WEEK_MS.toDouble() // If only 1 activity, assume 1-week interval
+                    }
+                    
+                    // Calculate how many activities we expect in the next week
+                    val expectedActivitiesNextWeek = if (timeBetweenActivities > 0) {
+                        WEEK_MS / timeBetweenActivities
+                    } else {
+                        activityCount.toDouble() // If no time between, assume same count
+                    }
+                    
+                    // Account for time since last activity (might be due for another soon)
+                    val timeSinceLastActivity = actualCurrentTime - lastWeekActivities.maxOf { it.timestamp }
+                    val adjustedExpectedActivities = if (timeSinceLastActivity > timeBetweenActivities) {
+                        // Overdue for an activity, add one
+                        expectedActivitiesNextWeek + 1
+                    } else {
+                        expectedActivitiesNextWeek
+                    }
+                    
+                    // Project based on pattern
+                    val projectedAdditionalGrams = avgGramsPerActivity * adjustedExpectedActivities
                     val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-
+                    
                     val projectionScale = if (actualStats.totalGrams > 0) {
                         projectedTotalGrams / actualStats.totalGrams
                     } else {
                         1.0
                     }
-
+                    
+                    Log.d(TAG, "    Pattern Analysis:")
+                    Log.d(TAG, "      Activities in last week: $activityCount")
+                    Log.d(TAG, "      Avg grams per activity: ${String.format("%.3f", avgGramsPerActivity)}")
+                    Log.d(TAG, "      Avg time between activities: ${String.format("%.2f", timeBetweenActivities / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Time since last activity: ${String.format("%.2f", timeSinceLastActivity / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Expected activities next week: ${String.format("%.2f", adjustedExpectedActivities)}")
                     Log.d(TAG, "    Current grams: ${String.format("%.3f", actualStats.totalGrams)}")
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-
+                    
+                    projectionScale
+                } else if (lastWeekActivities.size == 1) {
+                    // Only 1 activity in last week, assume similar pattern
+                    val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next week
+                    val projectionScale = 2.0
+                    
+                    Log.d(TAG, "    Only 1 activity in last week, projecting 1 more")
+                    Log.d(TAG, "    Projection scale: 2.0")
+                    
                     projectionScale
                 } else {
+                    // No activities in last week (shouldn't happen if actualStats has data)
+                    Log.d(TAG, "    No activities in last week window")
                     1.0
                 }
             }
             
             StashTimePeriod.MONTH -> {
-                // Based on last 30 days of activities, project 30 days ahead from now
-                val endOfMonthPeriod = actualCurrentTime + MONTH_MS  // 30 days from now
-                val timeRemainingInMonth = MONTH_MS  // Always projecting full month ahead
-
-                Log.d(TAG, "  MONTH Projection Debug:")
+                // Analyze activity patterns from last 30 days and project 30 days ahead
+                val oneMonthAgo = actualCurrentTime - MONTH_MS
+                val endOfMonthPeriod = actualCurrentTime + MONTH_MS
+                
+                // Filter activities to only those in the last month
+                val lastMonthActivities = activities.filter { it.timestamp >= oneMonthAgo }
+                
+                Log.d(TAG, "  MONTH Pattern-Based Projection Debug:")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of month period: ${java.util.Date(endOfMonthPeriod)}")
-                Log.d(TAG, "    Time remaining (projecting ahead): ${String.format("%.2f", timeRemainingInMonth / DAY_MS.toDouble())} days")
-
-                // Calculate the consumption rate based on activities in the last month
-                val consumptionRate = if (activeDuration > 0) {
-                    actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)  // grams per hour
-                } else {
-                    0.0
-                }
-
-                Log.d(TAG, "    Consumption rate: ${String.format("%.4f", consumptionRate)} g/hour")
-                Log.d(TAG, "    Active duration: ${String.format("%.2f", activeDuration / HOUR_MS.toDouble())} hours")
-
-                if (consumptionRate > 0) {
-                    // Project: current consumption + (rate * 30 days)
-                    val projectedAdditionalGrams = consumptionRate * (MONTH_MS.toDouble() / HOUR_MS)  // 30 days worth
+                Log.d(TAG, "    Looking back from: ${java.util.Date(oneMonthAgo)}")
+                Log.d(TAG, "    Projecting to: ${java.util.Date(endOfMonthPeriod)}")
+                Log.d(TAG, "    Activities in last month: ${lastMonthActivities.size}")
+                
+                if (lastMonthActivities.size >= 2) {
+                    // Analyze the pattern of activities
+                    val activityCount = lastMonthActivities.size
+                    val avgGramsPerActivity = actualStats.totalGrams / activityCount
+                    
+                    // Calculate average time between activities
+                    val timeBetweenActivities = if (activityCount > 1) {
+                        val firstTime = lastMonthActivities.minOf { it.timestamp }
+                        val lastTime = lastMonthActivities.maxOf { it.timestamp }
+                        (lastTime - firstTime) / (activityCount - 1).toDouble()
+                    } else {
+                        MONTH_MS.toDouble() // If only 1 activity, assume 1-month interval
+                    }
+                    
+                    // Calculate how many activities we expect in the next month
+                    val expectedActivitiesNextMonth = if (timeBetweenActivities > 0) {
+                        MONTH_MS / timeBetweenActivities
+                    } else {
+                        activityCount.toDouble() // If no time between, assume same count
+                    }
+                    
+                    // Account for time since last activity (might be due for another soon)
+                    val timeSinceLastActivity = actualCurrentTime - lastMonthActivities.maxOf { it.timestamp }
+                    val adjustedExpectedActivities = if (timeSinceLastActivity > timeBetweenActivities) {
+                        // Overdue for an activity, add one
+                        expectedActivitiesNextMonth + 1
+                    } else {
+                        expectedActivitiesNextMonth
+                    }
+                    
+                    // Project based on pattern
+                    val projectedAdditionalGrams = avgGramsPerActivity * adjustedExpectedActivities
                     val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-
+                    
                     val projectionScale = if (actualStats.totalGrams > 0) {
                         projectedTotalGrams / actualStats.totalGrams
                     } else {
                         1.0
                     }
-
+                    
+                    Log.d(TAG, "    Pattern Analysis:")
+                    Log.d(TAG, "      Activities in last month: $activityCount")
+                    Log.d(TAG, "      Avg grams per activity: ${String.format("%.3f", avgGramsPerActivity)}")
+                    Log.d(TAG, "      Avg time between activities: ${String.format("%.2f", timeBetweenActivities / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Time since last activity: ${String.format("%.2f", timeSinceLastActivity / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Expected activities next month: ${String.format("%.2f", adjustedExpectedActivities)}")
                     Log.d(TAG, "    Current grams: ${String.format("%.3f", actualStats.totalGrams)}")
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-
+                    
+                    projectionScale
+                } else if (lastMonthActivities.size == 1) {
+                    // Only 1 activity in last month, assume similar pattern
+                    val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next month
+                    val projectionScale = 2.0
+                    
+                    Log.d(TAG, "    Only 1 activity in last month, projecting 1 more")
+                    Log.d(TAG, "    Projection scale: 2.0")
+                    
                     projectionScale
                 } else {
+                    // No activities in last month (shouldn't happen if actualStats has data)
+                    Log.d(TAG, "    No activities in last month window")
                     1.0
                 }
             }
