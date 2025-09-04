@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -46,6 +47,8 @@ import kotlin.math.min
 import java.util.UUID
 import android.app.Dialog
 import android.graphics.drawable.ColorDrawable
+import android.graphics.Rect
+import android.view.ViewTreeObserver
 
 
 class ChatFragment : Fragment() {
@@ -111,6 +114,8 @@ class ChatFragment : Fragment() {
 
     private val locallyDeletedMessageIds = mutableSetOf<String>()
 
+    private var keyboardListenerRegistered = false
+    private var keyboardLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
     private var currentNavState = NavigationState.MAIN_MENU
 
@@ -130,11 +135,8 @@ class ChatFragment : Fragment() {
     ): View {
         _binding = FragmentChatBinding.inflate(inflater, container, false)
 
-        // CRITICAL: Set soft input mode for proper keyboard handling
-        requireActivity().window.setSoftInputMode(
-            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
-        )
+        // Soft input mode will be set in adjustInputPaddingForLayoutPosition()
+        // based on whether section is at top or bottom
 
         return binding.root
     }
@@ -154,6 +156,12 @@ class ChatFragment : Fragment() {
         loadUserLikes()
         createStyledMainMenuButtons()
         setupLogInput()
+        
+        // Adjust input padding based on layout position
+        adjustInputPaddingForLayoutPosition()
+        
+        // Setup keyboard visibility detection
+        setupKeyboardVisibilityDetection()
     }
 
 
@@ -1045,6 +1053,140 @@ class ChatFragment : Fragment() {
                 }
             }
         }
+    }
+    
+    private fun adjustInputPaddingForLayoutPosition() {
+        // Get the shared preference to check if layout is at bottom
+        val prefs = requireContext().getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        
+        if (isLayoutAtBottom) {
+            // When section is at bottom, use ADJUST_NOTHING and handle manually
+            requireActivity().window.setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
+            )
+        } else {
+            // When section is at top, use ADJUST_RESIZE
+            requireActivity().window.setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
+            )
+        }
+        
+        binding.layoutMessageInput?.let { inputLayout ->
+            val paddingLeft = inputLayout.paddingLeft
+            val paddingRight = inputLayout.paddingRight
+            val paddingTop = inputLayout.paddingTop
+            
+            if (isLayoutAtBottom) {
+                // When section is at bottom, minimal padding
+                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 2.dpToPx())
+                inputLayout.fitsSystemWindows = false
+            } else {
+                // When section is at top, add padding for navigation bar
+                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 48.dpToPx())
+                inputLayout.fitsSystemWindows = true
+            }
+        }
+        
+        // Also adjust for log input
+        binding.layoutLogInput?.let { logInputLayout ->
+            val paddingLeft = logInputLayout.paddingLeft
+            val paddingRight = logInputLayout.paddingRight
+            val paddingTop = logInputLayout.paddingTop
+            
+            if (isLayoutAtBottom) {
+                // Minimal padding when section is at bottom
+                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 2.dpToPx())
+                logInputLayout.fitsSystemWindows = false
+            } else {
+                // Add padding for navigation bar when section is at top
+                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 16.dpToPx())
+                logInputLayout.fitsSystemWindows = true
+            }
+        }
+    }
+    
+    private fun getNavigationBarHeight(): Int {
+        val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            resources.getDimensionPixelSize(resourceId)
+        } else {
+            0
+        }
+    }
+    
+    private fun setupKeyboardVisibilityDetection() {
+        val prefs = requireContext().getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        
+        // Only setup keyboard detection when section is at bottom
+        if (!isLayoutAtBottom) {
+            // Clean up any existing listener
+            keyboardLayoutListener?.let { listener ->
+                view?.rootView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
+            }
+            keyboardListenerRegistered = false
+            return
+        }
+        
+        if (keyboardListenerRegistered) return
+        
+        val rootView = view?.rootView ?: return
+        keyboardLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            val rect = Rect()
+            rootView.getWindowVisibleDisplayFrame(rect)
+            val screenHeight = rootView.height
+            val keypadHeight = screenHeight - rect.bottom
+            
+            // Get the height of the bottom section
+            val topSection = requireActivity().findViewById<View>(R.id.topSectionContainer)
+            val sectionHeight = topSection?.height ?: 0
+            
+            // If keyboard is showing (height > 200dp typically indicates keyboard)
+            if (keypadHeight > 200.dpToPx()) {
+                // Keyboard is visible - position input just above it, compensating for section height
+                positionInputAboveKeyboard(keypadHeight, sectionHeight)
+            } else {
+                // Keyboard is hidden - restore normal position
+                restoreInputPosition()
+            }
+        }
+        
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(keyboardLayoutListener)
+        keyboardListenerRegistered = true
+    }
+    
+    private fun positionInputAboveKeyboard(keyboardHeight: Int, sectionHeight: Int) {
+        // Calculate the actual translation needed
+        // The ViewPager's bottom is already elevated by sectionHeight
+        // So we only need to translate by (keyboardHeight - sectionHeight)
+        val actualTranslation = -(keyboardHeight - sectionHeight).toFloat()
+        
+        binding.layoutMessageInput?.let { inputLayout ->
+            inputLayout.translationY = actualTranslation
+        }
+        
+        binding.layoutLogInput?.let { logInputLayout ->
+            logInputLayout.translationY = actualTranslation
+        }
+        
+        // Also translate the RecyclerView to keep messages visible
+        binding.recyclerMessages?.let { recycler ->
+            recycler.translationY = actualTranslation
+        }
+        
+        binding.recyclerLogMessages?.let { recycler ->
+            recycler.translationY = actualTranslation
+        }
+    }
+    
+    private fun restoreInputPosition() {
+        binding.layoutMessageInput?.translationY = 0f
+        binding.layoutLogInput?.translationY = 0f
+        binding.recyclerMessages?.translationY = 0f
+        binding.recyclerLogMessages?.translationY = 0f
     }
 
 
@@ -2869,6 +3011,9 @@ class ChatFragment : Fragment() {
         Log.d(TAG, "onResume called - fragment resuming")
         Log.d(TAG, "Current navigation state: $currentNavState")
         Log.d(TAG, "Fragment visibility: isVisible=$isVisible, isResumed=$isResumed")
+        
+        // Re-adjust input padding in case layout position changed while in another tab
+        adjustInputPaddingForLayoutPosition()
 
         // Check if we're the currently selected tab
         val mainActivity = activity as? MainActivity
@@ -3792,6 +3937,13 @@ class ChatFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         Log.d(TAG, "onDestroyView called - fragment being destroyed")
+        
+        // Clean up keyboard listener
+        keyboardLayoutListener?.let { listener ->
+            view?.rootView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
+        }
+        keyboardListenerRegistered = false
+        keyboardLayoutListener = null
 
         // Clean up animation handlers
         throbHandlers.forEach { it.removeCallbacksAndMessages(null) }
