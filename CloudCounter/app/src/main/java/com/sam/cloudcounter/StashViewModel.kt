@@ -664,14 +664,25 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
         timePeriod: StashTimePeriod = currentTimePeriod,
         dataScope: StashStatsCalculator.DataScope = currentDataScope
     ) {
+        // Check if we're just changing between settings while already in PROJECTED mode
+        val wasProjected = currentStatsType == StashStatsCalculator.StatsType.PROJECTED
+        val isProjected = statsType == StashStatsCalculator.StatsType.PROJECTED
+        val settingsChanged = (currentTimePeriod != timePeriod || currentDataScope != dataScope)
+        
         // Store current selections
         currentStatsType = statsType
         currentTimePeriod = timePeriod
         currentDataScope = dataScope
         
-        // Start or stop the projection update timer based on stats type
-        if (statsType == StashStatsCalculator.StatsType.PROJECTED) {
-            startProjectionUpdateTimer()
+        // Only restart timer if necessary
+        if (isProjected) {
+            if (!wasProjected || settingsChanged) {
+                // Only restart if we weren't already projecting or settings changed
+                Log.d("PROJ_TIMER", "Timer restart needed: wasProjected=$wasProjected, settingsChanged=$settingsChanged")
+                startProjectionUpdateTimer()
+            } else {
+                Log.d("PROJ_TIMER", "Skipping timer restart - already running with same settings")
+            }
         } else {
             stopProjectionUpdateTimer()
         }
@@ -1023,8 +1034,15 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                             currentUserId = currentUserId
                         )
                         
-                        Log.d("PROJ_TIMER", "Calculation complete. Total grams: ${stats.totalGrams}")
-                        Log.d("PROJ_TIMER", "Projection scale: ${stats.projectionScale}")
+                        // Log the actual stat values to show they're changing
+                        val cones = stats.counts[ActivityType.CONE] ?: 0
+                        val bowls = stats.counts[ActivityType.BOWL] ?: 0
+                        val joints = stats.counts[ActivityType.JOINT] ?: 0
+                        
+                        Log.d("PROJ_TIMER", "Calculation complete:")
+                        Log.d("PROJ_TIMER", "  Cones: $cones | Bowls: $bowls | Joints: $joints")
+                        Log.d("PROJ_TIMER", "  Total grams: ${String.format("%.6f", stats.totalGrams)}")
+                        Log.d("PROJ_TIMER", "  Projection scale: ${String.format("%.9f", stats.projectionScale)}")
                         
                         // Update the LiveData on main thread
                         withContext(Dispatchers.Main) {

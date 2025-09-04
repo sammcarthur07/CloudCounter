@@ -346,7 +346,13 @@ class StashFragment : Fragment() {
                 return@observe
             }
             
-            Log.d("PROJ_TIMER", "Updating UI with stats - Type: ${stats.statsType}, Grams: ${stats.totalGrams}, Scale: ${stats.projectionScale}")
+            val cones = stats.counts[ActivityType.CONE] ?: 0
+            val bowls = stats.counts[ActivityType.BOWL] ?: 0
+            Log.d("PROJ_TIMER", "Updating UI with stats:")
+            Log.d("PROJ_TIMER", "  Type: ${stats.statsType}")
+            Log.d("PROJ_TIMER", "  Cones: $cones, Bowls: $bowls")
+            Log.d("PROJ_TIMER", "  Total Grams: ${String.format("%.6f", stats.totalGrams)}")
+            Log.d("PROJ_TIMER", "  Scale: ${String.format("%.9f", stats.projectionScale ?: 0.0)}")
             updateStatsFromCalculator(stats)
 
             lifecycleScope.launch {
