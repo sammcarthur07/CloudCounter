@@ -485,9 +485,9 @@ class StashStatsCalculator(
         now: Long,
         currentUserId: String?
     ): StashStats {
-        // ALWAYS use fresh current time for projections, not the passed-in value
-        val currentTimeNow = System.currentTimeMillis()
-        Log.d(TAG, "  PROJECTION TIME: Using fresh timestamp: ${java.util.Date(currentTimeNow)} (passed: ${java.util.Date(now)})")
+        // ALWAYS use actual system time for projections, not the passed-in value which is already adjusted
+        val actualCurrentTime = System.currentTimeMillis()
+        Log.d(TAG, "  PROJECTION TIME: Actual current time: ${java.util.Date(actualCurrentTime)} (passed 'now': ${java.util.Date(now)})")
         
         val actualStats = calculateActualStats(activities, StatsType.CURRENT, timePeriod, dataScope, windowStart, windowEnd, currentUserId)
 
@@ -510,12 +510,12 @@ class StashStatsCalculator(
         val scale = when(timePeriod) {
             StashTimePeriod.TODAY -> {
                 // FIX: Calculate projection differently for TODAY
-                val startOfDay = getStartOfDay(currentTimeNow)
+                val startOfDay = getStartOfDay(actualCurrentTime)
                 val endOfDay = startOfDay + DAY_MS  // Midnight tonight
-                val timeRemainingToday = endOfDay - currentTimeNow  // Time from now until midnight
+                val timeRemainingToday = endOfDay - actualCurrentTime  // Time from now until midnight
 
                 Log.d(TAG, "  TODAY Projection Debug:")
-                Log.d(TAG, "    Current time: ${java.util.Date(currentTimeNow)}")
+                Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
                 Log.d(TAG, "    End of day: ${java.util.Date(endOfDay)}")
                 Log.d(TAG, "    Time remaining today: ${String.format("%.4f", timeRemainingToday / HOUR_MS.toDouble())} hours")
 
@@ -555,7 +555,7 @@ class StashStatsCalculator(
 
             StashTimePeriod.HOUR -> {
                 // For HOUR projection, project to the end of the current hour
-                val cal = java.util.Calendar.getInstance().apply { timeInMillis = currentTimeNow }
+                val cal = java.util.Calendar.getInstance().apply { timeInMillis = actualCurrentTime }
                 val minutesPassed = cal.get(java.util.Calendar.MINUTE)
                 val minutesRemaining = 60 - minutesPassed
 
@@ -577,8 +577,8 @@ class StashStatsCalculator(
 
             StashTimePeriod.TWELVE_H -> {
                 // For 12H projection, project to the end of the 12-hour period
-                val twelveHoursAgo = currentTimeNow - (12 * HOUR_MS)
-                val elapsedIn12H = currentTimeNow - kotlin.math.max(firstActivityTime, twelveHoursAgo)
+                val twelveHoursAgo = actualCurrentTime - (12 * HOUR_MS)
+                val elapsedIn12H = actualCurrentTime - kotlin.math.max(firstActivityTime, twelveHoursAgo)
                 val remainingIn12H = (12 * HOUR_MS) - elapsedIn12H
 
                 if (elapsedIn12H > 0 && activeDuration > 0 && remainingIn12H > 0) {
@@ -601,41 +601,48 @@ class StashStatsCalculator(
                 
                 // Special handling for YEAR to make it update every 3 seconds
                 if (timePeriod == StashTimePeriod.YEAR) {
-                    val yearStart = windowStart
-                    val yearEnd = yearStart + YEAR_MS // One year from start
-                    val elapsedTime = currentTimeNow - yearStart
-                    val remainingTime = yearEnd - currentTimeNow
+                    // For YEAR: We want to project what a full year would look like based on current rate
+                    // The window is from (now - 1 year) to now, but we project forward
+                    
+                    val yearStartTime = actualCurrentTime - YEAR_MS  // One year ago
+                    val timeElapsedInYear = actualCurrentTime - yearStartTime  // Should be 1 year
+                    
+                    // Calculate how much time would be left if we were projecting a full year from first activity
+                    val projectionPeriod = YEAR_MS  // We always project for a full year
+                    val actualTimeConsuming = if (activeDuration > 0) activeDuration else HOUR_MS
                     
                     Log.d(TAG, "    YEAR Projection Debug:")
-                    Log.d(TAG, "      Year start: ${java.util.Date(yearStart)}")
-                    Log.d(TAG, "      Year end: ${java.util.Date(yearEnd)}")
-                    Log.d(TAG, "      Current time: ${java.util.Date(currentTimeNow)}")
-                    Log.d(TAG, "      Elapsed: ${String.format("%.4f", elapsedTime / HOUR_MS.toDouble())} hours")
-                    Log.d(TAG, "      Remaining: ${String.format("%.4f", remainingTime / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Window start: ${java.util.Date(windowStart)}")
+                    Log.d(TAG, "      Window end: ${java.util.Date(windowEnd)}")  
+                    Log.d(TAG, "      Actual current time: ${java.util.Date(actualCurrentTime)}")
+                    Log.d(TAG, "      Active duration: ${String.format("%.4f", activeDuration / HOUR_MS.toDouble())} hours")
                     
                     // Calculate consumption rate from actual activities
                     val consumptionRate = if (activeDuration > 0) {
                         actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)
+                    } else if (actualStats.totalGrams > 0) {
+                        // If we have consumption but no duration, assume it happened instantly
+                        actualStats.totalGrams  // per hour
                     } else {
                         0.0
                     }
                     
-                    if (consumptionRate > 0 && remainingTime > 0) {
-                        // Project: current + (rate * remaining time)
-                        val projectedAdditionalGrams = consumptionRate * (remainingTime.toDouble() / HOUR_MS)
-                        val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-                        
-                        val projectionScale = if (actualStats.totalGrams > 0) {
-                            projectedTotalGrams / actualStats.totalGrams
+                    if (consumptionRate > 0) {
+                        // For year projection: Scale based on how much of the year is left vs consumed
+                        // If activities span 1 hour, project that rate across the full year
+                        val projectionScale = if (activeDuration > 0) {
+                            YEAR_MS.toDouble() / activeDuration
                         } else {
-                            1.0
+                            // No duration means instant consumption, project for full year
+                            YEAR_MS.toDouble() / HOUR_MS  // 8760 hours in a year
                         }
+                        
+                        val projectedTotalGrams = actualStats.totalGrams * projectionScale
                         
                         Log.d(TAG, "      Consumption rate: ${String.format("%.3f", consumptionRate)} g/hour")
                         Log.d(TAG, "      Current total: ${String.format("%.3f", actualStats.totalGrams)}g")
-                        Log.d(TAG, "      Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}g")
-                        Log.d(TAG, "      Projected total: ${String.format("%.3f", projectedTotalGrams)}g")
-                        Log.d(TAG, "      Scale: ${String.format("%.6f", projectionScale)}")
+                        Log.d(TAG, "      Projection scale: ${String.format("%.2f", projectionScale)}")
+                        Log.d(TAG, "      Projected year total: ${String.format("%.3f", projectedTotalGrams)}g")
                         
                         projectionScale
                     } else {
@@ -643,7 +650,7 @@ class StashStatsCalculator(
                     }
                 } else {
                     // Original logic for WEEK, MONTH (for now)
-                    val freshWindowEnd = currentTimeNow
+                    val freshWindowEnd = actualCurrentTime
                     val totalDuration = freshWindowEnd - windowStart
                     
                     Log.d(TAG, "    ${timePeriod} Projection: Window ${windowStart} to ${freshWindowEnd}")
