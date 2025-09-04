@@ -597,20 +597,61 @@ class StashStatsCalculator(
             }
 
             else -> {
-                // For WEEK, MONTH, YEAR - recalculate window with fresh time
-                val freshWindowEnd = when(timePeriod) {
-                    StashTimePeriod.WEEK -> currentTimeNow
-                    StashTimePeriod.MONTH -> currentTimeNow
-                    StashTimePeriod.YEAR -> currentTimeNow
-                    else -> currentTimeNow
+                // For WEEK, MONTH, YEAR - project based on consumption rate and time elapsed
+                
+                // Special handling for YEAR to make it update every 3 seconds
+                if (timePeriod == StashTimePeriod.YEAR) {
+                    val yearStart = windowStart
+                    val yearEnd = yearStart + YEAR_MS // One year from start
+                    val elapsedTime = currentTimeNow - yearStart
+                    val remainingTime = yearEnd - currentTimeNow
+                    
+                    Log.d(TAG, "    YEAR Projection Debug:")
+                    Log.d(TAG, "      Year start: ${java.util.Date(yearStart)}")
+                    Log.d(TAG, "      Year end: ${java.util.Date(yearEnd)}")
+                    Log.d(TAG, "      Current time: ${java.util.Date(currentTimeNow)}")
+                    Log.d(TAG, "      Elapsed: ${String.format("%.4f", elapsedTime / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Remaining: ${String.format("%.4f", remainingTime / HOUR_MS.toDouble())} hours")
+                    
+                    // Calculate consumption rate from actual activities
+                    val consumptionRate = if (activeDuration > 0) {
+                        actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)
+                    } else {
+                        0.0
+                    }
+                    
+                    if (consumptionRate > 0 && remainingTime > 0) {
+                        // Project: current + (rate * remaining time)
+                        val projectedAdditionalGrams = consumptionRate * (remainingTime.toDouble() / HOUR_MS)
+                        val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
+                        
+                        val projectionScale = if (actualStats.totalGrams > 0) {
+                            projectedTotalGrams / actualStats.totalGrams
+                        } else {
+                            1.0
+                        }
+                        
+                        Log.d(TAG, "      Consumption rate: ${String.format("%.3f", consumptionRate)} g/hour")
+                        Log.d(TAG, "      Current total: ${String.format("%.3f", actualStats.totalGrams)}g")
+                        Log.d(TAG, "      Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}g")
+                        Log.d(TAG, "      Projected total: ${String.format("%.3f", projectedTotalGrams)}g")
+                        Log.d(TAG, "      Scale: ${String.format("%.6f", projectionScale)}")
+                        
+                        projectionScale
+                    } else {
+                        1.0
+                    }
+                } else {
+                    // Original logic for WEEK, MONTH (for now)
+                    val freshWindowEnd = currentTimeNow
+                    val totalDuration = freshWindowEnd - windowStart
+                    
+                    Log.d(TAG, "    ${timePeriod} Projection: Window ${windowStart} to ${freshWindowEnd}")
+                    Log.d(TAG, "    Total duration: ${totalDuration / HOUR_MS} hours")
+                    Log.d(TAG, "    Active duration: ${activeDuration / HOUR_MS} hours")
+                    
+                    if (activeDuration > 0) totalDuration.toDouble() / activeDuration else 1.0
                 }
-                val totalDuration = freshWindowEnd - windowStart
-                
-                Log.d(TAG, "    ${timePeriod} Projection: Window ${windowStart} to ${freshWindowEnd}")
-                Log.d(TAG, "    Total duration: ${totalDuration / HOUR_MS} hours")
-                Log.d(TAG, "    Active duration: ${activeDuration / HOUR_MS} hours")
-                
-                if (activeDuration > 0) totalDuration.toDouble() / activeDuration else 1.0
             }
         }
 
