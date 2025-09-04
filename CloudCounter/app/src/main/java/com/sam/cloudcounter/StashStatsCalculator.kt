@@ -597,14 +597,34 @@ class StashStatsCalculator(
             }
             
             StashTimePeriod.YEAR -> {
-                // EXACTLY like TODAY but instead of midnight tonight, it's 365 days from start
-                val startOfYear = windowStart  // This is already 365 days ago from 'now'
-                val endOfYear = startOfYear + YEAR_MS  // 365 days from start (like midnight for TODAY)
-                val timeRemainingInYear = endOfYear - actualCurrentTime  // Time from now until end of year period
+                // EXACTLY like TODAY but for a year starting from January 1st
+                // Get start of current year (January 1st at midnight)
+                val cal = Calendar.getInstance().apply { 
+                    timeInMillis = actualCurrentTime
+                    set(Calendar.MONTH, Calendar.JANUARY)
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val startOfCalendarYear = cal.timeInMillis
+                
+                // End of year is December 31st at 11:59:59.999
+                cal.set(Calendar.MONTH, Calendar.DECEMBER)
+                cal.set(Calendar.DAY_OF_MONTH, 31)
+                cal.set(Calendar.HOUR_OF_DAY, 23)
+                cal.set(Calendar.MINUTE, 59)
+                cal.set(Calendar.SECOND, 59)
+                cal.set(Calendar.MILLISECOND, 999)
+                val endOfCalendarYear = cal.timeInMillis
+                
+                val timeRemainingInYear = endOfCalendarYear - actualCurrentTime
 
-                Log.d(TAG, "  YEAR Projection Debug (like TODAY):")
+                Log.d(TAG, "  YEAR Projection Debug (calendar year like TODAY):")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of year period: ${java.util.Date(endOfYear)}")
+                Log.d(TAG, "    Start of year: ${java.util.Date(startOfCalendarYear)}")
+                Log.d(TAG, "    End of year: ${java.util.Date(endOfCalendarYear)}")
                 Log.d(TAG, "    Time remaining in year: ${String.format("%.4f", timeRemainingInYear / HOUR_MS.toDouble())} hours")
 
                 // Calculate the consumption rate based on recent activity (EXACTLY like TODAY)
