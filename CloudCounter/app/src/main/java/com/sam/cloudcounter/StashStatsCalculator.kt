@@ -597,35 +597,19 @@ class StashStatsCalculator(
             }
             
             StashTimePeriod.YEAR -> {
-                // EXACTLY like TODAY but for a year starting from January 1st
-                // Get start of current year (January 1st at midnight)
-                val cal = Calendar.getInstance().apply { 
-                    timeInMillis = actualCurrentTime
-                    set(Calendar.MONTH, Calendar.JANUARY)
-                    set(Calendar.DAY_OF_MONTH, 1)
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }
-                val startOfCalendarYear = cal.timeInMillis
+                // EXACTLY like TODAY but projecting 365 days ahead instead of 1 day
+                // TODAY projects from midnight today to midnight tomorrow (24 hours)
+                // YEAR projects from midnight today to midnight 1 year from today (365 days)
                 
-                // End of year is December 31st at 11:59:59.999
-                cal.set(Calendar.MONTH, Calendar.DECEMBER)
-                cal.set(Calendar.DAY_OF_MONTH, 31)
-                cal.set(Calendar.HOUR_OF_DAY, 23)
-                cal.set(Calendar.MINUTE, 59)
-                cal.set(Calendar.SECOND, 59)
-                cal.set(Calendar.MILLISECOND, 999)
-                val endOfCalendarYear = cal.timeInMillis
-                
-                val timeRemainingInYear = endOfCalendarYear - actualCurrentTime
+                val startOfToday = getStartOfDay(actualCurrentTime)  // Midnight today
+                val endOfYearFromToday = startOfToday + YEAR_MS  // Midnight 365 days from today
+                val timeRemainingInYear = endOfYearFromToday - actualCurrentTime  // Time from now until midnight 365 days ahead
 
-                Log.d(TAG, "  YEAR Projection Debug (calendar year like TODAY):")
+                Log.d(TAG, "  YEAR Projection Debug (EXACTLY like TODAY but 365 days):")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    Start of year: ${java.util.Date(startOfCalendarYear)}")
-                Log.d(TAG, "    End of year: ${java.util.Date(endOfCalendarYear)}")
-                Log.d(TAG, "    Time remaining in year: ${String.format("%.4f", timeRemainingInYear / HOUR_MS.toDouble())} hours")
+                Log.d(TAG, "    Start of today (midnight): ${java.util.Date(startOfToday)}")
+                Log.d(TAG, "    End of year from today: ${java.util.Date(endOfYearFromToday)}")
+                Log.d(TAG, "    Time remaining to year ahead: ${String.format("%.4f", timeRemainingInYear / HOUR_MS.toDouble())} hours")
 
                 // Calculate the consumption rate based on recent activity (EXACTLY like TODAY)
                 val consumptionRate = if (activeDuration > 0) {
@@ -653,7 +637,7 @@ class StashStatsCalculator(
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-                    Log.d(TAG, "    Time-based change: Every 3 seconds, remaining time decreases")
+                    Log.d(TAG, "    Time-based change: Every 3 seconds, remaining time decreases by 0.0008333 hours")
 
                     projectionScale
                 } else {
