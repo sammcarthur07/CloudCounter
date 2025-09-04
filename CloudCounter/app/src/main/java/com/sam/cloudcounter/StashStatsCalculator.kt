@@ -596,43 +596,83 @@ class StashStatsCalculator(
             }
 
             StashTimePeriod.TWELVE_H -> {
-                // Based on last 12 hours of activities, project 12 hours ahead from now
-                val endOf12HPeriod = actualCurrentTime + (12 * HOUR_MS)  // 12 hours from now
-                val timeRemainingIn12H = 12 * HOUR_MS  // Always projecting full 12 hours ahead
-
-                Log.d(TAG, "  12H Projection Debug:")
+                // Analyze activity patterns from last 12 hours and project 12 hours ahead
+                val twelveHoursAgo = actualCurrentTime - (12 * HOUR_MS)
+                val endOf12HPeriod = actualCurrentTime + (12 * HOUR_MS)
+                
+                // Filter activities to only those in the last 12 hours
+                val last12HourActivities = activities.filter { it.timestamp >= twelveHoursAgo }
+                
+                Log.d(TAG, "  12H Pattern-Based Projection Debug:")
                 Log.d(TAG, "    Current time: ${java.util.Date(actualCurrentTime)}")
-                Log.d(TAG, "    End of 12H period: ${java.util.Date(endOf12HPeriod)}")
-                Log.d(TAG, "    Time remaining (projecting ahead): ${String.format("%.2f", timeRemainingIn12H / HOUR_MS.toDouble())} hours")
-
-                // Calculate the consumption rate based on activities in the last 12 hours
-                val consumptionRate = if (activeDuration > 0) {
-                    actualStats.totalGrams / (activeDuration.toDouble() / HOUR_MS)  // grams per hour
-                } else {
-                    0.0
-                }
-
-                Log.d(TAG, "    Consumption rate: ${String.format("%.4f", consumptionRate)} g/hour")
-                Log.d(TAG, "    Active duration: ${activeDuration / MINUTE_MS} minutes")
-
-                if (consumptionRate > 0) {
-                    // Project: current consumption + (rate * 12 hours)
-                    val projectedAdditionalGrams = consumptionRate * 12.0  // 12 hours worth
+                Log.d(TAG, "    Looking back from: ${java.util.Date(twelveHoursAgo)}")
+                Log.d(TAG, "    Projecting to: ${java.util.Date(endOf12HPeriod)}")
+                Log.d(TAG, "    Activities in last 12h: ${last12HourActivities.size}")
+                
+                if (last12HourActivities.size >= 2) {
+                    // Analyze the pattern of activities
+                    val activityCount = last12HourActivities.size
+                    val avgGramsPerActivity = actualStats.totalGrams / activityCount
+                    
+                    // Calculate average time between activities
+                    val timeBetweenActivities = if (activityCount > 1) {
+                        val firstTime = last12HourActivities.minOf { it.timestamp }
+                        val lastTime = last12HourActivities.maxOf { it.timestamp }
+                        (lastTime - firstTime) / (activityCount - 1).toDouble()
+                    } else {
+                        12 * HOUR_MS.toDouble() // If only 1 activity, assume 12-hour interval
+                    }
+                    
+                    // Calculate how many activities we expect in the next 12 hours
+                    val expectedActivitiesNext12H = if (timeBetweenActivities > 0) {
+                        (12 * HOUR_MS) / timeBetweenActivities
+                    } else {
+                        activityCount.toDouble() // If no time between, assume same count
+                    }
+                    
+                    // Account for time since last activity (might be due for another soon)
+                    val timeSinceLastActivity = actualCurrentTime - last12HourActivities.maxOf { it.timestamp }
+                    val adjustedExpectedActivities = if (timeSinceLastActivity > timeBetweenActivities) {
+                        // Overdue for an activity, add one
+                        expectedActivitiesNext12H + 1
+                    } else {
+                        expectedActivitiesNext12H
+                    }
+                    
+                    // Project based on pattern
+                    val projectedAdditionalGrams = avgGramsPerActivity * adjustedExpectedActivities
                     val projectedTotalGrams = actualStats.totalGrams + projectedAdditionalGrams
-
+                    
                     val projectionScale = if (actualStats.totalGrams > 0) {
                         projectedTotalGrams / actualStats.totalGrams
                     } else {
                         1.0
                     }
-
+                    
+                    Log.d(TAG, "    Pattern Analysis:")
+                    Log.d(TAG, "      Activities in last 12h: $activityCount")
+                    Log.d(TAG, "      Avg grams per activity: ${String.format("%.3f", avgGramsPerActivity)}")
+                    Log.d(TAG, "      Avg time between activities: ${String.format("%.2f", timeBetweenActivities / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Time since last activity: ${String.format("%.2f", timeSinceLastActivity / HOUR_MS.toDouble())} hours")
+                    Log.d(TAG, "      Expected activities next 12h: ${String.format("%.2f", adjustedExpectedActivities)}")
                     Log.d(TAG, "    Current grams: ${String.format("%.3f", actualStats.totalGrams)}")
                     Log.d(TAG, "    Projected additional: ${String.format("%.3f", projectedAdditionalGrams)}")
                     Log.d(TAG, "    Projected total: ${String.format("%.3f", projectedTotalGrams)}")
                     Log.d(TAG, "    Projection scale: ${String.format("%.6f", projectionScale)}")
-
+                    
+                    projectionScale
+                } else if (last12HourActivities.size == 1) {
+                    // Only 1 activity in last 12 hours, assume similar pattern
+                    val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next 12h
+                    val projectionScale = 2.0
+                    
+                    Log.d(TAG, "    Only 1 activity in last 12h, projecting 1 more")
+                    Log.d(TAG, "    Projection scale: 2.0")
+                    
                     projectionScale
                 } else {
+                    // No activities in last 12 hours (shouldn't happen if actualStats has data)
+                    Log.d(TAG, "    No activities in last 12h window")
                     1.0
                 }
             }
