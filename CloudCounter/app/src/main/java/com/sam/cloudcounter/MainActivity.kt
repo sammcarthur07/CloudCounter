@@ -10317,7 +10317,7 @@ class MainActivity : AppCompatActivity() {
             params.topMargin = -19.dpToPx(this)
             
             // Switch to expanded background
-            binding.topSectionContainer.setBackgroundResource(R.drawable.section_background_expanded)
+            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_expanded)
 
             Log.d(TAG, "🔘 Showing all timer controls with doubled button heights")
         } else {
@@ -10333,7 +10333,7 @@ class MainActivity : AppCompatActivity() {
             params.topMargin = -5.dpToPx(this)
             
             // Switch to collapsed background
-            binding.topSectionContainer.setBackgroundResource(R.drawable.section_background_collapsed)
+            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_collapsed)
 
             Log.d(TAG, "🔘 Hiding all timer controls with normal button heights")
         }
