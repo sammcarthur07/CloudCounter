@@ -243,7 +243,7 @@ class StashStatsCalculator(
                 )
                 
                 // Calculate consumption rate based on session duration
-                if (sessionDuration < MINUTE_MS || currentStats.totalGrams == 0) {
+                if (sessionDuration < MINUTE_MS || currentStats.totalGrams == 0.0) {
                     Log.d(TAG, "    Session too short or no consumption yet")
                     return currentStats.copy(statsType = StatsType.PROJECTED, projectionScale = 1.0)
                 }
