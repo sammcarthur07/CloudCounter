@@ -2251,7 +2251,14 @@ class MainActivity : AppCompatActivity() {
             // Adjust button container margin when at top (reduced spacing)
             val buttonContainer = findViewById<LinearLayout>(R.id.buttonContainer)
             val layoutParams = buttonContainer.layoutParams as LinearLayout.LayoutParams
-            layoutParams.topMargin = (-8).dpToPx(this) // Reduced margin for top position
+            
+            // Check if Advanced button is visible (timers showing)
+            val isAdvancedVisible = binding.btnToggleTimers.visibility == View.VISIBLE
+            if (isAdvancedVisible) {
+                layoutParams.topMargin = (-25).dpToPx(this) // Much tighter spacing when Advanced shown
+            } else {
+                layoutParams.topMargin = (-8).dpToPx(this) // Normal reduced spacing
+            }
             buttonContainer.layoutParams = layoutParams
             
             // Set ViewPager to take remaining space
@@ -10308,6 +10315,9 @@ class MainActivity : AppCompatActivity() {
             // Double the height when "See Less" is shown
             setActivityButtonHeights(jointButton, coneButton, bowlButton, 96.dpToPx(this))
             params.topMargin = -19.dpToPx(this)
+            
+            // Switch to expanded background
+            binding.topSectionContainer.setBackgroundResource(R.drawable.section_background_expanded)
 
             Log.d(TAG, "🔘 Showing all timer controls with doubled button heights")
         } else {
@@ -10321,6 +10331,9 @@ class MainActivity : AppCompatActivity() {
             // Normal height when "Advanced" is shown
             setActivityButtonHeights(jointButton, coneButton, bowlButton, 48.dpToPx(this))
             params.topMargin = -5.dpToPx(this)
+            
+            // Switch to collapsed background
+            binding.topSectionContainer.setBackgroundResource(R.drawable.section_background_collapsed)
 
             Log.d(TAG, "🔘 Hiding all timer controls with normal button heights")
         }
