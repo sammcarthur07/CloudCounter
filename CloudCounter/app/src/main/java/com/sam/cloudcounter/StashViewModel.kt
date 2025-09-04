@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Date
@@ -63,9 +64,13 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
 
     // Store ratios at the time of each activity
     private val activityRatios = mutableMapOf<Long, ConsumptionRatio>()
+    
+    // Timer job for real-time projection updates
+    private var projectionUpdateJob: Job? = null
 
     companion object {
         private const val TAG = "StashViewModel"
+        private const val PROJECTION_UPDATE_INTERVAL_MS = 3000L // Update every 3 seconds
     }
 
     init {
@@ -663,6 +668,13 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
         currentStatsType = statsType
         currentTimePeriod = timePeriod
         currentDataScope = dataScope
+        
+        // Start or stop the projection update timer based on stats type
+        if (statsType == StashStatsCalculator.StatsType.PROJECTED) {
+            startProjectionUpdateTimer()
+        } else {
+            stopProjectionUpdateTimer()
+        }
 
         viewModelScope.launch {
             try {
@@ -778,6 +790,22 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     fun updateDataScope(scope: StashStatsCalculator.DataScope) {
         currentDataScope = scope
         recalculateStats()
+    }
+    
+    /**
+     * Call this when the Stash tab becomes visible
+     */
+    fun onStashTabResumed() {
+        if (currentStatsType == StashStatsCalculator.StatsType.PROJECTED) {
+            startProjectionUpdateTimer()
+        }
+    }
+    
+    /**
+     * Call this when the Stash tab is no longer visible
+     */
+    fun onStashTabPaused() {
+        stopProjectionUpdateTimer()
     }
 
     fun onBowlActivityLogged() {
@@ -946,6 +974,59 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             Log.d("STASH_DEBUG", "COMPREHENSIVE TEST COMPLETE")
             Log.d("STASH_DEBUG", "════════════════════════════════════════════════════════════════")
         }
+    }
+    
+    /**
+     * Start the projection update timer for real-time updates
+     */
+    private fun startProjectionUpdateTimer() {
+        // Cancel any existing timer
+        stopProjectionUpdateTimer()
+        
+        Log.d(TAG, "Starting projection update timer (3-second intervals)")
+        
+        projectionUpdateJob = viewModelScope.launch {
+            while (true) {
+                delay(PROJECTION_UPDATE_INTERVAL_MS)
+                
+                // Only update if we're still in PROJECTED mode
+                if (currentStatsType == StashStatsCalculator.StatsType.PROJECTED) {
+                    Log.d(TAG, "Updating projected stats (timer tick)")
+                    
+                    // Recalculate stats with current timestamp
+                    val stats = statsCalculator.calculate(
+                        statsType = StashStatsCalculator.StatsType.PROJECTED,
+                        timePeriod = currentTimePeriod,
+                        dataScope = currentDataScope,
+                        sessionStartTime = sessionStartTime,
+                        lastCompletedSessionId = lastCompletedSessionId,
+                        currentUserId = currentUserId
+                    )
+                    
+                    // Update the LiveData on main thread
+                    withContext(Dispatchers.Main) {
+                        _stashStats.value = stats
+                    }
+                } else {
+                    // Stop timer if we're no longer in projected mode
+                    break
+                }
+            }
+        }
+    }
+    
+    /**
+     * Stop the projection update timer
+     */
+    private fun stopProjectionUpdateTimer() {
+        projectionUpdateJob?.cancel()
+        projectionUpdateJob = null
+        Log.d(TAG, "Stopped projection update timer")
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        stopProjectionUpdateTimer()
     }
 
 }

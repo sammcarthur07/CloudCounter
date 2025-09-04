@@ -139,6 +139,18 @@ class StashFragment : Fragment() {
         super.onStart()
         updateUI(authManager.getCurrentUser())
     }
+    
+    override fun onResume() {
+        super.onResume()
+        // Start projection timer if needed when fragment becomes visible
+        stashViewModel.onStashTabResumed()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Stop projection timer to save resources when fragment is not visible
+        stashViewModel.onStashTabPaused()
+    }
 
     private fun saveScrollPosition() {
         _binding?.let { validBinding ->
