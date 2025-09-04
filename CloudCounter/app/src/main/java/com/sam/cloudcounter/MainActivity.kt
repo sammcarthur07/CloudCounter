@@ -2215,10 +2215,15 @@ class MainActivity : AppCompatActivity() {
                 navigationBarHeight
             )
             
-            // Adjust button container margin when at bottom (normal spacing)
+            // Adjust button container margin when at bottom
             val buttonContainer = findViewById<LinearLayout>(R.id.buttonContainer)
             val layoutParams = buttonContainer.layoutParams as LinearLayout.LayoutParams
-            layoutParams.topMargin = (-19).dpToPx(this) // Original margin
+            // Check if timers are visible to set correct margin
+            if (timersVisible) {
+                layoutParams.topMargin = (-19).dpToPx(this) // Expanded state margin
+            } else {
+                layoutParams.topMargin = (-5).dpToPx(this) // Collapsed state margin
+            }
             buttonContainer.layoutParams = layoutParams
             
             // Set ViewPager to take remaining space
@@ -2248,16 +2253,15 @@ class MainActivity : AppCompatActivity() {
                 0
             )
             
-            // Adjust button container margin when at top (reduced spacing)
+            // Adjust button container margin when at top
             val buttonContainer = findViewById<LinearLayout>(R.id.buttonContainer)
             val layoutParams = buttonContainer.layoutParams as LinearLayout.LayoutParams
             
-            // Check if Advanced button is visible (timers showing)
-            val isAdvancedVisible = binding.btnToggleTimers.visibility == View.VISIBLE
-            if (isAdvancedVisible) {
-                layoutParams.topMargin = (-25).dpToPx(this) // Much tighter spacing when Advanced shown
+            // Check if timers are visible to set correct margin
+            if (timersVisible) {
+                layoutParams.topMargin = (-19).dpToPx(this) // Expanded state margin
             } else {
-                layoutParams.topMargin = (-8).dpToPx(this) // Normal reduced spacing
+                layoutParams.topMargin = (-5).dpToPx(this) // Collapsed state margin
             }
             buttonContainer.layoutParams = layoutParams
             
