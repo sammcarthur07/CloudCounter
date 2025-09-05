@@ -465,18 +465,33 @@
     </LinearLayout>
     </FrameLayout>
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tabLayout"
+    <FrameLayout
+        android:id="@+id/tabSectionContainer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/tabBackground"
-        app:tabIndicatorColor="?attr/tabIndicatorColor"
-        app:tabTextColor="@color/tab_unselected_text_color_on_grey"
-        app:tabSelectedTextColor="?attr/tabSelectedTextColor"
-        app:tabMode="fixed"
-        app:tabGravity="fill"
-        app:tabIconTint="@null"
-        app:tabTextAppearance="@style/TabTextAppearance" />
+        android:layout_height="wrap_content">
+        
+        <ImageView
+            android:id="@+id/tabBackgroundImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:src="@drawable/tab_background"
+            android:scaleType="centerCrop"
+            android:adjustViewBounds="true" />
+        
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:tabBackground="@android:color/transparent"
+            app:tabIndicatorColor="?attr/tabIndicatorColor"
+            app:tabTextColor="@color/tab_unselected_text_color_on_grey"
+            app:tabSelectedTextColor="?attr/tabSelectedTextColor"
+            app:tabMode="fixed"
+            app:tabGravity="fill"
+            app:tabIconTint="@null"
+            app:tabTextAppearance="@style/TabTextAppearance" />
+    </FrameLayout>
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"

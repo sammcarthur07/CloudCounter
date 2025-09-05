@@ -2180,6 +2180,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateLayoutPosition(isAtBottom: Boolean) {
         val rootLayout = binding.mainActivityRootLayout
         val topSection = binding.topSectionContainer
+        val tabSectionContainer = binding.tabSectionContainer
         val tabLayout = binding.tabLayout
         val viewPager = binding.viewPager
         
@@ -2189,20 +2190,28 @@ class MainActivity : AppCompatActivity() {
         
         // Remove views first
         rootLayout.removeView(topSection)
-        rootLayout.removeView(tabLayout)
+        rootLayout.removeView(tabSectionContainer)
         rootLayout.removeView(viewPager)
         
         // Re-add in the correct order
         if (isAtBottom) {
-            // Order: TabLayout, ViewPager, TopSection
-            rootLayout.addView(tabLayout)
+            // Order: TabSectionContainer (with TabLayout inside), ViewPager, TopSection
+            rootLayout.addView(tabSectionContainer)
             rootLayout.addView(viewPager)
             rootLayout.addView(topSection)
             
-            // Add top padding to TabLayout when it's at the top to avoid status bar
+            // Add padding to the CONTAINER to extend the background up
+            tabSectionContainer.setPadding(
+                0,
+                statusBarHeight,
+                0,
+                0
+            )
+            
+            // TabLayout doesn't need padding since container has it
             tabLayout.setPadding(
                 tabLayout.paddingLeft,
-                statusBarHeight,
+                0,
                 tabLayout.paddingRight,
                 tabLayout.paddingBottom
             )
@@ -2233,9 +2242,9 @@ class MainActivity : AppCompatActivity() {
                 1f
             )
         } else {
-            // Order: TopSection, TabLayout, ViewPager (original)
+            // Order: TopSection, TabSectionContainer (with TabLayout inside), ViewPager (original)
             rootLayout.addView(topSection)
-            rootLayout.addView(tabLayout)
+            rootLayout.addView(tabSectionContainer)
             rootLayout.addView(viewPager)
             
             // Reset padding when in normal position
@@ -2245,6 +2254,8 @@ class MainActivity : AppCompatActivity() {
                 tabLayout.paddingRight,
                 tabLayout.paddingBottom
             )
+            
+            tabSectionContainer.setPadding(0, 0, 0, 0)
             
             topSection.setPadding(
                 topSection.paddingLeft,
