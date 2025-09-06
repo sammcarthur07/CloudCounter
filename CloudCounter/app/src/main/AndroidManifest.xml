@@ -84,6 +84,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".Notification420Receiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.sam.cloudcounter.ACTION_420_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".ChatListenerService"
             android:exported="false"

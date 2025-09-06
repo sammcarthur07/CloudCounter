@@ -76,16 +76,16 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="center_horizontal"
-                    android:layout_marginEnd="20dp">
+                    android:layout_marginEnd="15dp">
 
                     <CheckBox
                         android:id="@+id/checkbox420Morning"
                         android:layout_width="wrap_content"
                         android:layout_height="32dp"
                         android:text="Morning"
-                        android:textSize="11sp"
-                        android:scaleX="0.85"
-                        android:scaleY="0.85" />
+                        android:textSize="10sp"
+                        android:scaleX="0.8"
+                        android:scaleY="0.8" />
 
                     <TextView
                         android:id="@+id/textMorningTimer"
@@ -104,16 +104,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal">
+                    android:gravity="center_horizontal"
+                    android:layout_marginEnd="15dp">
 
                     <CheckBox
                         android:id="@+id/checkbox420Afternoon"
                         android:layout_width="wrap_content"
                         android:layout_height="32dp"
                         android:text="Afternoon"
-                        android:textSize="11sp"
-                        android:scaleX="0.85"
-                        android:scaleY="0.85" />
+                        android:textSize="10sp"
+                        android:scaleX="0.8"
+                        android:scaleY="0.8" />
 
                     <TextView
                         android:id="@+id/textAfternoonTimer"
@@ -125,6 +126,24 @@
                         android:textColor="@color/my_light_primary"
                         android:textStyle="bold"
                         android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- 5 minutes before section -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <CheckBox
+                        android:id="@+id/checkbox5MinBefore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="5m before"
+                        android:textSize="10sp"
+                        android:scaleX="0.8"
+                        android:scaleY="0.8" />
+
                 </LinearLayout>
 
             </LinearLayout>

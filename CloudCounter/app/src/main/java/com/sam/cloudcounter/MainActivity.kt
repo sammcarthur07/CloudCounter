@@ -1654,9 +1654,9 @@ class MainActivity : AppCompatActivity() {
         // ADD THIS AT THE END OF onCreate:
         // Start network monitoring for sync status
         startNetworkMonitoring()
-
-        // Start network monitoring for sync status
-        startNetworkMonitoring()
+        
+        // Initialize 420 notifications
+        Notification420Receiver.schedule420Notifications(this)
 
 // Initialize offline queue system
         loadOfflineQueue()

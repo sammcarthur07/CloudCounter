@@ -372,6 +372,11 @@ class AboutFragment : Fragment() {
     private var showingAList = true // true = A-list (actual 420), false = B-list (approaching)
     private var lastAIndex = -1
     private var lastBIndex = -1
+    private var currentCityIndex = 0 // For fallback rotation
+    
+    // City diversity tracking
+    private val recentCityHistory = mutableListOf<String>() // Track last 10 cities shown
+    private var lastCountryShown = "" // Track last country to avoid consecutive same country
 
     private var keyboardListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
@@ -964,18 +969,56 @@ class AboutFragment : Fragment() {
             }
         }
 
-        // Sort by seconds until 4:20
-        val sorted = cityTimes.sortedBy { it.third }
+        // Group cities by time windows and shuffle within each window for variety
+        val timeWindows = mutableMapOf<Int, MutableList<Triple<String, Long, Int>>>()
+        cityTimes.forEach { city ->
+            val windowKey = city.third / 300 // 5 minute windows
+            timeWindows.getOrPut(windowKey) { mutableListOf() }.add(city)
+        }
+        
+        // Shuffle cities within each time window for randomization
+        val shuffledCityTimes = mutableListOf<Triple<String, Long, Int>>()
+        timeWindows.keys.sorted().forEach { windowKey ->
+            val citiesInWindow = timeWindows[windowKey] ?: emptyList()
+            shuffledCityTimes.addAll(citiesInWindow.shuffled())
+        }
+        
+        // Use the shuffled list but still maintain time ordering between windows
+        val sorted = shuffledCityTimes.sortedBy { it.third }
 
-        Log.d(TAG, "📋 Top 5 cities closest to 4:20:")
-        sorted.take(5).forEachIndexed { index, (city, _, seconds) ->
-            if (seconds == 0) {
-                Log.d(TAG, "   ${index + 1}. $city - Currently 4:20!")
+        // Always log the closest city regardless
+        if (sorted.isNotEmpty()) {
+            val closest = sorted.first()
+            val timeStr = if (closest.third == 0) {
+                "NOW!"
+            } else if (closest.third < 3600) {
+                "${closest.third / 60}m ${closest.third % 60}s"
             } else {
-                val minutes = seconds / 60
-                val secs = seconds % 60
-                Log.d(TAG, "   ${index + 1}. $city - ${minutes}m ${secs}s")
+                "${closest.third / 3600}h ${(closest.third % 3600) / 60}m"
             }
+            Log.d(TAG, "🎯🎯🎯 CLOSEST CITY: ${closest.first} - $timeStr away from 4:20")
+        }
+        
+        // Log the top cities with their times
+        if (sorted.isNotEmpty()) {
+            Log.d(TAG, "📋 Top 10 cities closest to 4:20:")
+            sorted.take(10).forEachIndexed { index, triple ->
+                val city = triple.first
+                val seconds = triple.third
+                if (seconds == 0) {
+                    Log.d(TAG, "   ${index + 1}. $city - Currently 4:20!")
+                } else if (seconds < 3600) {
+                    val minutes = seconds / 60
+                    val secs = seconds % 60
+                    Log.d(TAG, "   ${index + 1}. $city - ${minutes}m ${secs}s")
+                } else {
+                    val hours = seconds / 3600
+                    val minutes = (seconds % 3600) / 60
+                    Log.d(TAG, "   ${index + 1}. $city - ${hours}h ${minutes}m")
+                }
+            }
+        } else {
+            Log.d(TAG, "📋 No cities found!")
         }
 
         return sorted
@@ -1121,6 +1164,7 @@ class AboutFragment : Fragment() {
         val prefs = requireContext().getSharedPreferences("420_notifications", Context.MODE_PRIVATE)
         binding.checkbox420Morning.isChecked = prefs.getBoolean("morning_enabled", false)
         binding.checkbox420Afternoon.isChecked = prefs.getBoolean("afternoon_enabled", false)
+        binding.checkbox5MinBefore.isChecked = prefs.getBoolean("five_min_before_enabled", false)
 
         // Show/hide timers based on checkbox state
         updateTimerVisibility()
@@ -1128,21 +1172,18 @@ class AboutFragment : Fragment() {
         binding.checkbox420Morning.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("morning_enabled", isChecked).apply()
             updateTimerVisibility()
-            if (isChecked) {
-                schedule420Notification(4, 20)
-            } else {
-                cancel420Notification(420)
-            }
+            Notification420Receiver.schedule420Notifications(requireContext())
         }
 
         binding.checkbox420Afternoon.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("afternoon_enabled", isChecked).apply()
             updateTimerVisibility()
-            if (isChecked) {
-                schedule420Notification(16, 20)
-            } else {
-                cancel420Notification(1620)
-            }
+            Notification420Receiver.schedule420Notifications(requireContext())
+        }
+
+        binding.checkbox5MinBefore.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("five_min_before_enabled", isChecked).apply()
+            Notification420Receiver.schedule420Notifications(requireContext())
         }
     }
 
@@ -1206,11 +1247,14 @@ class AboutFragment : Fragment() {
     }
 
     private fun schedule420Notification(hour: Int, minute: Int) {
-        // Implementation for scheduling notification
+        // Now handled by Notification420Receiver
+        Notification420Receiver.schedule420Notifications(requireContext())
         Log.d(TAG, "Scheduled 420 notification for $hour:$minute")
     }
 
     private fun cancel420Notification(id: Int) {
+        // Now handled by Notification420Receiver
+        Notification420Receiver.schedule420Notifications(requireContext())
         Log.d(TAG, "Cancelled 420 notification with ID: $id")
     }
 
@@ -1276,6 +1320,13 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
     private fun updateStatsDisplay() {
         Log.d(TAG, "📊 updateStatsDisplay called")
+        
+        // Check if binding is still valid
+        if (_binding == null) {
+            Log.d(TAG, "📊 Binding is null, skipping stats display update")
+            return
+        }
+        
         val stats = currentStats ?: run {
             Log.d(TAG, "📊 No stats available yet")
             return
@@ -1607,9 +1658,9 @@ This app is vibe coded without writing a single line of code with the help of Cl
                             }
                         }
                         "normal" -> {
-                            if (secondsUntil > 0) {
-                                Log.d(TAG, "⏱️ Updating normal countdown: ${secondsUntil}s")
-                                updateApproachingCountdownTextDirect(currentDisplayCity ?: "", secondsUntil)
+                            if (secondsUntil > 0 && currentDisplayCity != null) {
+                                // Update countdown text directly without fade for smooth countdown
+                                updateApproachingCountdownTextDirect(currentDisplayCity!!, secondsUntil)
                             }
                         }
                         "actual" -> {
@@ -1696,57 +1747,170 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
         // Split cities into A-list (currently 420) and B-list (approaching)
         val aList = allCities.filter { it.third <= 120 } // Within 2 minutes = currently 420
-        val bList = allCities.filter { it.third > STICKY_THRESHOLD_SECONDS } // More than 2 minutes away
+        
+        // Only show cities that are actually approaching (within 60 minutes max to catch more cities)
+        val bList = allCities.filter { it.third in (STICKY_THRESHOLD_SECONDS + 1)..3600 } // Between 2 min and 60 minutes
 
-        Log.d(TAG, "📊 A-list (actual 420): ${aList.size} cities, B-list (approaching): ${bList.size} cities")
+        Log.d(TAG, "📊 A-list (actual 420): ${aList.size} cities, B-list (within 60m): ${bList.size} cities")
+        
+        // Log what we're actually considering - show the CLOSEST cities
+        if (aList.isNotEmpty()) {
+            Log.d(TAG, "🅰️ A-list cities (currently 420):")
+            aList.take(5).forEachIndexed { index, (city, _, seconds) ->
+                Log.d(TAG, "     ${index + 1}. $city - ${seconds}s away")
+            }
+        }
+        
+        // Show ALL cities that will be rotated through (not limited to 10)
+        val closestForRotation = bList.sortedBy { it.third }
+        if (closestForRotation.isNotEmpty()) {
+            Log.d(TAG, "🅱️ B-list cities in rotation (${closestForRotation.size} cities within 60m):")
+            // Show first 15 for logging, but use all for rotation
+            closestForRotation.take(15).forEachIndexed { index, (city, _, seconds) ->
+                val mins = seconds / 60
+                val secs = seconds % 60
+                Log.d(TAG, "     ${index + 1}. $city - ${mins}m ${secs}s away")
+            }
+            if (closestForRotation.size > 15) {
+                Log.d(TAG, "     ... and ${closestForRotation.size - 15} more cities")
+            }
+        } else {
+            Log.d(TAG, "⚠️ No cities in B-list rotation window (2m-60m)")
+            // Show why there are no cities - log the closest ones anyway
+            val closest5 = allCities.sortedBy { it.third }.take(5)
+            if (closest5.isNotEmpty()) {
+                Log.d(TAG, "🔍 Closest 5 cities (outside rotation window):")
+                closest5.forEachIndexed { index, (city, _, seconds) ->
+                    val mins = seconds / 60
+                    val secs = seconds % 60
+                    Log.d(TAG, "     ${index + 1}. $city - ${mins}m ${secs}s away")
+                }
+            }
+        }
+        
+        // If no cities in either list, use closest regardless but log why
+        if (aList.isEmpty() && bList.isEmpty() && allCities.isNotEmpty()) {
+            // Find the actual closest city from ALL cities
+            val closestCities = allCities.sortedBy { it.third }.take(5)
+            Log.d(TAG, "⚠️ No cities within 60 minutes! Closest 5 cities:")
+            closestCities.forEachIndexed { index, (city, _, seconds) ->
+                val hours = seconds / 3600
+                val mins = (seconds % 3600) / 60
+                if (hours > 0) {
+                    Log.d(TAG, "     ${index + 1}. $city - ${hours}h ${mins}m away")
+                } else {
+                    Log.d(TAG, "     ${index + 1}. $city - ${mins}m away")
+                }
+            }
+            
+            val closestCity = closestCities.first()
+            Log.d(TAG, "🎯 Using closest city: ${closestCity.first}")
+            
+            // Always show the closest city, even if it's far away
+            fadeToNewText {
+                currentDisplayCity = closestCity.first
+                currentDisplayTargetTime = closestCity.second
+                currentDisplayMode = "fallback"
+                updateApproachingCountdownText(closestCity.first, closestCity.third)
+            }
+            showingAList = !showingAList
+            return
+        }
 
         if (showingAList && aList.isNotEmpty()) {
-            Log.d(TAG, "✨ Showing A-list city with fade animation")
+            Log.d(TAG, "✨ Showing A-list city (currently 420)")
             // Show from A-list with region filtering
             val filteredAList = filterByRegion(aList)
             if (filteredAList.isNotEmpty()) {
-                lastAIndex = (lastAIndex + 1) % filteredAList.size
-                val (city, targetTime, _) = filteredAList[lastAIndex]
+                // Add some randomness to A-list selection too
+                if (kotlin.random.Random.nextFloat() < 0.3) {
+                    lastAIndex = kotlin.random.Random.nextInt(filteredAList.size)
+                } else {
+                    lastAIndex = (lastAIndex + 1) % filteredAList.size
+                }
+                val (city, targetTime, secondsUntil) = filteredAList[lastAIndex]
                 lastRegionShown = getRegionForCity(city)
-                Log.d(TAG, "🎯 Selected A-list city: $city (region: $lastRegionShown)")
+                Log.d(TAG, "🎯 Selected A-list city: $city (${secondsUntil}s away, region: $lastRegionShown)")
 
                 fadeToNewText {
                     currentDisplayCity = city
                     currentDisplayTargetTime = targetTime
                     currentDisplayMode = "actual"
                     updateLocationText(city, isCurrently420 = true)
-                    Log.d(TAG, "✨ A-list city text updated in fade callback")
                 }
             }
             showingAList = false
         } else if (!showingAList && bList.isNotEmpty()) {
             Log.d(TAG, "✨ Showing B-list city with fade animation")
-            // Show from B-list with region filtering
-            val filteredBList = filterByRegion(bList)
-            if (filteredBList.isNotEmpty()) {
-                lastBIndex = (lastBIndex + 1) % filteredBList.size
-                val (city, targetTime, secondsUntil) = filteredBList[lastBIndex]
+            
+            // Shuffle B-list first for immediate variety
+            val shuffledBList = bList.shuffled()
+            
+            // Group cities by time windows for diversity (10 minute windows for more variety)
+            val cityGroups = groupCitiesByTimeWindow(shuffledBList, 600) // 10 minute windows
+            
+            // Find the best city from the closest groups with diversity
+            var selectedCity: Triple<String, Long, Int>? = null
+            
+            // Try first 3 groups for more variety (not just the closest)
+            val groupsToTry = cityGroups.take(3).shuffled()
+            for (group in groupsToTry) {
+                val diverseCity = selectDiverseCity(group)
+                if (diverseCity != null) {
+                    selectedCity = diverseCity
+                    break
+                }
+            }
+            
+            // Fallback if no diverse city found - pick from all B-list randomly
+            if (selectedCity == null && bList.isNotEmpty()) {
+                selectedCity = bList.shuffled().first()
+                Log.d(TAG, "⚠️ No diverse city found, using random fallback")
+            }
+            
+            selectedCity?.let { (city, targetTime, secondsUntil) ->
+                // Update tracking
+                updateCityHistory(city)
+                lastCountryShown = extractCountry(city)
                 lastRegionShown = getRegionForCity(city)
-                Log.d(TAG, "🎯 Selected B-list city: $city (region: $lastRegionShown)")
+                
+                val mins = secondsUntil / 60
+                val secs = secondsUntil % 60
+                Log.d(TAG, "🎯 Selected B-list city: $city (${mins}m ${secs}s away, country: $lastCountryShown)")
+                Log.d(TAG, "📝 Recent history: ${recentCityHistory.takeLast(5)}")
 
                 fadeToNewText {
                     currentDisplayCity = city
                     currentDisplayTargetTime = targetTime
                     currentDisplayMode = "normal"
                     updateApproachingCountdownText(city, secondsUntil)
-                    Log.d(TAG, "✨ B-list city text updated in fade callback")
                 }
             }
             showingAList = true
         } else {
-            Log.d(TAG, "⚠️ Using fallback rotation logic")
-            // Fallback
+            Log.d(TAG, "⚠️ Using fallback rotation logic (no cities in current list)")
+            // Fallback - use the closest cities
             if (allCities.isNotEmpty()) {
-                val filteredCities = filterByRegion(allCities)
-                if (filteredCities.isNotEmpty()) {
-                    val randomCity = filteredCities.random()
-                    val (city, targetTime, secondsUntil) = randomCity
+                val closestCities = allCities.sortedBy { it.third }.take(10)
+                Log.d(TAG, "📋 Fallback - closest 10 cities:")
+                closestCities.forEachIndexed { index, (city, _, seconds) ->
+                    val mins = seconds / 60
+                    val secs = seconds % 60
+                    Log.d(TAG, "     ${index + 1}. $city - ${mins}m ${secs}s")
+                }
+                
+                if (closestCities.isNotEmpty()) {
+                    // Add randomness to fallback too
+                    if (kotlin.random.Random.nextFloat() < 0.3) {
+                        currentCityIndex = kotlin.random.Random.nextInt(closestCities.size)
+                    }
+                    val selectedCity = closestCities[currentCityIndex % closestCities.size]
+                    currentCityIndex = (currentCityIndex + 1) % closestCities.size
+                    val (city, targetTime, secondsUntil) = selectedCity
                     lastRegionShown = getRegionForCity(city)
+                    val mins = secondsUntil / 60
+                    val secs = secondsUntil % 60
+                    Log.d(TAG, "🎯 Fallback selected: $city (${mins}m ${secs}s away)")
 
                     fadeToNewText {
                         currentDisplayCity = city
@@ -1758,7 +1922,6 @@ This app is vibe coded without writing a single line of code with the help of Cl
                             currentDisplayMode = "normal"
                             updateApproachingCountdownText(city, secondsUntil)
                         }
-                        Log.d(TAG, "✨ Fallback city text updated in fade callback")
                     }
                 }
             }
@@ -1768,6 +1931,108 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
 
 
+    // Helper functions for city diversity
+    private fun groupCitiesByTimeWindow(cities: List<Triple<String, Long, Int>>, windowSeconds: Int): List<List<Triple<String, Long, Int>>> {
+        val groups = mutableListOf<List<Triple<String, Long, Int>>>()
+        val sorted = cities.sortedBy { it.third }
+        
+        var currentGroup = mutableListOf<Triple<String, Long, Int>>()
+        var groupStartTime = 0
+        
+        for (city in sorted) {
+            if (currentGroup.isEmpty()) {
+                currentGroup.add(city)
+                groupStartTime = city.third
+            } else if (city.third - groupStartTime <= windowSeconds) {
+                currentGroup.add(city)
+            } else {
+                if (currentGroup.isNotEmpty()) {
+                    // Shuffle each group for variety
+                    groups.add(currentGroup.shuffled())
+                }
+                currentGroup = mutableListOf(city)
+                groupStartTime = city.third
+            }
+        }
+        
+        if (currentGroup.isNotEmpty()) {
+            // Shuffle the last group too
+            groups.add(currentGroup.shuffled())
+        }
+        
+        Log.d(TAG, "📊 Grouped cities into ${groups.size} time windows (shuffled)")
+        groups.take(3).forEachIndexed { index, group ->
+            val timeRange = if (group.isNotEmpty()) "${group.minOf { it.third }/60}m-${group.maxOf { it.third }/60}m" else "empty"
+            Log.d(TAG, "   Group ${index + 1} ($timeRange): ${group.map { extractCountry(it.first) }.distinct()}")
+        }
+        
+        return groups
+    }
+    
+    private fun selectDiverseCity(cities: List<Triple<String, Long, Int>>): Triple<String, Long, Int>? {
+        // Shuffle the input cities first for more randomness
+        val shuffledCities = cities.shuffled()
+        
+        // Filter out recently shown cities (only last 5 to allow more variety)
+        val eligibleCities = shuffledCities.filter { (city, _, _) ->
+            !recentCityHistory.takeLast(5).contains(city)
+        }
+        
+        // If all cities were recently shown, use all cities but shuffled
+        val citiesToConsider = if (eligibleCities.isEmpty()) shuffledCities else eligibleCities
+        
+        // Filter out cities from the last shown country (with 30% chance to allow same country)
+        val diverseCities = if (kotlin.random.Random.nextFloat() < 0.7) {
+            citiesToConsider.filter { (city, _, _) ->
+                extractCountry(city) != lastCountryShown
+            }
+        } else {
+            citiesToConsider
+        }
+        
+        // If no diverse countries available, use shuffled cities
+        val finalCandidates = if (diverseCities.isEmpty()) citiesToConsider else diverseCities
+        
+        // Weight selection towards closer cities but with randomness
+        // 60% chance to pick from first third, 30% from second third, 10% from last third
+        val random = kotlin.random.Random.nextFloat()
+        return when {
+            finalCandidates.isEmpty() -> null
+            finalCandidates.size == 1 -> finalCandidates.first()
+            random < 0.6 -> {
+                // Pick from first third (closest)
+                val firstThird = finalCandidates.take((finalCandidates.size / 3).coerceAtLeast(1))
+                firstThird.random()
+            }
+            random < 0.9 -> {
+                // Pick from second third
+                val secondThirdStart = finalCandidates.size / 3
+                val secondThirdEnd = (2 * finalCandidates.size / 3).coerceAtLeast(secondThirdStart + 1)
+                val secondThird = finalCandidates.slice(secondThirdStart until secondThirdEnd.coerceAtMost(finalCandidates.size))
+                if (secondThird.isNotEmpty()) secondThird.random() else finalCandidates.random()
+            }
+            else -> {
+                // Pick from last third (10% chance)
+                val lastThirdStart = 2 * finalCandidates.size / 3
+                val lastThird = finalCandidates.drop(lastThirdStart)
+                if (lastThird.isNotEmpty()) lastThird.random() else finalCandidates.random()
+            }
+        }
+    }
+    
+    private fun extractCountry(cityName: String): String {
+        // Extract country from city name format "City, Country"
+        return cityName.split(",").lastOrNull()?.trim() ?: cityName
+    }
+    
+    private fun updateCityHistory(city: String) {
+        recentCityHistory.add(city)
+        // Keep only last 10 cities
+        while (recentCityHistory.size > 10) {
+            recentCityHistory.removeAt(0)
+        }
+    }
+    
     override fun onDestroyView() {
         super.onDestroyView()
         Log.d(TAG, "🎯 AboutFragment onDestroyView - cleaning up")
