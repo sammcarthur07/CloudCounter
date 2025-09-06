@@ -289,7 +289,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 if (currentSmokerObj != null) {
                     // Get most recent activity for this smoker
                     val recentActivity = withContext(Dispatchers.IO) {
-                        repository.getLastActivityForSmoker(currentSmokerObj.id)
+                        repository.getLastActivityForSmoker(currentSmokerObj.smokerId)
                     }
                     
                     if (recentActivity != null) {
@@ -329,7 +329,7 @@ class GiantCounterActivity : AppCompatActivity() {
                     }
                     
                     currentCount = todayActivities.count { 
-                        it.smokerId == currentSmokerObj.id && it.type == activityType 
+                        it.smokerId == currentSmokerObj.smokerId && it.type == activityType 
                     }
                     
                     // Get recent smoker's count if different
@@ -339,7 +339,7 @@ class GiantCounterActivity : AppCompatActivity() {
                         }
                         if (recentSmokerObj != null) {
                             recentSmokerCount = todayActivities.count {
-                                it.smokerId == recentSmokerObj.id && it.type == activityType
+                                it.smokerId == recentSmokerObj.smokerId && it.type == activityType
                             }
                         }
                     } else {
@@ -434,7 +434,7 @@ class GiantCounterActivity : AppCompatActivity() {
                         }
                         
                         val activity = com.sam.cloudcounter.ActivityLog(
-                            smokerId = smoker.id,
+                            smokerId = smoker.smokerId,
                             type = activityType,
                             timestamp = System.currentTimeMillis()
                         )
