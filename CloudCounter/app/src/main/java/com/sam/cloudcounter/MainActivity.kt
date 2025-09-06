@@ -1579,6 +1579,7 @@ class MainActivity : AppCompatActivity() {
 
         setupVibrationToggle()
         setupLayoutRotation()
+        setupGiantCounterButton()
 
         // Initialize Stash ViewModel if not already initialized by delegation
         if (!::stashViewModel.isInitialized) {
@@ -2174,6 +2175,19 @@ class MainActivity : AppCompatActivity() {
             
             val message = if (isLayoutAtBottom) "Controls moved to bottom" else "Controls moved to top"
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun setupGiantCounterButton() {
+        binding.btnGiantCounter.setOnClickListener {
+            // Save current smoker to prefs for GiantCounterActivity
+            val selectedSmoker = binding.spinnerSmoker.selectedItem?.toString() ?: "Sam"
+            prefs.edit().putString("selected_smoker", selectedSmoker).apply()
+            
+            // Launch Giant Counter Activity
+            val intent = Intent(this, GiantCounterActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
     }
     

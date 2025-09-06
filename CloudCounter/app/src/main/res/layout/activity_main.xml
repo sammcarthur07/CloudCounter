@@ -91,6 +91,18 @@
             android:padding="4dp" />
 
         <ImageButton
+            android:id="@+id/btnGiantCounter"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_about_selector"
+            android:scaleType="centerInside"
+            android:contentDescription="Giant counter mode"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+
+        <ImageButton
             android:id="@+id/btnVibrationToggle"
             android:layout_width="24dp"
             android:layout_height="24dp"
