@@ -57,6 +57,9 @@ class GiantCounterActivity : AppCompatActivity() {
     private var currentCount: Int = 0
     private var recentSmoker: String = ""
     private var recentSmokerCount: Int = 0
+    private var allSmokers: List<com.sam.cloudcounter.Smoker> = emptyList()
+    private var currentSmokerIndex: Int = 0
+    private var sessionStart: Long = 0L
     
     // Database
     private lateinit var db: FirebaseFirestore
@@ -224,10 +227,11 @@ class GiantCounterActivity : AppCompatActivity() {
         )
         vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         
-        // Load vibration preference
+        // Load vibration preference and session data
         val prefs = getSharedPreferences("CloudCounterPrefs", MODE_PRIVATE)
         vibrationEnabled = prefs.getBoolean("vibration_enabled", true)
         currentSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
+        sessionStart = prefs.getLong("sessionStart", System.currentTimeMillis())
         
         // Set up button listeners
         setupButtonListeners()
@@ -260,8 +264,9 @@ class GiantCounterActivity : AppCompatActivity() {
                         .start()
                     
                     if (event.action == MotionEvent.ACTION_UP) {
-                        // Increment counter
+                        // Increment counter and rotate smoker
                         incrementCounter()
+                        rotateSmoker()
                     }
                     true
                 }
@@ -281,10 +286,17 @@ class GiantCounterActivity : AppCompatActivity() {
             try {
                 val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
                 
-                // Get current smoker
-                val currentSmokerObj = withContext(Dispatchers.IO) {
-                    smokerDao.getSmokerByName(currentSmoker) ?: smokerDao.getAllSmokersList().firstOrNull()
+                // Get all smokers
+                allSmokers = withContext(Dispatchers.IO) {
+                    smokerDao.getAllSmokersList()
                 }
+                
+                // Find current smoker index
+                currentSmokerIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
+                if (currentSmokerIndex == -1) currentSmokerIndex = 0
+                
+                // Get current smoker
+                val currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
                 
                 if (currentSmokerObj != null) {
                     // Get most recent activity for this smoker
@@ -309,16 +321,9 @@ class GiantCounterActivity : AppCompatActivity() {
                         currentActivityType = "cones"
                     }
                     
-                    // Get today's count for current activity type
-                    val todayStart = Calendar.getInstance().apply {
-                        set(Calendar.HOUR_OF_DAY, 0)
-                        set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }.timeInMillis
-                    
-                    val todayActivities = withContext(Dispatchers.IO) {
-                        repository.getLogsInTimeRange(todayStart, System.currentTimeMillis())
+                    // Get session activities (from session start time)
+                    val sessionActivities = withContext(Dispatchers.IO) {
+                        repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
                     }
                     
                     // Count activities for current smoker and type
@@ -328,7 +333,7 @@ class GiantCounterActivity : AppCompatActivity() {
                         else -> com.sam.cloudcounter.ActivityType.CONE
                     }
                     
-                    currentCount = todayActivities.count { 
+                    currentCount = sessionActivities.count { 
                         it.smokerId == currentSmokerObj.smokerId && it.type == activityType 
                     }
                     
@@ -338,7 +343,7 @@ class GiantCounterActivity : AppCompatActivity() {
                             smokerDao.getSmokerByName(recentSmoker)
                         }
                         if (recentSmokerObj != null) {
-                            recentSmokerCount = todayActivities.count {
+                            recentSmokerCount = sessionActivities.count {
                                 it.smokerId == recentSmokerObj.smokerId && it.type == activityType
                             }
                         }
@@ -449,6 +454,45 @@ class GiantCounterActivity : AppCompatActivity() {
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error saving activity", e)
+            }
+        }
+    }
+    
+    private fun rotateSmoker() {
+        if (allSmokers.size <= 1) return // No rotation needed if only one smoker
+        
+        // Save previous smoker as recent
+        recentSmoker = currentSmoker
+        recentSmokerCount = currentCount
+        
+        // Move to next smoker
+        currentSmokerIndex = (currentSmokerIndex + 1) % allSmokers.size
+        val nextSmoker = allSmokers[currentSmokerIndex]
+        currentSmoker = nextSmoker.name
+        
+        // Load new smoker's count for this session
+        lifecycleScope.launch {
+            try {
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
+                
+                val activityType = when (currentActivityType) {
+                    "cones" -> com.sam.cloudcounter.ActivityType.CONE
+                    "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                    else -> com.sam.cloudcounter.ActivityType.CONE
+                }
+                
+                currentCount = sessionActivities.count {
+                    it.smokerId == nextSmoker.smokerId && it.type == activityType
+                }
+                
+                updateUI()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading smoker data", e)
+                currentCount = 0
+                updateUI()
             }
         }
     }
