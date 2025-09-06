@@ -215,7 +215,7 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun initializeComponents() {
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
-        val database = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this)
+        val database = com.sam.cloudcounter.AppDatabase.getDatabase(this)
         repository = ActivityRepository(
             database.activityLogDao(),
             database.smokerDao(),
@@ -279,11 +279,11 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun loadCurrentData() {
         lifecycleScope.launch {
             try {
-                val smokerDao = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
                 
                 // Get current smoker
                 val currentSmokerObj = withContext(Dispatchers.IO) {
-                    smokerDao.getByName(currentSmoker) ?: smokerDao.getAll().firstOrNull()
+                    smokerDao.getSmokerByName(currentSmoker) ?: smokerDao.getAllSmokersList().firstOrNull()
                 }
                 
                 if (currentSmokerObj != null) {
@@ -302,7 +302,7 @@ class GiantCounterActivity : AppCompatActivity() {
                         
                         // Get the smoker who made this activity
                         val recentSmokerObj = withContext(Dispatchers.IO) {
-                            smokerDao.getById(recentActivity.smokerId)
+                            smokerDao.getSmokerById(recentActivity.smokerId)
                         }
                         recentSmoker = recentSmokerObj?.name ?: ""
                     } else {
@@ -335,7 +335,7 @@ class GiantCounterActivity : AppCompatActivity() {
                     // Get recent smoker's count if different
                     if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
                         val recentSmokerObj = withContext(Dispatchers.IO) {
-                            smokerDao.getByName(recentSmoker)
+                            smokerDao.getSmokerByName(recentSmoker)
                         }
                         if (recentSmokerObj != null) {
                             recentSmokerCount = todayActivities.count {
@@ -423,8 +423,8 @@ class GiantCounterActivity : AppCompatActivity() {
             try {
                 withContext(Dispatchers.IO) {
                     // Get smoker ID
-                    val smokerDao = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
-                    val smoker = smokerDao.getByName(currentSmoker) ?: smokerDao.getAll().firstOrNull()
+                    val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                    val smoker = smokerDao.getSmokerByName(currentSmoker) ?: smokerDao.getAllSmokersList().firstOrNull()
                     
                     if (smoker != null) {
                         val activityType = when (currentActivityType) {
