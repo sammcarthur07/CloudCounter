@@ -36,6 +36,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
+
 class GiantCounterActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "GiantCounter"
@@ -60,7 +61,7 @@ class GiantCounterActivity : AppCompatActivity() {
     // Database
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
-    private lateinit var repository: ActivitiesRepository
+    private lateinit var repository: ActivityRepository
     private lateinit var vibrator: Vibrator
     private var vibrationEnabled = true
     
@@ -214,7 +215,13 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun initializeComponents() {
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
-        repository = ActivitiesRepository(this)
+        val database = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this)
+        repository = ActivityRepository(
+            database.activityLogDao(),
+            database.smokerDao(),
+            database.sessionSummaryDao(),
+            database.stashDao()
+        )
         vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         
         // Load vibration preference
@@ -272,41 +279,74 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun loadCurrentData() {
         lifecycleScope.launch {
             try {
-                // Get most recent activity from database
-                val recentActivity = withContext(Dispatchers.IO) {
-                    repository.getMostRecentActivity()
+                val smokerDao = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                
+                // Get current smoker
+                val currentSmokerObj = withContext(Dispatchers.IO) {
+                    smokerDao.getByName(currentSmoker) ?: smokerDao.getAll().firstOrNull()
                 }
                 
-                if (recentActivity != null) {
-                    currentActivityType = recentActivity.activityType
-                    recentSmoker = recentActivity.userName
-                    
-                    // Get current session stats for the current smoker
-                    val todayStats = withContext(Dispatchers.IO) {
-                        repository.getTodayStatsForUser(currentSmoker)
+                if (currentSmokerObj != null) {
+                    // Get most recent activity for this smoker
+                    val recentActivity = withContext(Dispatchers.IO) {
+                        repository.getLastActivityForSmoker(currentSmokerObj.id)
                     }
                     
-                    currentCount = when (currentActivityType) {
-                        "cones" -> todayStats?.cones ?: 0
-                        "joints" -> todayStats?.joints ?: 0
-                        else -> 0
-                    }
-                    
-                    // Get recent smoker's count for this activity
-                    if (recentSmoker != currentSmoker) {
-                        val recentStats = withContext(Dispatchers.IO) {
-                            repository.getTodayStatsForUser(recentSmoker)
+                    if (recentActivity != null) {
+                        currentActivityType = when (recentActivity.type) {
+                            com.sam.cloudcounter.ActivityType.CONE -> "cones"
+                            com.sam.cloudcounter.ActivityType.JOINT -> "joints"
+                            com.sam.cloudcounter.ActivityType.BOWL -> "bowls"
+                            com.sam.cloudcounter.ActivityType.SESSION_SUMMARY -> "cones" // Default for session
                         }
-                        recentSmokerCount = when (currentActivityType) {
-                            "cones" -> recentStats?.cones ?: 0
-                            "joints" -> recentStats?.joints ?: 0
-                            else -> 0
+                        
+                        // Get the smoker who made this activity
+                        val recentSmokerObj = withContext(Dispatchers.IO) {
+                            smokerDao.getById(recentActivity.smokerId)
+                        }
+                        recentSmoker = recentSmokerObj?.name ?: ""
+                    } else {
+                        currentActivityType = "cones"
+                    }
+                    
+                    // Get today's count for current activity type
+                    val todayStart = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                    
+                    val todayActivities = withContext(Dispatchers.IO) {
+                        repository.getLogsInTimeRange(todayStart, System.currentTimeMillis())
+                    }
+                    
+                    // Count activities for current smoker and type
+                    val activityType = when (currentActivityType) {
+                        "cones" -> com.sam.cloudcounter.ActivityType.CONE
+                        "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                        else -> com.sam.cloudcounter.ActivityType.CONE
+                    }
+                    
+                    currentCount = todayActivities.count { 
+                        it.smokerId == currentSmokerObj.id && it.type == activityType 
+                    }
+                    
+                    // Get recent smoker's count if different
+                    if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
+                        val recentSmokerObj = withContext(Dispatchers.IO) {
+                            smokerDao.getByName(recentSmoker)
+                        }
+                        if (recentSmokerObj != null) {
+                            recentSmokerCount = todayActivities.count {
+                                it.smokerId == recentSmokerObj.id && it.type == activityType
+                            }
                         }
                     } else {
                         recentSmokerCount = currentCount
                     }
                 } else {
-                    // Default to cones if no recent activity
+                    // Default values
                     currentActivityType = "cones"
                     currentCount = 0
                 }
@@ -382,13 +422,24 @@ class GiantCounterActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val activity = Activities(
-                        id = 0,
-                        activityType = currentActivityType,
-                        userName = currentSmoker,
-                        timestamp = System.currentTimeMillis()
-                    )
-                    repository.insertActivity(activity)
+                    // Get smoker ID
+                    val smokerDao = com.sam.cloudcounter.CloudCounterDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                    val smoker = smokerDao.getByName(currentSmoker) ?: smokerDao.getAll().firstOrNull()
+                    
+                    if (smoker != null) {
+                        val activityType = when (currentActivityType) {
+                            "cones" -> com.sam.cloudcounter.ActivityType.CONE
+                            "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                            else -> com.sam.cloudcounter.ActivityType.CONE
+                        }
+                        
+                        val activity = com.sam.cloudcounter.ActivityLog(
+                            smokerId = smoker.id,
+                            type = activityType,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        repository.insert(activity)
+                    }
                 }
                 
                 // Update recent smoker
