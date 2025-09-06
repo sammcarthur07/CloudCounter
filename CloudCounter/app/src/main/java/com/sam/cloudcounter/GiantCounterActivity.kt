@@ -139,7 +139,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setImageResource(R.drawable.button_normal) // You'll need to add these drawables
+            setImageResource(R.drawable.giant_button_normal) // Use giant_button_normal.png
             isClickable = true
             isFocusable = true
         }
@@ -233,7 +233,7 @@ class GiantCounterActivity : AppCompatActivity() {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     // Change to pressed state
-                    giantButton.setImageResource(R.drawable.button_pressed)
+                    giantButton.setImageResource(R.drawable.giant_button_pressed)
                     // Scale down slightly for feedback
                     giantButton.animate()
                         .scaleX(0.95f)
@@ -244,7 +244,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     // Change back to normal state
-                    giantButton.setImageResource(R.drawable.button_normal)
+                    giantButton.setImageResource(R.drawable.giant_button_normal)
                     // Scale back to normal
                     giantButton.animate()
                         .scaleX(1.0f)
