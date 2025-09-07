@@ -90,6 +90,7 @@ class GiantCounterActivity : AppCompatActivity() {
     private var roundsLeft: Int = 0
     private var initialRoundsSet: Int = 0
     private val intervalsList = mutableListOf<Long>()
+    private val activitiesTimestamps = mutableListOf<Long>()  // Track all activity timestamps for gap calculation
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var timerRunnable: Runnable
     
@@ -463,6 +464,15 @@ class GiantCounterActivity : AppCompatActivity() {
         lastBowlTimestamp = prefs.getLong("lastBowlTimestamp", 0L)
         roundsLeft = prefs.getInt("roundsLeft", 0)
         initialRoundsSet = prefs.getInt("initialRoundsSet", 0)
+        
+        // Load activity timestamps for gap calculation
+        loadActivityTimestamps()
+        
+        Log.d(TAG, "$LOG_PREFIX 🕐 Timer data loaded:")
+        Log.d(TAG, "$LOG_PREFIX   lastLogTime: $lastLogTime")
+        Log.d(TAG, "$LOG_PREFIX   activitiesTimestamps: ${activitiesTimestamps.size} entries")
+        Log.d(TAG, "$LOG_PREFIX   roundsLeft: $roundsLeft")
+        Log.d(TAG, "$LOG_PREFIX   initialRoundsSet: $initialRoundsSet")
         
         // Load stash source from preferences
         val stashSourceString = prefs.getString("stash_source", "MY_STASH") ?: "MY_STASH"
@@ -858,6 +868,10 @@ class GiantCounterActivity : AppCompatActivity() {
                         }
                         lastLogTime = currentTime
                         
+                        // Add to activity timestamps list
+                        activitiesTimestamps.add(currentTime)
+                        Log.d(TAG, "$LOG_PREFIX 🕐 Added timestamp: $currentTime, total: ${activitiesTimestamps.size}")
+                        
                         // Update activity type timestamps
                         when (activityType) {
                             com.sam.cloudcounter.ActivityType.CONE -> lastConeTimestamp = currentTime
@@ -1120,11 +1134,14 @@ class GiantCounterActivity : AppCompatActivity() {
         val sinceLastSec = sinceLastMs / 1000
         textTimeSinceLast.text = formatInterval(sinceLastSec)
         
-        // MIDDLE TIMER: Gap countdown
-        if (intervalsList.size >= 2) {
-            val averageInterval = intervalsList.takeLast(10).average().toLong()
-            val timeSinceLastActivity = now - lastLogTime
-            val remainingMs = averageInterval - timeSinceLastActivity
+        // MIDDLE TIMER: Gap countdown (match MainActivity logic)
+        if (activitiesTimestamps.size >= 2) {
+            // Calculate the gap between the last two activities
+            val sortedTimestamps = activitiesTimestamps.sorted()
+            val lastTwo = sortedTimestamps.takeLast(2)
+            val gapBetweenLast = lastTwo[1] - lastTwo[0]
+            val timeSinceLast = now - lastTwo[1]
+            val remainingMs = gapBetweenLast - timeSinceLast
             val remainingSec = remainingMs / 1000
             
             val gapFormatted = if (remainingSec >= 0) {
@@ -1133,8 +1150,11 @@ class GiantCounterActivity : AppCompatActivity() {
                 "-${formatInterval(kotlin.math.abs(remainingSec))}"
             }
             textLastGapCountdown.text = gapFormatted
+            
+            Log.d(TAG, "$LOG_PREFIX 🕐 Middle timer: gap=${gapBetweenLast}ms, remaining=${remainingSec}s")
         } else {
             textLastGapCountdown.text = "0s"
+            Log.d(TAG, "$LOG_PREFIX 🕐 Middle timer: Not enough activities (${activitiesTimestamps.size})")
         }
         
         // RIGHT TIMER: Session elapsed time
@@ -1152,7 +1172,46 @@ class GiantCounterActivity : AppCompatActivity() {
             putLong("lastBowlTimestamp", lastBowlTimestamp)
             putInt("roundsLeft", roundsLeft)
             putInt("initialRoundsSet", initialRoundsSet)
+            
+            // Save activity timestamps as comma-separated string
+            val timestampsString = activitiesTimestamps.joinToString(",")
+            putString("activitiesTimestamps", timestampsString)
+            
             commit()
+        }
+        
+        Log.d(TAG, "$LOG_PREFIX 🕐 Timer data saved: ${activitiesTimestamps.size} timestamps")
+    }
+    
+    private fun loadActivityTimestamps() {
+        lifecycleScope.launch {
+            try {
+                // Load from database all activities from current session
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
+                
+                // Extract timestamps and sort them
+                activitiesTimestamps.clear()
+                activitiesTimestamps.addAll(sessionActivities.map { it.timestamp }.sorted())
+                
+                Log.d(TAG, "$LOG_PREFIX 🕐 Loaded ${activitiesTimestamps.size} activity timestamps from database")
+                Log.d(TAG, "$LOG_PREFIX 🕐 Timestamps: ${activitiesTimestamps.takeLast(5)}")
+                
+                // Also try to load from SharedPreferences as backup
+                val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                val timestampsString = prefs.getString("activitiesTimestamps", null)
+                if (timestampsString != null && timestampsString.isNotEmpty()) {
+                    val savedTimestamps = timestampsString.split(",").mapNotNull { it.toLongOrNull() }
+                    if (savedTimestamps.size > activitiesTimestamps.size) {
+                        activitiesTimestamps.clear()
+                        activitiesTimestamps.addAll(savedTimestamps.sorted())
+                        Log.d(TAG, "$LOG_PREFIX 🕐 Used SharedPrefs timestamps instead: ${activitiesTimestamps.size}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX 🕐 Error loading activity timestamps", e)
+            }
         }
     }
     

@@ -2084,6 +2084,10 @@ class MainActivity : AppCompatActivity() {
         val success = editor
             .putLong("rewindOffset", rewindOffset)  // Save rewind offset
             .putString("activitiesTimestamps", activitiesTimestamps.joinToString(","))
+            .putLong("lastConeTimestamp", lastConeTimestamp)
+            .putLong("lastJointTimestamp", lastJointTimestamp)
+            .putLong("lastBowlTimestamp", lastBowlTimestamp)
+            .putInt("initialRoundsSet", initialRoundsSet)
             .commit()  // Use commit() for synchronous save
             
         Log.d(TAG, "💾 Session saved to prefs: ${if (success) "SUCCESS" else "FAILED"}")
@@ -5977,6 +5981,26 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // Refresh stats when returning from GiantCounterActivity or other activities
         if (sessionActive) {
+            // Reload timer data from SharedPreferences (in case it was updated in GiantCounter)
+            lastLogTime = prefs.getLong("lastLogTime", lastLogTime)
+            lastConeTimestamp = prefs.getLong("lastConeTimestamp", lastConeTimestamp)
+            lastJointTimestamp = prefs.getLong("lastJointTimestamp", lastJointTimestamp)
+            lastBowlTimestamp = prefs.getLong("lastBowlTimestamp", lastBowlTimestamp)
+            roundsLeft = prefs.getInt("roundsLeft", roundsLeft)
+            initialRoundsSet = prefs.getInt("initialRoundsSet", initialRoundsSet)
+            
+            // Reload activity timestamps
+            val timestampsString = prefs.getString("activitiesTimestamps", null)
+            if (timestampsString != null && timestampsString.isNotEmpty()) {
+                val savedTimestamps = timestampsString.split(",").mapNotNull { it.toLongOrNull() }
+                if (savedTimestamps.isNotEmpty()) {
+                    activitiesTimestamps.clear()
+                    activitiesTimestamps.addAll(savedTimestamps.sorted())
+                    Log.d(TAG, "📱 Reloaded ${activitiesTimestamps.size} timestamps from prefs")
+                }
+            }
+            
+            updateRoundsUI()
             refreshLocalSessionStatsIfNeeded()
         }
     }
