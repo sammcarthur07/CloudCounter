@@ -41,6 +41,7 @@ import kotlin.random.Random
 class GiantCounterActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "GiantCounter"
+        private const val LOG_PREFIX = "🎯 GIANT: "
     }
 
     // UI elements
@@ -257,6 +258,8 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun initializeComponents() {
+        Log.d(TAG, "$LOG_PREFIX initializeComponents() started")
+        
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
         val database = com.sam.cloudcounter.AppDatabase.getDatabase(this)
@@ -277,12 +280,22 @@ class GiantCounterActivity : AppCompatActivity() {
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        Log.d(TAG, "$LOG_PREFIX Loaded prefs:")
+        Log.d(TAG, "$LOG_PREFIX   currentSmoker: $currentSmoker")
+        Log.d(TAG, "$LOG_PREFIX   sessionStart: $sessionStart")
+        Log.d(TAG, "$LOG_PREFIX   isAutoMode: $isAutoMode")
+        Log.d(TAG, "$LOG_PREFIX   currentActivityType: $currentActivityType")
+        
         // Initialize ViewModels
         val factory = SessionStatsViewModelFactory()
         sessionStatsVM = ViewModelProvider(this, factory).get(SessionStatsViewModel::class.java)
         
         // Observe session stats for real-time updates
         sessionStatsVM.perSmokerStats.observe(this) { stats ->
+            Log.d(TAG, "$LOG_PREFIX Session stats updated: ${stats.size} smokers")
+            stats.forEach { stat ->
+                Log.d(TAG, "$LOG_PREFIX   ${stat.smokerName}: Cones=${stat.totalCones}, Joints=${stat.totalJoints}, Bowls=${stat.totalBowls}")
+            }
             updateFromSessionStats(stats)
         }
         
@@ -343,6 +356,8 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun loadCurrentData() {
+        Log.d(TAG, "$LOG_PREFIX loadCurrentData() called")
+        
         lifecycleScope.launch {
             try {
                 val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
@@ -441,8 +456,15 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun incrementCounter() {
+        Log.d(TAG, "$LOG_PREFIX incrementCounter() called")
+        Log.d(TAG, "$LOG_PREFIX   Current smoker: $currentSmoker")
+        Log.d(TAG, "$LOG_PREFIX   Activity type: $currentActivityType")
+        Log.d(TAG, "$LOG_PREFIX   Count before: $currentCount")
+        
         currentCount++
         counterText.text = currentCount.toString()
+        
+        Log.d(TAG, "$LOG_PREFIX   Count after: $currentCount")
         
         // Vibrate if enabled
         if (vibrationEnabled) {
@@ -485,6 +507,8 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun saveActivity() {
+        Log.d(TAG, "$LOG_PREFIX saveActivity() called")
+        
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
@@ -492,19 +516,40 @@ class GiantCounterActivity : AppCompatActivity() {
                     val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
                     val smoker = smokerDao.getSmokerByName(currentSmoker) ?: smokerDao.getAllSmokersList().firstOrNull()
                     
+                    Log.d(TAG, "$LOG_PREFIX Found smoker: ${smoker?.name} with ID: ${smoker?.smokerId}")
+                    
                     if (smoker != null) {
                         val activityType = when (currentActivityType) {
                             "cones" -> com.sam.cloudcounter.ActivityType.CONE
                             "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                            "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
                             else -> com.sam.cloudcounter.ActivityType.CONE
                         }
+                        
+                        Log.d(TAG, "$LOG_PREFIX Creating activity: type=$activityType, smokerId=${smoker.smokerId}")
                         
                         val activity = com.sam.cloudcounter.ActivityLog(
                             smokerId = smoker.smokerId,
                             type = activityType,
-                            timestamp = System.currentTimeMillis()
+                            timestamp = System.currentTimeMillis(),
+                            sessionStartTime = sessionStart
                         )
-                        repository.insert(activity)
+                        
+                        val insertedId = repository.insert(activity)
+                        Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
+                        
+                        // Force refresh of session stats
+                        val sessionActivities = repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                        Log.d(TAG, "$LOG_PREFIX Total session activities: ${sessionActivities.size}")
+                        
+                        val smokerActivities = sessionActivities.filter { it.smokerId == smoker.smokerId }
+                        Log.d(TAG, "$LOG_PREFIX Activities for ${smoker.name}: ${smokerActivities.size}")
+                        
+                        smokerActivities.groupBy { it.type }.forEach { (type, activities) ->
+                            Log.d(TAG, "$LOG_PREFIX   $type: ${activities.size}")
+                        }
+                    } else {
+                        Log.e(TAG, "$LOG_PREFIX No smoker found for name: $currentSmoker")
                     }
                 }
                 
