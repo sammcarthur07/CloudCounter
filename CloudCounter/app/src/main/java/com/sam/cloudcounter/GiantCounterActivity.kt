@@ -53,7 +53,7 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var recentStatsText: TextView
     private lateinit var backButton: TextView
     private lateinit var konfettiView: KonfettiView
-    private lateinit var calculatorButton: TextView
+    // private lateinit var calculatorButton: TextView // REMOVED
     private lateinit var topControlsContainer: ViewGroup
     
     // Data
@@ -176,7 +176,7 @@ class GiantCounterActivity : AppCompatActivity() {
             }
             text = "0"
             textSize = 96f
-            setTextColor(Color.parseColor("#98FB98"))
+            setTextColor(Color.WHITE)
             setShadowLayer(8f, 4f, 4f, Color.BLACK)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
@@ -189,7 +189,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = 20.dpToPx()
+                bottomMargin = (3).dpToPx()  // Negative margin moves it down further from bottom
             }
             text = ""
             textSize = 20f
@@ -210,23 +210,7 @@ class GiantCounterActivity : AppCompatActivity() {
             }
         }
         
-        // Calculator button (toggle top section)
-        calculatorButton = TextView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = 120.dpToPx()
-            }
-            text = "📱"
-            textSize = 32f
-            setPadding(20.dpToPx(), 10.dpToPx(), 20.dpToPx(), 10.dpToPx())
-            setBackgroundResource(android.R.drawable.dialog_holo_dark_frame)
-            isClickable = true
-            isFocusable = true
-        }
-        bottomControlsContainer.addView(calculatorButton)
+        // Calculator button (toggle top section) - REMOVED per user request
         
         // Back button at bottom
         backButton = TextView(this).apply {
@@ -242,7 +226,7 @@ class GiantCounterActivity : AppCompatActivity() {
             setTextColor(Color.parseColor("#98FB98"))
             setShadowLayer(2f, 1f, 1f, Color.BLACK)
             setPadding(30.dpToPx(), 15.dpToPx(), 30.dpToPx(), 15.dpToPx())
-            setBackgroundResource(android.R.drawable.dialog_holo_dark_frame)
+            setBackgroundColor(Color.TRANSPARENT)
             isClickable = true
             isFocusable = true
         }
@@ -393,10 +377,7 @@ class GiantCounterActivity : AppCompatActivity() {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
         
-        // Calculator button (toggle top section)
-        calculatorButton.setOnClickListener {
-            toggleTopSection()
-        }
+        // Calculator button (toggle top section) - REMOVED
     }
     
     private fun loadCurrentData() {
@@ -835,8 +816,7 @@ class GiantCounterActivity : AppCompatActivity() {
             }
         }
         
-        // Update calculator button appearance
-        calculatorButton.text = if (topSectionVisible) "📱" else "🧮"
+        // Update calculator button appearance - REMOVED
     }
     
     // Extension function for dp to px conversion
