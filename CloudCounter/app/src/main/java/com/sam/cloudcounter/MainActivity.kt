@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val GIANT_COUNTER_REQUEST_CODE = 1001
         private const val ADMIN_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
 
         // Add neon colors for font coloring
@@ -2180,7 +2181,9 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupGiantCounterButton() {
         binding.btnGiantCounter.setOnClickListener {
-            // Save current state to prefs for GiantCounterActivity
+            // Save current session and state to prefs for GiantCounterActivity
+            saveSessionToPrefs()
+            
             val selectedSmoker = binding.spinnerSmoker.selectedItem?.toString() ?: "Sam"
             
             prefs.edit()
@@ -2190,9 +2193,9 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean("timer_enabled", false) // Default to false for now
                 .apply()
             
-            // Launch Giant Counter Activity
+            // Launch Giant Counter Activity and expect result
             val intent = Intent(this, GiantCounterActivity::class.java)
-            startActivity(intent)
+            startActivityForResult(intent, GIANT_COUNTER_REQUEST_CODE)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
     }
@@ -5948,7 +5951,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // No-op placeholder if needed
+        // Refresh stats when returning from GiantCounterActivity or other activities
+        if (sessionActive) {
+            refreshLocalSessionStatsIfNeeded()
+        }
     }
 
     private suspend fun updateParticipantsFromRoom(room: RoomData) {
