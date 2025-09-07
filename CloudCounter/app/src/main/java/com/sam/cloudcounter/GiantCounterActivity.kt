@@ -604,25 +604,68 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX 🎨 Spinner state from prefs:")
         Log.d(TAG, "$LOG_PREFIX   spinnerFontIndex: $spinnerFontIndex")
         Log.d(TAG, "$LOG_PREFIX   spinnerColor: $spinnerColor")
+        Log.d(TAG, "$LOG_PREFIX   colorChangingEnabled: $colorChangingEnabled")
+        Log.d(TAG, "$LOG_PREFIX   randomFontsEnabled: $randomFontsEnabled")
         
-        // Always use the spinner's current state, regardless of lock settings
-        // The spinner already has the correct state from MainActivity
-        smokerFontColor = if (spinnerColor != -1) {
-            spinnerColor
-        } else {
-            Color.parseColor("#98FB98") // Default green
+        // Determine color based on lock state
+        smokerFontColor = when {
+            !colorChangingEnabled && globalLockedColor != null && globalLockedColor != -1 -> {
+                // Color is locked, use the locked color
+                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked color: $globalLockedColor")
+                globalLockedColor!!
+            }
+            colorChangingEnabled -> {
+                // Color changing is enabled (unlocked), generate random color
+                val randomColor = NEON_COLORS.random()
+                Log.d(TAG, "$LOG_PREFIX 🎨 Color unlocked, using random: $randomColor")
+                randomColor
+            }
+            spinnerColor != -1 -> {
+                // Use spinner color as fallback
+                Log.d(TAG, "$LOG_PREFIX 📱 Using spinner color: $spinnerColor")
+                spinnerColor
+            }
+            else -> {
+                // Default
+                Color.parseColor("#98FB98")
+            }
         }
         
-        // Always use the spinner's current font
-        smokerFontTypeface = if (spinnerFontIndex != -1 && spinnerFontIndex < fontList.size) {
-            try {
-                ResourcesCompat.getFont(this, fontList[spinnerFontIndex])
-            } catch (e: Exception) {
-                Log.e(TAG, "$LOG_PREFIX Error loading font at index $spinnerFontIndex", e)
+        // Determine font based on lock state
+        smokerFontTypeface = when {
+            !randomFontsEnabled && globalLockedFont != null -> {
+                // Font is locked, use the locked font
+                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked font")
+                globalLockedFont
+            }
+            randomFontsEnabled -> {
+                // Font randomization is enabled (unlocked), generate random font
+                val randomIndex = (0 until fontList.size).random()
+                lastSelectedFontIndex = randomIndex
+                try {
+                    val randomFont = ResourcesCompat.getFont(this, fontList[randomIndex])
+                    Log.d(TAG, "$LOG_PREFIX 🔤 Font unlocked, using random index: $randomIndex")
+                    randomFont
+                } catch (e: Exception) {
+                    Log.e(TAG, "$LOG_PREFIX Error loading random font", e)
+                    android.graphics.Typeface.DEFAULT_BOLD
+                }
+            }
+            spinnerFontIndex != -1 && spinnerFontIndex < fontList.size -> {
+                // Use spinner font as fallback
+                try {
+                    val font = ResourcesCompat.getFont(this, fontList[spinnerFontIndex])
+                    Log.d(TAG, "$LOG_PREFIX 📱 Using spinner font index: $spinnerFontIndex")
+                    font
+                } catch (e: Exception) {
+                    Log.e(TAG, "$LOG_PREFIX Error loading spinner font", e)
+                    android.graphics.Typeface.DEFAULT_BOLD
+                }
+            }
+            else -> {
+                // Default
                 android.graphics.Typeface.DEFAULT_BOLD
             }
-        } else {
-            android.graphics.Typeface.DEFAULT_BOLD
         }
         
         // Apply font settings to smoker name
@@ -924,6 +967,32 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun updateUI() {
         smokerNameText.text = currentSmoker
         counterText.text = currentCount.toString()
+        
+        // Update font and color if unlocked (when rotating smokers)
+        if (randomFontsEnabled) {
+            // Generate new random font for new smoker
+            val randomIndex = (0 until fontList.size).random()
+            lastSelectedFontIndex = randomIndex
+            try {
+                val randomFont = ResourcesCompat.getFont(this, fontList[randomIndex])
+                smokerNameText.typeface = randomFont
+                smokerFontTypeface = randomFont
+                Log.d(TAG, "$LOG_PREFIX 🔤 Rotation: new random font index $randomIndex")
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error loading random font during rotation", e)
+            }
+        }
+        
+        if (colorChangingEnabled) {
+            // Generate new random color for new smoker
+            val randomColor = NEON_COLORS.random()
+            smokerNameText.setTextColor(randomColor)
+            smokerFontColor = randomColor
+            Log.d(TAG, "$LOG_PREFIX 🎨 Rotation: new random color $randomColor")
+        }
+        
+        // Save the new display state
+        saveDisplayState()
         
         if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
             recentStatsText.text = "$recentSmoker: $recentSmokerCount ${currentActivityType}"
