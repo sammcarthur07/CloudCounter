@@ -2182,18 +2182,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnGiantCounter.setOnClickListener {
             // Save current state to prefs for GiantCounterActivity
             val selectedSmoker = binding.spinnerSmoker.selectedItem?.toString() ?: "Sam"
-            val activityType = when {
-                binding.radioButtonCones.isChecked -> "cones"
-                binding.radioButtonJoints.isChecked -> "joints"
-                binding.radioButtonBowls.isChecked -> "bowls"
-                else -> "cones"
-            }
             
             prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
-                .putString("current_activity_type", activityType)
+                .putString("current_activity_type", "cones") // Default to cones for now
                 .putBoolean("is_auto_mode", isAutoMode)
-                .putBoolean("timer_enabled", timerEnabled)
+                .putBoolean("timer_enabled", false) // Default to false for now
                 .apply()
             
             // Launch Giant Counter Activity
