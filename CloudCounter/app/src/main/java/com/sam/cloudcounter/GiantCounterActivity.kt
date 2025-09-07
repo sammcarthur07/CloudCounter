@@ -330,11 +330,14 @@ class GiantCounterActivity : AppCompatActivity() {
                         .start()
                     
                     if (event.action == MotionEvent.ACTION_UP) {
-                        // Increment counter
+                        // Increment counter and save activity
                         incrementCounter()
-                        // Only rotate smoker if in auto mode
+                        // After saving, rotate to next smoker if in auto mode
                         if (isAutoMode) {
-                            rotateSmoker()
+                            // Add a small delay to ensure save completes
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                rotateSmoker()
+                            }, 100)
                         }
                     }
                     true
@@ -406,11 +409,29 @@ class GiantCounterActivity : AppCompatActivity() {
                     val activityType = when (currentActivityType) {
                         "cones" -> com.sam.cloudcounter.ActivityType.CONE
                         "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                        "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
                         else -> com.sam.cloudcounter.ActivityType.CONE
                     }
                     
                     currentCount = sessionActivities.count { 
                         it.smokerId == currentSmokerObj.smokerId && it.type == activityType 
+                    }
+                    
+                    Log.d(TAG, "$LOG_PREFIX Loaded count for ${currentSmokerObj.name}: $currentCount $currentActivityType")
+                    
+                    // Load counts for all smokers to have accurate data
+                    Log.d(TAG, "$LOG_PREFIX Loading counts for all smokers:")
+                    allSmokers.forEach { smoker ->
+                        val smokerCones = sessionActivities.count { 
+                            it.smokerId == smoker.smokerId && it.type == ActivityType.CONE
+                        }
+                        val smokerJoints = sessionActivities.count { 
+                            it.smokerId == smoker.smokerId && it.type == ActivityType.JOINT
+                        }
+                        val smokerBowls = sessionActivities.count { 
+                            it.smokerId == smoker.smokerId && it.type == ActivityType.BOWL
+                        }
+                        Log.d(TAG, "$LOG_PREFIX   ${smoker.name}: C=$smokerCones, J=$smokerJoints, B=$smokerBowls")
                     }
                     
                     // Get recent smoker's count if different
@@ -434,8 +455,11 @@ class GiantCounterActivity : AppCompatActivity() {
                 
                 updateUI()
                 
+                // Refresh session stats to populate the ViewModel
+                refreshSessionStats()
+                
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading data", e)
+                Log.e(TAG, "$LOG_PREFIX Error loading data", e)
                 // Use defaults
                 currentActivityType = "cones"
                 currentCount = 0
@@ -479,7 +503,7 @@ class GiantCounterActivity : AppCompatActivity() {
         // Show confetti
         showConfetti()
         
-        // Save to database
+        // Save to database BEFORE rotating (so it saves to the correct smoker)
         saveActivity()
     }
     
@@ -568,7 +592,11 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun rotateSmoker() {
-        if (allSmokers.size <= 1) return // No rotation needed if only one smoker
+        Log.d(TAG, "$LOG_PREFIX rotateSmoker() called")
+        if (allSmokers.size <= 1) {
+            Log.d(TAG, "$LOG_PREFIX   Only one smoker, no rotation needed")
+            return
+        }
         
         // Save previous smoker as recent
         recentSmoker = currentSmoker
@@ -578,6 +606,8 @@ class GiantCounterActivity : AppCompatActivity() {
         currentSmokerIndex = (currentSmokerIndex + 1) % allSmokers.size
         val nextSmoker = allSmokers[currentSmokerIndex]
         currentSmoker = nextSmoker.name
+        
+        Log.d(TAG, "$LOG_PREFIX   Rotated from $recentSmoker to $currentSmoker")
         
         // Load new smoker's count for this session
         lifecycleScope.launch {
