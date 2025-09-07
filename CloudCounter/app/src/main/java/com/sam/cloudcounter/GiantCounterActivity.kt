@@ -18,6 +18,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -50,6 +51,8 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var recentStatsText: TextView
     private lateinit var backButton: TextView
     private lateinit var konfettiView: KonfettiView
+    private lateinit var calculatorButton: TextView
+    private lateinit var topControlsContainer: ViewGroup
     
     // Data
     private var currentSmoker: String = "Sam"
@@ -60,6 +63,14 @@ class GiantCounterActivity : AppCompatActivity() {
     private var allSmokers: List<com.sam.cloudcounter.Smoker> = emptyList()
     private var currentSmokerIndex: Int = 0
     private var sessionStart: Long = 0L
+    
+    // Settings from main activity
+    private var isAutoMode: Boolean = true
+    private var timerEnabled: Boolean = false
+    private var topSectionVisible: Boolean = true
+    
+    // ViewModels
+    private lateinit var sessionStatsVM: SessionStatsViewModel
     
     // Database
     private lateinit var db: FirebaseFirestore
@@ -183,6 +194,34 @@ class GiantCounterActivity : AppCompatActivity() {
         
         rootLayout.addView(buttonContainer)
         
+        // Bottom controls container
+        val bottomControlsContainer = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                150.dpToPx()
+            ).apply {
+                gravity = Gravity.BOTTOM
+            }
+        }
+        
+        // Calculator button (toggle top section)
+        calculatorButton = TextView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = 120.dpToPx()
+            }
+            text = "📱"
+            textSize = 32f
+            setPadding(20.dpToPx(), 10.dpToPx(), 20.dpToPx(), 10.dpToPx())
+            setBackgroundResource(android.R.drawable.dialog_holo_dark_frame)
+            isClickable = true
+            isFocusable = true
+        }
+        bottomControlsContainer.addView(calculatorButton)
+        
         // Back button at bottom
         backButton = TextView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -201,7 +240,9 @@ class GiantCounterActivity : AppCompatActivity() {
             isClickable = true
             isFocusable = true
         }
-        rootLayout.addView(backButton)
+        bottomControlsContainer.addView(backButton)
+        
+        rootLayout.addView(bottomControlsContainer)
         
         // Konfetti view for effects
         konfettiView = KonfettiView(this).apply {
@@ -227,11 +268,23 @@ class GiantCounterActivity : AppCompatActivity() {
         )
         vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         
-        // Load vibration preference and session data
+        // Load preferences and session data
         val prefs = getSharedPreferences("CloudCounterPrefs", MODE_PRIVATE)
         vibrationEnabled = prefs.getBoolean("vibration_enabled", true)
         currentSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
         sessionStart = prefs.getLong("sessionStart", System.currentTimeMillis())
+        isAutoMode = prefs.getBoolean("is_auto_mode", true)
+        timerEnabled = prefs.getBoolean("timer_enabled", false)
+        currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
+        
+        // Initialize ViewModels
+        val factory = SessionStatsViewModelFactory()
+        sessionStatsVM = ViewModelProvider(this, factory).get(SessionStatsViewModel::class.java)
+        
+        // Observe session stats for real-time updates
+        sessionStatsVM.perSmokerStats.observe(this) { stats ->
+            updateFromSessionStats(stats)
+        }
         
         // Set up button listeners
         setupButtonListeners()
@@ -264,9 +317,12 @@ class GiantCounterActivity : AppCompatActivity() {
                         .start()
                     
                     if (event.action == MotionEvent.ACTION_UP) {
-                        // Increment counter and rotate smoker
+                        // Increment counter
                         incrementCounter()
-                        rotateSmoker()
+                        // Only rotate smoker if in auto mode
+                        if (isAutoMode) {
+                            rotateSmoker()
+                        }
                     }
                     true
                 }
@@ -278,6 +334,11 @@ class GiantCounterActivity : AppCompatActivity() {
         backButton.setOnClickListener {
             finish()
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
+        
+        // Calculator button (toggle top section)
+        calculatorButton.setOnClickListener {
+            toggleTopSection()
         }
     }
     
@@ -495,6 +556,44 @@ class GiantCounterActivity : AppCompatActivity() {
                 updateUI()
             }
         }
+    }
+    
+    private fun updateFromSessionStats(stats: List<PerSmokerStats>) {
+        // Find current smoker's stats from session stats
+        val currentSmokerStats = stats.find { it.smokerName == currentSmoker }
+        if (currentSmokerStats != null) {
+            currentCount = when (currentActivityType) {
+                "cones" -> currentSmokerStats.totalCones
+                "joints" -> currentSmokerStats.totalJoints
+                "bowls" -> currentSmokerStats.totalBowls
+                else -> currentSmokerStats.totalCones
+            }
+            updateUI()
+        }
+    }
+    
+    private fun toggleTopSection() {
+        topSectionVisible = !topSectionVisible
+        
+        // Animate visibility change
+        if (::topControlsContainer.isInitialized) {
+            if (topSectionVisible) {
+                topControlsContainer.animate()
+                    .alpha(1f)
+                    .setDuration(300)
+                    .withStartAction { topControlsContainer.visibility = View.VISIBLE }
+                    .start()
+            } else {
+                topControlsContainer.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction { topControlsContainer.visibility = View.GONE }
+                    .start()
+            }
+        }
+        
+        // Update calculator button appearance
+        calculatorButton.text = if (topSectionVisible) "📱" else "🧮"
     }
     
     // Extension function for dp to px conversion

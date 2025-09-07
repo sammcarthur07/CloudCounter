@@ -2180,9 +2180,21 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupGiantCounterButton() {
         binding.btnGiantCounter.setOnClickListener {
-            // Save current smoker to prefs for GiantCounterActivity
+            // Save current state to prefs for GiantCounterActivity
             val selectedSmoker = binding.spinnerSmoker.selectedItem?.toString() ?: "Sam"
-            prefs.edit().putString("selected_smoker", selectedSmoker).apply()
+            val activityType = when {
+                binding.radioButtonCones.isChecked -> "cones"
+                binding.radioButtonJoints.isChecked -> "joints"
+                binding.radioButtonBowls.isChecked -> "bowls"
+                else -> "cones"
+            }
+            
+            prefs.edit()
+                .putString("selected_smoker", selectedSmoker)
+                .putString("current_activity_type", activityType)
+                .putBoolean("is_auto_mode", isAutoMode)
+                .putBoolean("timer_enabled", timerEnabled)
+                .apply()
             
             // Launch Giant Counter Activity
             val intent = Intent(this, GiantCounterActivity::class.java)
