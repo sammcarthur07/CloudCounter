@@ -56,7 +56,7 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var konfettiView: KonfettiView
     // private lateinit var calculatorButton: TextView // REMOVED
     private lateinit var topControlsContainer: ViewGroup
-    private lateinit var timersButton: TextView
+    private lateinit var advancedButton: TextView  // Renamed from timersButton
     private lateinit var timerControlsContainer: ViewGroup
     private lateinit var textTimeSinceLast: TextView
     private lateinit var textLastGapCountdown: TextView
@@ -65,6 +65,9 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var btnRoundMinus: ImageView
     private lateinit var btnRoundPlus: ImageView
     private lateinit var textRoundsLeft: TextView
+    private lateinit var btnUndo: TextView
+    private lateinit var btnRewind: TextView
+    private lateinit var topButtonsContainer: LinearLayout
     
     // Data
     private var currentSmoker: String = "Sam"
@@ -93,6 +96,15 @@ class GiantCounterActivity : AppCompatActivity() {
     private val activitiesTimestamps = mutableListOf<Long>()  // Track all activity timestamps for gap calculation
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var timerRunnable: Runnable
+    
+    // Undo/Rewind functionality
+    private var rewindOffset = 0L
+    private val REWIND_AMOUNT_MS = 10000L  // 10 seconds per rewind
+    private val activityHistory = mutableListOf<Long>()  // Track activity IDs for undo
+    
+    // Font settings
+    private var smokerFontColor: Int = Color.parseColor("#98FB98")  // Default green
+    private var smokerFontTypeface: android.graphics.Typeface? = null
     
     // ViewModels
     private lateinit var sessionStatsVM: SessionStatsViewModel
@@ -149,8 +161,8 @@ class GiantCounterActivity : AppCompatActivity() {
         }
         rootLayout.addView(backgroundImage)
         
-        // TIMERS button at top
-        timersButton = TextView(this).apply {
+        // Undo and Rewind buttons container at top (initially hidden)
+        topButtonsContainer = LinearLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
@@ -158,22 +170,58 @@ class GiantCounterActivity : AppCompatActivity() {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
                 topMargin = 50.dpToPx()
             }
-            text = "TIMERS"
-            textSize = 16f
-            setTextColor(Color.parseColor("#98FB98"))
-            setShadowLayer(2f, 1f, 1f, Color.BLACK)
-            setPadding(30.dpToPx(), 10.dpToPx(), 30.dpToPx(), 10.dpToPx())
-            // Create a neon green outline programmatically
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+        }
+        
+        // Rewind button
+        btnRewind = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                32.dpToPx()
+            ).apply {
+                marginEnd = 8.dpToPx()
+            }
+            text = "⟲ Rewind"
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(this@GiantCounterActivity, R.color.design_default_color_secondary))
+            gravity = Gravity.CENTER
+            setPadding(16.dpToPx(), 0, 16.dpToPx(), 0)
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadius = 8.dpToPx().toFloat()
-                setStroke(2.dpToPx(), Color.parseColor("#98FB98"))
+                cornerRadius = 4.dpToPx().toFloat()
+                setStroke(1.dpToPx(), ContextCompat.getColor(this@GiantCounterActivity, R.color.design_default_color_secondary))
                 setColor(Color.TRANSPARENT)
             }
             isClickable = true
             isFocusable = true
         }
-        rootLayout.addView(timersButton)
+        topButtonsContainer.addView(btnRewind)
+        
+        // Undo button
+        btnUndo = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                32.dpToPx()
+            )
+            text = "↶ Undo"
+            textSize = 12f
+            setTextColor(Color.parseColor("#FFA500"))  // Orange color for undo
+            gravity = Gravity.CENTER
+            setPadding(16.dpToPx(), 0, 16.dpToPx(), 0)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 4.dpToPx().toFloat()
+                setStroke(1.dpToPx(), Color.parseColor("#FFA500"))
+                setColor(Color.TRANSPARENT)
+            }
+            isClickable = true
+            isFocusable = true
+            visibility = if (activityHistory.isNotEmpty()) View.VISIBLE else View.GONE
+        }
+        topButtonsContainer.addView(btnUndo)
+        
+        rootLayout.addView(topButtonsContainer)
         
         // Timer controls container (initially hidden)
         timerControlsContainer = FrameLayout(this).apply {
@@ -182,7 +230,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = 100.dpToPx()
+                topMargin = 50.dpToPx()  // Position at top of screen
             }
             visibility = View.GONE
         }
@@ -324,9 +372,10 @@ class GiantCounterActivity : AppCompatActivity() {
             }
             text = "Loading..."
             textSize = 36f
-            setTextColor(Color.parseColor("#98FB98"))
+            // Font color and typeface will be loaded from preferences
+            setTextColor(smokerFontColor)
             setShadowLayer(4f, 2f, 2f, Color.BLACK)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = smokerFontTypeface ?: android.graphics.Typeface.DEFAULT_BOLD
         }
         rootLayout.addView(smokerNameText)
         
@@ -399,6 +448,32 @@ class GiantCounterActivity : AppCompatActivity() {
         
         // Calculator button (toggle top section) - REMOVED per user request
         
+        // Advanced button above back button
+        advancedButton = TextView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = 120.dpToPx()
+            }
+            text = "Advanced"
+            textSize = 12f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+            setPadding(30.dpToPx(), 10.dpToPx(), 30.dpToPx(), 10.dpToPx())
+            // Create a neon green outline programmatically
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 8.dpToPx().toFloat()
+                setStroke(2.dpToPx(), Color.parseColor("#98FB98"))
+                setColor(Color.TRANSPARENT)
+            }
+            isClickable = true
+            isFocusable = true
+        }
+        bottomControlsContainer.addView(advancedButton)
+        
         // Back button at bottom
         backButton = TextView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -457,6 +532,19 @@ class GiantCounterActivity : AppCompatActivity() {
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        // Load font preferences
+        smokerFontColor = prefs.getInt("smoker_font_color", Color.parseColor("#98FB98"))
+        val fontTypeName = prefs.getString("smoker_font_type", null)
+        smokerFontTypeface = when (fontTypeName) {
+            "MONOSPACE" -> android.graphics.Typeface.MONOSPACE
+            "SANS_SERIF" -> android.graphics.Typeface.SANS_SERIF
+            "SERIF" -> android.graphics.Typeface.SERIF
+            else -> android.graphics.Typeface.DEFAULT_BOLD
+        }
+        // Apply font settings to smoker name
+        smokerNameText.setTextColor(smokerFontColor)
+        smokerNameText.typeface = smokerFontTypeface
+        
         // Load timer data from preferences
         lastLogTime = prefs.getLong("lastLogTime", 0L)
         lastConeTimestamp = prefs.getLong("lastConeTimestamp", 0L)
@@ -464,6 +552,7 @@ class GiantCounterActivity : AppCompatActivity() {
         lastBowlTimestamp = prefs.getLong("lastBowlTimestamp", 0L)
         roundsLeft = prefs.getInt("roundsLeft", 0)
         initialRoundsSet = prefs.getInt("initialRoundsSet", 0)
+        rewindOffset = prefs.getLong("rewindOffset", 0L)
         
         // Load activity timestamps for gap calculation
         loadActivityTimestamps()
@@ -584,9 +673,22 @@ class GiantCounterActivity : AppCompatActivity() {
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
         
-        // Timer button
-        timersButton.setOnClickListener {
+        // Long press on smoker name to change font
+        setupSmokerNameLongPress()
+        
+        // Advanced button (replaces timer button)
+        advancedButton.setOnClickListener {
             toggleTimersVisibility()
+        }
+        
+        // Undo button
+        btnUndo.setOnClickListener {
+            undoLastActivity()
+        }
+        
+        // Rewind button
+        btnRewind.setOnClickListener {
+            rewindTime()
         }
         
         // Round buttons
@@ -856,6 +958,11 @@ class GiantCounterActivity : AppCompatActivity() {
                         val insertedId = repository.insert(activity)
                         Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
                         
+                        // Track activity for undo
+                        activityHistory.add(insertedId)
+                        // Update undo button visibility
+                        btnUndo.visibility = View.VISIBLE
+                        
                         // Update timer data
                         val currentTime = System.currentTimeMillis()
                         if (lastLogTime > 0) {
@@ -1090,11 +1197,13 @@ class GiantCounterActivity : AppCompatActivity() {
         timersVisible = !timersVisible
         
         if (timersVisible) {
-            timersButton.text = "HIDE TIMERS"
+            advancedButton.text = "See Less"
             timerControlsContainer.visibility = View.VISIBLE
+            topButtonsContainer.visibility = View.VISIBLE  // Show undo/rewind buttons
         } else {
-            timersButton.text = "TIMERS"
+            advancedButton.text = "Advanced"
             timerControlsContainer.visibility = View.GONE
+            topButtonsContainer.visibility = View.GONE  // Hide undo/rewind buttons
         }
     }
     
@@ -1127,7 +1236,7 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun updateTimers() {
-        val now = System.currentTimeMillis()
+        val now = System.currentTimeMillis() - rewindOffset  // Apply rewind offset
         
         // LEFT TIMER: Time since last activity
         val sinceLastMs = if (lastLogTime > 0) now - lastLogTime else 0
@@ -1232,9 +1341,139 @@ class GiantCounterActivity : AppCompatActivity() {
         }
     }
     
+    private fun undoLastActivity() {
+        if (activityHistory.isEmpty()) {
+            Log.d(TAG, "$LOG_PREFIX No activities to undo")
+            return
+        }
+        
+        lifecycleScope.launch {
+            try {
+                val lastActivityId = activityHistory.removeAt(activityHistory.size - 1)
+                
+                // Delete from database
+                withContext(Dispatchers.IO) {
+                    val dao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).activityLogDao()
+                    dao.deleteById(lastActivityId)
+                }
+                
+                Log.d(TAG, "$LOG_PREFIX Undid activity with ID: $lastActivityId")
+                
+                // Remove from timestamps list
+                if (activitiesTimestamps.isNotEmpty()) {
+                    activitiesTimestamps.removeAt(activitiesTimestamps.size - 1)
+                }
+                
+                // Update last log time
+                lastLogTime = activitiesTimestamps.lastOrNull() ?: 0L
+                
+                // Decrement count
+                if (currentCount > 0) {
+                    currentCount--
+                    updateUI()
+                }
+                
+                // Save updated data
+                saveTimerDataToPrefs()
+                
+                // Update undo button visibility
+                if (activityHistory.isEmpty()) {
+                    btnUndo.visibility = View.GONE
+                }
+                
+                // Refresh session stats
+                refreshSessionStats()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error undoing activity", e)
+            }
+        }
+    }
+    
+    private fun rewindTime() {
+        rewindOffset += REWIND_AMOUNT_MS
+        Log.d(TAG, "$LOG_PREFIX Rewound by ${REWIND_AMOUNT_MS}ms, total offset: $rewindOffset")
+        
+        // Update timers immediately to reflect rewind
+        updateTimers()
+        
+        // Save the rewind offset
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().putLong("rewindOffset", rewindOffset).apply()
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(timerRunnable)
+    }
+    
+    private fun setupSmokerNameLongPress() {
+        var longPressStartTime = 0L
+        val fontColors = listOf(
+            Color.parseColor("#98FB98"),  // Green
+            Color.WHITE,
+            Color.YELLOW,
+            Color.CYAN,
+            Color.MAGENTA,
+            Color.RED
+        )
+        val fontTypes = listOf(
+            android.graphics.Typeface.DEFAULT_BOLD,
+            android.graphics.Typeface.MONOSPACE,
+            android.graphics.Typeface.SANS_SERIF,
+            android.graphics.Typeface.SERIF
+        )
+        
+        smokerNameText.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    longPressStartTime = System.currentTimeMillis()
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val pressDuration = System.currentTimeMillis() - longPressStartTime
+                    if (pressDuration > 500) {  // Long press detected
+                        // Cycle through colors
+                        val currentColorIndex = fontColors.indexOf(smokerFontColor)
+                        val nextColorIndex = (currentColorIndex + 1) % fontColors.size
+                        smokerFontColor = fontColors[nextColorIndex]
+                        smokerNameText.setTextColor(smokerFontColor)
+                        
+                        // Save to preferences
+                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                        prefs.edit().putInt("smoker_font_color", smokerFontColor).apply()
+                        
+                        // Vibrate feedback
+                        if (vibrationEnabled) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+                            } else {
+                                @Suppress("DEPRECATION")
+                                vibrator.vibrate(30)
+                            }
+                        }
+                    } else if (pressDuration > 2000) {  // Very long press for font type
+                        // Cycle through font types
+                        val currentTypeIndex = fontTypes.indexOf(smokerFontTypeface)
+                        val nextTypeIndex = (currentTypeIndex + 1) % fontTypes.size
+                        smokerFontTypeface = fontTypes[nextTypeIndex]
+                        smokerNameText.typeface = smokerFontTypeface
+                        
+                        // Save to preferences
+                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                        val typeName = when (smokerFontTypeface) {
+                            android.graphics.Typeface.MONOSPACE -> "MONOSPACE"
+                            android.graphics.Typeface.SANS_SERIF -> "SANS_SERIF"
+                            android.graphics.Typeface.SERIF -> "SERIF"
+                            else -> "DEFAULT"
+                        }
+                        prefs.edit().putString("smoker_font_type", typeName).apply()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
     }
     
     // Extension function for dp to px conversion
