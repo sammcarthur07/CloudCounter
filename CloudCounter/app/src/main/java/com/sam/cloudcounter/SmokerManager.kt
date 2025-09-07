@@ -571,4 +571,14 @@ class SmokerManager(
             sessionSyncService.syncLocalSmokersToRoom(userId, shareCode, localSmokers)
         }
     }
+    
+    fun setFontForSmoker(smokerId: Long, font: Typeface) {
+        smokerFontMap[smokerId] = font
+        Log.d(TAG, "🔤 Set font for smoker $smokerId")
+    }
+    
+    fun setColorForSmoker(smokerId: Long, color: Int) {
+        smokerColorMap[smokerId] = color
+        Log.d(TAG, "🎨 Set color for smoker $smokerId: $color")
+    }
 }

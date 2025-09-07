@@ -576,12 +576,13 @@ class GiantCounterActivity : AppCompatActivity() {
         // Load font and lock preferences
         colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
         randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
+        
+        // Load global locked states
         val savedGlobalColor = prefs.getInt("global_locked_color", -1)
         if (savedGlobalColor != -1 && !colorChangingEnabled) {
             globalLockedColor = savedGlobalColor
         }
         
-        // Load font preference
         val savedFontIndex = prefs.getInt("global_font_index", -1)
         if (savedFontIndex != -1 && !randomFontsEnabled) {
             try {
@@ -591,23 +592,32 @@ class GiantCounterActivity : AppCompatActivity() {
             }
         }
         
-        // Determine which color and font to use
-        smokerFontColor = if (!colorChangingEnabled && globalLockedColor != null) {
-            globalLockedColor!!
+        // Get current spinner's actual font and color
+        val spinnerFontIndex = prefs.getInt("current_spinner_font_index", -1)
+        val spinnerColor = prefs.getInt("current_spinner_color", -1)
+        
+        Log.d(TAG, "$LOG_PREFIX 🎨 Spinner state from prefs:")
+        Log.d(TAG, "$LOG_PREFIX   spinnerFontIndex: $spinnerFontIndex")
+        Log.d(TAG, "$LOG_PREFIX   spinnerColor: $spinnerColor")
+        
+        // Always use the spinner's current state, regardless of lock settings
+        // The spinner already has the correct state from MainActivity
+        smokerFontColor = if (spinnerColor != -1) {
+            spinnerColor
         } else {
-            prefs.getInt("smoker_font_color", Color.parseColor("#98FB98"))
+            Color.parseColor("#98FB98") // Default green
         }
         
-        smokerFontTypeface = if (!randomFontsEnabled && globalLockedFont != null) {
-            globalLockedFont
-        } else {
-            val fontTypeName = prefs.getString("smoker_font_type", null)
-            when (fontTypeName) {
-                "MONOSPACE" -> android.graphics.Typeface.MONOSPACE
-                "SANS_SERIF" -> android.graphics.Typeface.SANS_SERIF
-                "SERIF" -> android.graphics.Typeface.SERIF
-                else -> android.graphics.Typeface.DEFAULT_BOLD
+        // Always use the spinner's current font
+        smokerFontTypeface = if (spinnerFontIndex != -1 && spinnerFontIndex < fontList.size) {
+            try {
+                ResourcesCompat.getFont(this, fontList[spinnerFontIndex])
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error loading font at index $spinnerFontIndex", e)
+                android.graphics.Typeface.DEFAULT_BOLD
             }
+        } else {
+            android.graphics.Typeface.DEFAULT_BOLD
         }
         
         // Apply font settings to smoker name
@@ -619,6 +629,8 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX   randomFontsEnabled: $randomFontsEnabled")
         Log.d(TAG, "$LOG_PREFIX   globalLockedColor: $globalLockedColor")
         Log.d(TAG, "$LOG_PREFIX   globalLockedFont: ${globalLockedFont != null}")
+        Log.d(TAG, "$LOG_PREFIX   Current smoker color: $smokerFontColor")
+        Log.d(TAG, "$LOG_PREFIX   Current smoker font: ${smokerFontTypeface?.javaClass?.simpleName}")
         
         // Load timer data from preferences
         lastLogTime = prefs.getLong("lastLogTime", 0L)
@@ -1507,9 +1519,38 @@ class GiantCounterActivity : AppCompatActivity() {
         prefs.edit().putLong("rewindOffset", rewindOffset).apply()
     }
     
+    override fun onPause() {
+        super.onPause()
+        // Save current display state for MainActivity to pick up
+        saveDisplayState()
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(timerRunnable)
+    }
+    
+    private fun saveDisplayState() {
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            // Save current display values for MainActivity to load
+            val currentColor = smokerNameText.currentTextColor
+            putInt("giant_counter_color", currentColor)
+            Log.d(TAG, "$LOG_PREFIX 💾 Saving display color: $currentColor")
+            
+            val currentFontIndex = fontList.indexOfFirst { 
+                try {
+                    ResourcesCompat.getFont(this@GiantCounterActivity, it) == smokerNameText.typeface
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            if (currentFontIndex != -1) {
+                putInt("giant_counter_font_index", currentFontIndex)
+                Log.d(TAG, "$LOG_PREFIX 💾 Saving display font index: $currentFontIndex")
+            }
+            apply()
+        }
     }
     
     private fun setupSmokerNameLongPress() {
@@ -1528,7 +1569,15 @@ class GiantCounterActivity : AppCompatActivity() {
                     nameHoldHandler = Handler(Looper.getMainLooper())
                     nameHoldRunnable = Runnable {
                         val holdDuration = System.currentTimeMillis() - nameHoldStartTime
-                        val currentColor = smokerNameText.currentTextColor
+                        // Get actual current color (not -256)
+                        val currentColor = if (smokerNameText.currentTextColor == -256 || smokerNameText.currentTextColor == Color.YELLOW) {
+                            // If yellow/default, try to get from preferences or use a neon color
+                            val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                            val savedColor = prefs.getInt("current_spinner_color", -1)
+                            if (savedColor != -1 && savedColor != -256) savedColor else NEON_COLORS.random()
+                        } else {
+                            smokerNameText.currentTextColor
+                        }
                         val currentFont = smokerNameText.typeface
                         
                         when {
@@ -1718,7 +1767,7 @@ class GiantCounterActivity : AppCompatActivity() {
         prefs.edit().apply {
             putBoolean("random_fonts_enabled", randomFontsEnabled)
             putBoolean("color_changing_enabled", colorChangingEnabled)
-            if (globalLockedColor != null) {
+            if (globalLockedColor != null && globalLockedColor != -256) {
                 putInt("global_locked_color", globalLockedColor!!)
             }
             if (globalLockedFont != null) {
@@ -1733,9 +1782,21 @@ class GiantCounterActivity : AppCompatActivity() {
                     putInt("global_font_index", fontIndex)
                 }
             }
+            // Also save current display values for MainActivity to load
+            putInt("giant_counter_color", smokerNameText.currentTextColor)
+            val currentFontIndex = fontList.indexOfFirst { 
+                try {
+                    ResourcesCompat.getFont(this@GiantCounterActivity, it) == smokerNameText.typeface
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            if (currentFontIndex != -1) {
+                putInt("giant_counter_font_index", currentFontIndex)
+            }
             apply()
         }
-        Log.d(TAG, "$LOG_PREFIX 💾 Lock states saved")
+        Log.d(TAG, "$LOG_PREFIX 💾 Lock states saved, color=${smokerNameText.currentTextColor}")
     }
     
     private fun showToast(message: String) {

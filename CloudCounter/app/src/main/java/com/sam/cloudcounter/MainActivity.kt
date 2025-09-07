@@ -2213,6 +2213,49 @@ class MainActivity : AppCompatActivity() {
                 StashSource.EACH_TO_OWN -> "EACH_TO_OWN"
             }
             
+            // Save current spinner font and color
+            val spinnerView = binding.spinnerSmoker.selectedView
+            if (spinnerView != null && selectedSmokerObj != null) {
+                val container = spinnerView as? FrameLayout
+                val textView = container?.findViewById<TextView>(R.id.textName)
+                if (textView != null) {
+                    // Get current color from the TextView
+                    val currentColor = textView.currentTextColor
+                    Log.d(TAG, "🎨 Saving spinner color: $currentColor")
+                    prefs.edit().putInt("current_spinner_color", currentColor).apply()
+                    
+                    // Get current font from SmokerManager
+                    val currentFont = smokerManager.getFontForSmoker(selectedSmokerObj.smokerId)
+                    val fontList = listOf(
+                        R.font.bitcount_prop_double,
+                        R.font.exile,
+                        R.font.modak,
+                        R.font.nabla,
+                        R.font.atkinson_hyperlegible,
+                        R.font.jersey_10,
+                        R.font.londrina_shadow,
+                        R.font.monoton,
+                        R.font.orbitron,
+                        R.font.pixelify_sans,
+                        R.font.righteous,
+                        R.font.russo_one,
+                        R.font.silkscreen
+                    )
+                    
+                    // Find the font index by comparing typefaces
+                    var fontIndex = 0
+                    for (i in fontList.indices) {
+                        val testFont = ResourcesCompat.getFont(this, fontList[i])
+                        if (testFont == currentFont) {
+                            fontIndex = i
+                            break
+                        }
+                    }
+                    Log.d(TAG, "🔤 Saving spinner font index: $fontIndex")
+                    prefs.edit().putInt("current_spinner_font_index", fontIndex).apply()
+                }
+            }
+            
             prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
                 .putString("current_activity_type", "cones") // Default to cones for now
@@ -6010,6 +6053,72 @@ class MainActivity : AppCompatActivity() {
         
         if (requestCode == GIANT_COUNTER_REQUEST_CODE) {
             Log.d(TAG, "🎯 Returned from GiantCounterActivity, forcing stats refresh...")
+            
+            // Reload font and color changes from GiantCounter
+            val giantCounterColor = prefs.getInt("giant_counter_color", -1)
+            val giantCounterFontIndex = prefs.getInt("giant_counter_font_index", -1)
+            
+            if (giantCounterColor != -1 || giantCounterFontIndex != -1) {
+                Log.d(TAG, "🎨 Reloading font/color from GiantCounter - color: $giantCounterColor, fontIndex: $giantCounterFontIndex")
+                
+                // Apply to current spinner view
+                val spinnerView = binding.spinnerSmoker.selectedView
+                if (spinnerView != null) {
+                    val container = spinnerView as? FrameLayout
+                    val textView = container?.findViewById<TextView>(R.id.textName)
+                    if (textView != null) {
+                        // Apply color if changed
+                        if (giantCounterColor != -1) {
+                            textView.setTextColor(giantCounterColor)
+                            Log.d(TAG, "🎨 Applied color $giantCounterColor to spinner")
+                            
+                            // Also update SmokerManager's cache
+                            val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+                            val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+                            val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
+                            if (selectedSmoker != null) {
+                                smokerManager.setColorForSmoker(selectedSmoker.smokerId, giantCounterColor)
+                            }
+                        }
+                        
+                        // Apply font if changed
+                        if (giantCounterFontIndex != -1) {
+                            val fontList = listOf(
+                                R.font.bitcount_prop_double,
+                                R.font.exile,
+                                R.font.modak,
+                                R.font.nabla,
+                                R.font.atkinson_hyperlegible,
+                                R.font.jersey_10,
+                                R.font.londrina_shadow,
+                                R.font.monoton,
+                                R.font.orbitron,
+                                R.font.pixelify_sans,
+                                R.font.righteous,
+                                R.font.russo_one,
+                                R.font.silkscreen
+                            )
+                            
+                            if (giantCounterFontIndex < fontList.size) {
+                                val newFont = ResourcesCompat.getFont(this, fontList[giantCounterFontIndex])
+                                textView.typeface = newFont
+                                Log.d(TAG, "🔤 Applied font index $giantCounterFontIndex to spinner")
+                                
+                                // Also update SmokerManager's cache
+                                val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+                                val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+                                val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
+                                if (selectedSmoker != null && newFont != null) {
+                                    smokerManager.setFontForSmoker(selectedSmoker.smokerId, newFont)
+                                }
+                            }
+                        }
+                        
+                        // Update adapter to reflect changes
+                        smokerAdapterNew.notifyDataSetChanged()
+                    }
+                }
+            }
             
             // Force refresh session stats regardless of cloud connection
             if (sessionActive) {
