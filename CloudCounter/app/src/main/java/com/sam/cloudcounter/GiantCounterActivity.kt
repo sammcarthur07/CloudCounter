@@ -38,6 +38,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import android.app.AlertDialog
+import android.widget.ArrayAdapter
+import androidx.core.content.res.ResourcesCompat
 
 
 class GiantCounterActivity : AppCompatActivity() {
@@ -105,6 +108,44 @@ class GiantCounterActivity : AppCompatActivity() {
     // Font settings
     private var smokerFontColor: Int = Color.parseColor("#98FB98")  // Default green
     private var smokerFontTypeface: android.graphics.Typeface? = null
+    private var globalLockedColor: Int? = null
+    private var globalLockedFont: android.graphics.Typeface? = null
+    private var colorChangingEnabled: Boolean = true
+    private var randomFontsEnabled: Boolean = true
+    
+    // Hold-down timing
+    private var nameHoldStartTime = 0L
+    private var nameHoldHandler: Handler? = null
+    private var nameHoldRunnable: Runnable? = null
+    private var fontCycleHandler: Handler? = null
+    private var fontCycleRunnable: Runnable? = null
+    private var lastSelectedFontIndex = 0
+    
+    // Font list (matching MainActivity)
+    private val fontList = listOf(
+        R.font.bitcount_prop_double,
+        R.font.exile,
+        R.font.modak,
+        R.font.oi,
+        R.font.rubik_glitch,
+        R.font.sankofa_display,
+        R.font.silkscreen,
+        R.font.rubik_puddles,
+        R.font.rubik_beastly,
+        R.font.sixtyfour,
+        R.font.monoton,
+        R.font.sedgwick_ave_display,
+        R.font.splash
+    )
+    
+    // Neon colors
+    private val NEON_COLORS = listOf(
+        Color.parseColor("#FFFF66"),  // Yellow
+        Color.parseColor("#BF7EFF"),  // Purple  
+        Color.parseColor("#98FB98"),  // Green
+        Color.parseColor("#66B2FF"),  // Blue
+        Color.parseColor("#FFA366")   // Orange
+    )
     
     // ViewModels
     private lateinit var sessionStatsVM: SessionStatsViewModel
@@ -223,14 +264,14 @@ class GiantCounterActivity : AppCompatActivity() {
         
         rootLayout.addView(topButtonsContainer)
         
-        // Timer controls container (initially hidden)
+        // Timer controls container (initially hidden) - positioned below buttons
         timerControlsContainer = FrameLayout(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = 50.dpToPx()  // Position at top of screen
+                topMargin = 100.dpToPx()  // Position below the undo/rewind buttons
             }
             visibility = View.GONE
         }
@@ -532,18 +573,52 @@ class GiantCounterActivity : AppCompatActivity() {
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
-        // Load font preferences
-        smokerFontColor = prefs.getInt("smoker_font_color", Color.parseColor("#98FB98"))
-        val fontTypeName = prefs.getString("smoker_font_type", null)
-        smokerFontTypeface = when (fontTypeName) {
-            "MONOSPACE" -> android.graphics.Typeface.MONOSPACE
-            "SANS_SERIF" -> android.graphics.Typeface.SANS_SERIF
-            "SERIF" -> android.graphics.Typeface.SERIF
-            else -> android.graphics.Typeface.DEFAULT_BOLD
+        // Load font and lock preferences
+        colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
+        randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
+        val savedGlobalColor = prefs.getInt("global_locked_color", -1)
+        if (savedGlobalColor != -1 && !colorChangingEnabled) {
+            globalLockedColor = savedGlobalColor
         }
+        
+        // Load font preference
+        val savedFontIndex = prefs.getInt("global_font_index", -1)
+        if (savedFontIndex != -1 && !randomFontsEnabled) {
+            try {
+                globalLockedFont = ResourcesCompat.getFont(this, fontList.getOrElse(savedFontIndex) { R.font.sedgwick_ave_display })
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error loading font", e)
+            }
+        }
+        
+        // Determine which color and font to use
+        smokerFontColor = if (!colorChangingEnabled && globalLockedColor != null) {
+            globalLockedColor!!
+        } else {
+            prefs.getInt("smoker_font_color", Color.parseColor("#98FB98"))
+        }
+        
+        smokerFontTypeface = if (!randomFontsEnabled && globalLockedFont != null) {
+            globalLockedFont
+        } else {
+            val fontTypeName = prefs.getString("smoker_font_type", null)
+            when (fontTypeName) {
+                "MONOSPACE" -> android.graphics.Typeface.MONOSPACE
+                "SANS_SERIF" -> android.graphics.Typeface.SANS_SERIF
+                "SERIF" -> android.graphics.Typeface.SERIF
+                else -> android.graphics.Typeface.DEFAULT_BOLD
+            }
+        }
+        
         // Apply font settings to smoker name
         smokerNameText.setTextColor(smokerFontColor)
         smokerNameText.typeface = smokerFontTypeface
+        
+        Log.d(TAG, "$LOG_PREFIX 🔒 Lock states loaded:")
+        Log.d(TAG, "$LOG_PREFIX   colorChangingEnabled: $colorChangingEnabled")
+        Log.d(TAG, "$LOG_PREFIX   randomFontsEnabled: $randomFontsEnabled")
+        Log.d(TAG, "$LOG_PREFIX   globalLockedColor: $globalLockedColor")
+        Log.d(TAG, "$LOG_PREFIX   globalLockedFont: ${globalLockedFont != null}")
         
         // Load timer data from preferences
         lastLogTime = prefs.getLong("lastLogTime", 0L)
@@ -556,6 +631,9 @@ class GiantCounterActivity : AppCompatActivity() {
         
         // Load activity timestamps for gap calculation
         loadActivityTimestamps()
+        
+        // Load activity history for undo functionality
+        loadActivityHistory()
         
         Log.d(TAG, "$LOG_PREFIX 🕐 Timer data loaded:")
         Log.d(TAG, "$LOG_PREFIX   lastLogTime: $lastLogTime")
@@ -838,12 +916,12 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun incrementCounter() {
-        Log.d(TAG, "$LOG_PREFIX incrementCounter() called")
-        Log.d(TAG, "$LOG_PREFIX   Current smoker: $currentSmoker")
-        Log.d(TAG, "$LOG_PREFIX   Activity type: $currentActivityType")
-        Log.d(TAG, "$LOG_PREFIX   Count before: $currentCount")
-        Log.d(TAG, "$LOG_PREFIX   🌿 Stash will be updated")
-        Log.d(TAG, "$LOG_PREFIX   🎯 Goals will be tracked")
+        Log.d(TAG, "$LOG_PREFIX 🎯 incrementCounter() called")
+        Log.d(TAG, "$LOG_PREFIX 🎯 Current smoker: $currentSmoker")
+        Log.d(TAG, "$LOG_PREFIX 🎯 Activity type: $currentActivityType")
+        Log.d(TAG, "$LOG_PREFIX 🎯 Count before: $currentCount")
+        Log.d(TAG, "$LOG_PREFIX 🌿 Stash will be updated")
+        Log.d(TAG, "$LOG_PREFIX 🎯 Goals will be tracked")
         
         currentCount++
         counterText.text = currentCount.toString()
@@ -1051,9 +1129,9 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun rotateSmoker() {
-        Log.d(TAG, "$LOG_PREFIX rotateSmoker() called")
+        Log.d(TAG, "$LOG_PREFIX 🔄 rotateSmoker() called")
         if (allSmokers.size <= 1) {
-            Log.d(TAG, "$LOG_PREFIX   Only one smoker, no rotation needed")
+            Log.d(TAG, "$LOG_PREFIX 🔄 Only one smoker, no rotation needed")
             return
         }
         
@@ -1066,7 +1144,7 @@ class GiantCounterActivity : AppCompatActivity() {
         val nextSmoker = allSmokers[currentSmokerIndex]
         currentSmoker = nextSmoker.name
         
-        Log.d(TAG, "$LOG_PREFIX   Rotated from $recentSmoker to $currentSmoker")
+        Log.d(TAG, "$LOG_PREFIX 🔄 Rotated from $recentSmoker to $currentSmoker")
         
         // Load new smoker's count for this session
         lifecycleScope.launch {
@@ -1324,6 +1402,30 @@ class GiantCounterActivity : AppCompatActivity() {
         }
     }
     
+    private fun loadActivityHistory() {
+        lifecycleScope.launch {
+            try {
+                // Load activity IDs from current session for undo functionality
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
+                
+                // Add activity IDs to history (sorted by timestamp)
+                activityHistory.clear()
+                activityHistory.addAll(sessionActivities.sortedBy { it.timestamp }.map { it.id })
+                
+                Log.d(TAG, "$LOG_PREFIX 🔙 Loaded ${activityHistory.size} activities into undo history")
+                
+                // Update undo button visibility
+                if (activityHistory.isNotEmpty()) {
+                    btnUndo.visibility = View.VISIBLE
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX 🔙 Error loading activity history", e)
+            }
+        }
+    }
+    
     private fun formatInterval(seconds: Long): String {
         return when {
             seconds < 60 -> "${seconds}s"
@@ -1343,7 +1445,7 @@ class GiantCounterActivity : AppCompatActivity() {
     
     private fun undoLastActivity() {
         if (activityHistory.isEmpty()) {
-            Log.d(TAG, "$LOG_PREFIX No activities to undo")
+            Log.d(TAG, "$LOG_PREFIX 🔙 No activities to undo")
             return
         }
         
@@ -1360,7 +1462,7 @@ class GiantCounterActivity : AppCompatActivity() {
                     }
                 }
                 
-                Log.d(TAG, "$LOG_PREFIX Undid activity with ID: $lastActivityId")
+                Log.d(TAG, "$LOG_PREFIX 🔙 Undid activity with ID: $lastActivityId")
                 
                 // Remove from timestamps list
                 if (activitiesTimestamps.isNotEmpty()) {
@@ -1388,14 +1490,14 @@ class GiantCounterActivity : AppCompatActivity() {
                 refreshSessionStats()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "$LOG_PREFIX Error undoing activity", e)
+                Log.e(TAG, "$LOG_PREFIX 🔙 Error undoing activity", e)
             }
         }
     }
     
     private fun rewindTime() {
         rewindOffset += REWIND_AMOUNT_MS
-        Log.d(TAG, "$LOG_PREFIX Rewound by ${REWIND_AMOUNT_MS}ms, total offset: $rewindOffset")
+        Log.d(TAG, "$LOG_PREFIX ⏪ Rewound by ${REWIND_AMOUNT_MS}ms, total offset: $rewindOffset")
         
         // Update timers immediately to reflect rewind
         updateTimers()
@@ -1411,70 +1513,242 @@ class GiantCounterActivity : AppCompatActivity() {
     }
     
     private fun setupSmokerNameLongPress() {
-        var longPressStartTime = 0L
-        val fontColors = listOf(
-            Color.parseColor("#98FB98"),  // Green
-            Color.WHITE,
-            Color.YELLOW,
-            Color.CYAN,
-            Color.MAGENTA,
-            Color.RED
-        )
-        val fontTypes = listOf(
-            android.graphics.Typeface.DEFAULT_BOLD,
-            android.graphics.Typeface.MONOSPACE,
-            android.graphics.Typeface.SANS_SERIF,
-            android.graphics.Typeface.SERIF
-        )
+        var shouldShowDropdown = true
+        var wasAbove7Seconds = false
         
         smokerNameText.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    longPressStartTime = System.currentTimeMillis()
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val pressDuration = System.currentTimeMillis() - longPressStartTime
-                    if (pressDuration > 500) {  // Long press detected
-                        // Cycle through colors
-                        val currentColorIndex = fontColors.indexOf(smokerFontColor)
-                        val nextColorIndex = (currentColorIndex + 1) % fontColors.size
-                        smokerFontColor = fontColors[nextColorIndex]
-                        smokerNameText.setTextColor(smokerFontColor)
+                    nameHoldStartTime = System.currentTimeMillis()
+                    shouldShowDropdown = true
+                    wasAbove7Seconds = false
+                    
+                    Log.d(TAG, "$LOG_PREFIX 👆 Name touch down")
+                    
+                    nameHoldHandler = Handler(Looper.getMainLooper())
+                    nameHoldRunnable = Runnable {
+                        val holdDuration = System.currentTimeMillis() - nameHoldStartTime
+                        val currentColor = smokerNameText.currentTextColor
+                        val currentFont = smokerNameText.typeface
                         
-                        // Save to preferences
-                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
-                        prefs.edit().putInt("smoker_font_color", smokerFontColor).apply()
-                        
-                        // Vibrate feedback
-                        if (vibrationEnabled) {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
-                            } else {
-                                @Suppress("DEPRECATION")
-                                vibrator.vibrate(30)
+                        when {
+                            holdDuration >= 7000 -> {
+                                // Font cycling mode
+                                shouldShowDropdown = false
+                                wasAbove7Seconds = true
+                                if (fontCycleHandler == null) {
+                                    Log.d(TAG, "$LOG_PREFIX 🔤 Starting font cycle at 7s")
+                                    fontCycleHandler = Handler(Looper.getMainLooper())
+                                    fontCycleRunnable = object : Runnable {
+                                        override fun run() {
+                                            val nextFont = cycleToNextFont()
+                                            globalLockedFont = nextFont
+                                            smokerNameText.typeface = nextFont
+                                            smokerNameText.setTextColor(globalLockedColor ?: currentColor)
+                                            vibrateFeedback(30)
+                                            fontCycleHandler?.postDelayed(this, 2000)
+                                        }
+                                    }
+                                    fontCycleHandler?.post(fontCycleRunnable!!)
+                                    showToast("Font cycling started (every 2s)")
+                                }
+                            }
+                            holdDuration >= 5000 -> {
+                                // Lock both font and color
+                                shouldShowDropdown = false
+                                toggleFontAndColorLock()
+                                if (!randomFontsEnabled) {
+                                    globalLockedFont = currentFont
+                                    Log.d(TAG, "$LOG_PREFIX 🔒 Locked global font at 5s hold")
+                                }
+                                if (!colorChangingEnabled) {
+                                    globalLockedColor = currentColor
+                                    Log.d(TAG, "$LOG_PREFIX 🔒 Locked global color at 5s hold: $currentColor")
+                                }
+                                saveLockStates()
+                                showToast(getFontAndColorLockStatusMessage())
+                                vibrateFeedback(50)
+                                nameHoldHandler?.postDelayed({ nameHoldRunnable?.run() }, 2000)
+                            }
+                            holdDuration >= 3000 -> {
+                                // Lock font only
+                                shouldShowDropdown = false
+                                toggleFontLock()
+                                if (!randomFontsEnabled) {
+                                    globalLockedFont = currentFont
+                                    Log.d(TAG, "$LOG_PREFIX 🔒 Locked global font at 3s hold")
+                                }
+                                saveLockStates()
+                                showToast(getFontLockStatusMessage())
+                                vibrateFeedback(50)
+                                nameHoldHandler?.postDelayed({ nameHoldRunnable?.run() }, 2000)
+                            }
+                            holdDuration >= 1500 -> {
+                                // Lock color only
+                                shouldShowDropdown = false
+                                toggleColorLock()
+                                if (!colorChangingEnabled) {
+                                    globalLockedColor = currentColor
+                                    Log.d(TAG, "$LOG_PREFIX 🔒 Locked global color at 1.5s hold: $currentColor")
+                                }
+                                saveLockStates()
+                                showToast(getColorLockStatusMessage())
+                                vibrateFeedback(50)
+                                nameHoldHandler?.postDelayed({ nameHoldRunnable?.run() }, 1500)
+                            }
+                            else -> {
+                                nameHoldHandler?.postDelayed({ nameHoldRunnable?.run() }, 100)
                             }
                         }
-                    } else if (pressDuration > 2000) {  // Very long press for font type
-                        // Cycle through font types
-                        val currentTypeIndex = fontTypes.indexOf(smokerFontTypeface)
-                        val nextTypeIndex = (currentTypeIndex + 1) % fontTypes.size
-                        smokerFontTypeface = fontTypes[nextTypeIndex]
-                        smokerNameText.typeface = smokerFontTypeface
-                        
-                        // Save to preferences
-                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
-                        val typeName = when (smokerFontTypeface) {
-                            android.graphics.Typeface.MONOSPACE -> "MONOSPACE"
-                            android.graphics.Typeface.SANS_SERIF -> "SANS_SERIF"
-                            android.graphics.Typeface.SERIF -> "SERIF"
-                            else -> "DEFAULT"
-                        }
-                        prefs.edit().putString("smoker_font_type", typeName).apply()
                     }
+                    nameHoldHandler?.postDelayed(nameHoldRunnable!!, 1500)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    // Stop font cycling if active
+                    fontCycleRunnable?.let { fontCycleHandler?.removeCallbacks(it) }
+                    fontCycleHandler = null
+                    fontCycleRunnable = null
+                    
+                    if (wasAbove7Seconds) {
+                        // Lock with the last cycled font
+                        toggleFontAndColorLock()
+                        if (!colorChangingEnabled) {
+                            globalLockedColor = smokerNameText.currentTextColor
+                            Log.d(TAG, "$LOG_PREFIX 🔒 Locked color after 7s cycle: $globalLockedColor")
+                        }
+                        saveLockStates()
+                        showToast("Font & color locked")
+                    }
+                    
+                    // Clean up handlers
+                    nameHoldRunnable?.let { nameHoldHandler?.removeCallbacks(it) }
+                    nameHoldHandler = null
+                    nameHoldRunnable = null
+                    
+                    val holdDuration = System.currentTimeMillis() - nameHoldStartTime
+                    Log.d(TAG, "$LOG_PREFIX 👆 Name touch up, duration: ${holdDuration}ms, shouldShowDropdown: $shouldShowDropdown")
+                    
+                    // If short tap, show smoker selection
+                    if (event.action == MotionEvent.ACTION_UP && shouldShowDropdown && holdDuration < 1500) {
+                        showSmokerSelection()
+                    }
+                    
+                    nameHoldStartTime = 0L
                     true
                 }
                 else -> false
+            }
+        }
+    }
+    
+    private fun showSmokerSelection() {
+        Log.d(TAG, "$LOG_PREFIX 👥 Showing smoker selection dialog")
+        
+        val smokerNames = allSmokers.map { it.name }.toTypedArray()
+        val currentIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Select Smoker")
+            .setSingleChoiceItems(smokerNames, currentIndex) { dialog, which ->
+                val selectedSmoker = allSmokers[which]
+                currentSmoker = selectedSmoker.name
+                currentSmokerIndex = which
+                
+                Log.d(TAG, "$LOG_PREFIX 🔄 Switched to smoker: $currentSmoker")
+                
+                // Reload count for new smoker
+                lifecycleScope.launch {
+                    loadCurrentData()
+                }
+                
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun cycleToNextFont(): android.graphics.Typeface {
+        lastSelectedFontIndex = (lastSelectedFontIndex + 1) % fontList.size
+        val nextFont = try {
+            ResourcesCompat.getFont(this, fontList[lastSelectedFontIndex])!!
+        } catch (e: Exception) {
+            Log.e(TAG, "$LOG_PREFIX Error loading font at index $lastSelectedFontIndex", e)
+            android.graphics.Typeface.DEFAULT_BOLD
+        }
+        Log.d(TAG, "$LOG_PREFIX 🔤 Cycled to font index $lastSelectedFontIndex")
+        return nextFont
+    }
+    
+    private fun toggleColorLock() {
+        colorChangingEnabled = !colorChangingEnabled
+        Log.d(TAG, "$LOG_PREFIX 🎨 Color lock toggled: enabled=$colorChangingEnabled")
+    }
+    
+    private fun toggleFontLock() {
+        randomFontsEnabled = !randomFontsEnabled
+        Log.d(TAG, "$LOG_PREFIX 🔤 Font lock toggled: enabled=$randomFontsEnabled")
+    }
+    
+    private fun toggleFontAndColorLock() {
+        colorChangingEnabled = !colorChangingEnabled
+        randomFontsEnabled = !randomFontsEnabled
+        Log.d(TAG, "$LOG_PREFIX 🔒 Both locks toggled: color=$colorChangingEnabled, font=$randomFontsEnabled")
+    }
+    
+    private fun getColorLockStatusMessage(): String {
+        return if (colorChangingEnabled) "Color unlocked" else "Color locked"
+    }
+    
+    private fun getFontLockStatusMessage(): String {
+        return if (randomFontsEnabled) "Font unlocked" else "Font locked"
+    }
+    
+    private fun getFontAndColorLockStatusMessage(): String {
+        return when {
+            !colorChangingEnabled && !randomFontsEnabled -> "Font & color locked"
+            colorChangingEnabled && randomFontsEnabled -> "Font & color unlocked"
+            !colorChangingEnabled -> "Color locked, font unlocked"
+            else -> "Font locked, color unlocked"
+        }
+    }
+    
+    private fun saveLockStates() {
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            putBoolean("random_fonts_enabled", randomFontsEnabled)
+            putBoolean("color_changing_enabled", colorChangingEnabled)
+            if (globalLockedColor != null) {
+                putInt("global_locked_color", globalLockedColor!!)
+            }
+            if (globalLockedFont != null) {
+                val fontIndex = fontList.indexOfFirst { 
+                    try {
+                        ResourcesCompat.getFont(this@GiantCounterActivity, it) == globalLockedFont
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+                if (fontIndex != -1) {
+                    putInt("global_font_index", fontIndex)
+                }
+            }
+            apply()
+        }
+        Log.d(TAG, "$LOG_PREFIX 💾 Lock states saved")
+    }
+    
+    private fun showToast(message: String) {
+        android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+    
+    private fun vibrateFeedback(duration: Long) {
+        if (vibrationEnabled) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(duration)
             }
         }
     }
