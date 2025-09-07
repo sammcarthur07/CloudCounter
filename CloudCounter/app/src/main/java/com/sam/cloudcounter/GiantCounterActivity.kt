@@ -548,6 +548,9 @@ class GiantCounterActivity : AppCompatActivity() {
                         smokerActivities.groupBy { it.type }.forEach { (type, activities) ->
                             Log.d(TAG, "$LOG_PREFIX   $type: ${activities.size}")
                         }
+                        
+                        // Manually refresh session stats to update UI
+                        refreshSessionStats()
                     } else {
                         Log.e(TAG, "$LOG_PREFIX No smoker found for name: $currentSmoker")
                     }
@@ -559,7 +562,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 updateUI()
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Error saving activity", e)
+                Log.e(TAG, "$LOG_PREFIX Error saving activity", e)
             }
         }
     }
@@ -599,6 +602,67 @@ class GiantCounterActivity : AppCompatActivity() {
                 Log.e(TAG, "Error loading smoker data", e)
                 currentCount = 0
                 updateUI()
+            }
+        }
+    }
+    
+    private fun refreshSessionStats() {
+        Log.d(TAG, "$LOG_PREFIX refreshSessionStats() called")
+        
+        lifecycleScope.launch {
+            try {
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
+                
+                Log.d(TAG, "$LOG_PREFIX Found ${sessionActivities.size} activities in session")
+                
+                // Calculate per-smoker stats
+                val perSmokerMap = mutableMapOf<String, PerSmokerStats>()
+                var totalCones = 0
+                var totalJoints = 0
+                var totalBowls = 0
+                
+                // Group activities by smoker
+                sessionActivities.groupBy { it.smokerId }.forEach { (smokerId, activities) ->
+                    // Get smoker name
+                    val smoker = allSmokers.find { it.smokerId == smokerId }
+                    if (smoker != null) {
+                        val cones = activities.count { it.type == ActivityType.CONE }
+                        val joints = activities.count { it.type == ActivityType.JOINT }
+                        val bowls = activities.count { it.type == ActivityType.BOWL }
+                        
+                        totalCones += cones
+                        totalJoints += joints
+                        totalBowls += bowls
+                        
+                        perSmokerMap[smoker.name] = PerSmokerStats(
+                            smokerName = smoker.name,
+                            totalCones = cones,
+                            totalJoints = joints,
+                            totalBowls = bowls
+                        )
+                        
+                        Log.d(TAG, "$LOG_PREFIX ${smoker.name}: C=$cones, J=$joints, B=$bowls")
+                    }
+                }
+                
+                // Update the ViewModel
+                val statsList = perSmokerMap.values.toList()
+                // Note: We can't directly set _perSmokerStats as it's private
+                // The stats will be updated through the observer pattern
+                
+                // Update group stats
+                sessionStatsVM.updateGroupStats(GroupStats(
+                    totalCones = totalCones,
+                    totalJoints = totalJoints,
+                    totalBowls = totalBowls
+                ))
+                
+                Log.d(TAG, "$LOG_PREFIX Session stats updated: Total C=$totalCones, J=$totalJoints, B=$totalBowls")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error refreshing session stats", e)
             }
         }
     }
