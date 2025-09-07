@@ -138,14 +138,15 @@ class GiantCounterActivity : AppCompatActivity() {
         R.font.splash
     )
     
-    // Neon colors
+    // Neon colors for cycling
     private val NEON_COLORS = listOf(
-        Color.parseColor("#FFFF66"),  // Yellow
-        Color.parseColor("#BF7EFF"),  // Purple  
-        Color.parseColor("#98FB98"),  // Green
-        Color.parseColor("#66B2FF"),  // Blue
-        Color.parseColor("#FFA366")   // Orange
+        Color.parseColor("#FFFF66"), // Yellow
+        Color.parseColor("#BF7EFF"), // Purple
+        Color.parseColor("#98FB98"), // Green
+        Color.parseColor("#66B2FF"), // Blue
+        Color.parseColor("#FFA366")  // Orange
     )
+    
     
     // ViewModels
     private lateinit var sessionStatsVM: SessionStatsViewModel
@@ -412,10 +413,10 @@ class GiantCounterActivity : AppCompatActivity() {
                 bottomMargin = 220.dpToPx() // Position above the button
             }
             text = "Loading..."
-            textSize = 36f
+            textSize = 48f  // Increased from 36f to 48f
             // Font color and typeface will be loaded from preferences
             setTextColor(smokerFontColor)
-            setShadowLayer(4f, 2f, 2f, Color.BLACK)
+            setShadowLayer(6f, 3f, 3f, Color.BLACK)  // Increased shadow for bigger text
             typeface = smokerFontTypeface ?: android.graphics.Typeface.DEFAULT_BOLD
         }
         rootLayout.addView(smokerNameText)
@@ -576,6 +577,10 @@ class GiantCounterActivity : AppCompatActivity() {
         // Load font and lock preferences
         colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
         randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
+        
+        Log.d(TAG, "$LOG_PREFIX 🔓 Initial lock states loaded:")
+        Log.d(TAG, "$LOG_PREFIX   colorChangingEnabled: $colorChangingEnabled")
+        Log.d(TAG, "$LOG_PREFIX   randomFontsEnabled: $randomFontsEnabled")
         
         // Load global locked states
         val savedGlobalColor = prefs.getInt("global_locked_color", -1)
@@ -1678,9 +1683,46 @@ class GiantCounterActivity : AppCompatActivity() {
                     val holdDuration = System.currentTimeMillis() - nameHoldStartTime
                     Log.d(TAG, "$LOG_PREFIX 👆 Name touch up, duration: ${holdDuration}ms, shouldShowDropdown: $shouldShowDropdown")
                     
-                    // If short tap, show smoker selection
+                    // If short tap, cycle font/color or show smoker selection
                     if (event.action == MotionEvent.ACTION_UP && shouldShowDropdown && holdDuration < 1500) {
-                        showSmokerSelection()
+                        // Single tap behavior depends on lock states
+                        when {
+                            randomFontsEnabled && colorChangingEnabled -> {
+                                // Both unlocked - cycle both
+                                Log.d(TAG, "$LOG_PREFIX 🎨🔤 Tap: cycling both font and color (both unlocked)")
+                                val nextFont = cycleToNextFont()
+                                val nextColor = NEON_COLORS.random()
+                                smokerNameText.typeface = nextFont
+                                smokerNameText.setTextColor(nextColor)
+                                smokerFontTypeface = nextFont
+                                smokerFontColor = nextColor
+                                saveDisplayState()
+                                vibrateFeedback(30)
+                            }
+                            randomFontsEnabled && !colorChangingEnabled -> {
+                                // Only font unlocked - cycle font
+                                Log.d(TAG, "$LOG_PREFIX 🔤 Tap: cycling font only (color locked)")
+                                val nextFont = cycleToNextFont()
+                                smokerNameText.typeface = nextFont
+                                smokerFontTypeface = nextFont
+                                saveDisplayState()
+                                vibrateFeedback(30)
+                            }
+                            !randomFontsEnabled && colorChangingEnabled -> {
+                                // Only color unlocked - cycle color
+                                Log.d(TAG, "$LOG_PREFIX 🎨 Tap: cycling color only (font locked)")
+                                val nextColor = NEON_COLORS.random()
+                                smokerNameText.setTextColor(nextColor)
+                                smokerFontColor = nextColor
+                                saveDisplayState()
+                                vibrateFeedback(30)
+                            }
+                            else -> {
+                                // Both locked - show smoker selection
+                                Log.d(TAG, "$LOG_PREFIX 🔒 Tap: showing smoker selection (both locked)")
+                                showSmokerSelection()
+                            }
+                        }
                     }
                     
                     nameHoldStartTime = 0L
@@ -1732,17 +1774,32 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun toggleColorLock() {
         colorChangingEnabled = !colorChangingEnabled
         Log.d(TAG, "$LOG_PREFIX 🎨 Color lock toggled: enabled=$colorChangingEnabled")
+        
+        // Save the new state immediately
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().putBoolean("color_changing_enabled", colorChangingEnabled).apply()
     }
     
     private fun toggleFontLock() {
         randomFontsEnabled = !randomFontsEnabled
         Log.d(TAG, "$LOG_PREFIX 🔤 Font lock toggled: enabled=$randomFontsEnabled")
+        
+        // Save the new state immediately
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().putBoolean("random_fonts_enabled", randomFontsEnabled).apply()
     }
     
     private fun toggleFontAndColorLock() {
         colorChangingEnabled = !colorChangingEnabled
         randomFontsEnabled = !randomFontsEnabled
         Log.d(TAG, "$LOG_PREFIX 🔒 Both locks toggled: color=$colorChangingEnabled, font=$randomFontsEnabled")
+        
+        // Save the new states immediately
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean("color_changing_enabled", colorChangingEnabled)
+            .putBoolean("random_fonts_enabled", randomFontsEnabled)
+            .apply()
     }
     
     private fun getColorLockStatusMessage(): String {
