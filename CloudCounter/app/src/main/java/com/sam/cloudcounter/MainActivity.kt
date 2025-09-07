@@ -2081,10 +2081,12 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "💾 Not saving sessionStart (value is 0)")
         }
         
-        editor
+        val success = editor
             .putLong("rewindOffset", rewindOffset)  // Save rewind offset
             .putString("activitiesTimestamps", activitiesTimestamps.joinToString(","))
-            .apply()
+            .commit()  // Use commit() for synchronous save
+            
+        Log.d(TAG, "💾 Session saved to prefs: ${if (success) "SUCCESS" else "FAILED"}")
     }
 
 
@@ -2193,14 +2195,18 @@ class MainActivity : AppCompatActivity() {
             // Save current session and state to prefs for GiantCounterActivity
             saveSessionToPrefs()
             
-            val selectedSmoker = binding.spinnerSmoker.selectedItem?.toString() ?: "Sam"
+            // Get the actual smoker name, not the toString() of the object
+            val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+            val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+            val selectedSmokerObj = organizedSmokers.getOrNull(selectedPosition)
+            val selectedSmoker = selectedSmokerObj?.name ?: "Sam"
             
             prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
                 .putString("current_activity_type", "cones") // Default to cones for now
                 .putBoolean("is_auto_mode", isAutoMode)
                 .putBoolean("timer_enabled", false) // Default to false for now
-                .apply()
+                .commit()  // Use commit() for synchronous save
             
             // Launch Giant Counter Activity and expect result
             val intent = Intent(this, GiantCounterActivity::class.java)
@@ -5963,6 +5969,85 @@ class MainActivity : AppCompatActivity() {
         // Refresh stats when returning from GiantCounterActivity or other activities
         if (sessionActive) {
             refreshLocalSessionStatsIfNeeded()
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == GIANT_COUNTER_REQUEST_CODE) {
+            Log.d(TAG, "🎯 Returned from GiantCounterActivity, forcing stats refresh...")
+            
+            // Force refresh session stats regardless of cloud connection
+            if (sessionActive) {
+                // FORCE a refresh by directly calculating stats from database
+                // This bypasses the cloud connection check in refreshLocalSessionStatsIfNeeded()
+                lifecycleScope.launch {
+                    Log.d(TAG, "🎯 Force refreshing stats from database...")
+                    
+                    val allSmokersFromDb = withContext(Dispatchers.IO) {
+                        repo.getAllSmokersList()
+                    }
+                    
+                    val now = System.currentTimeMillis()
+                    val perSmokerList = mutableListOf<PerSmokerStats>()
+                    var totalCones = 0
+                    var totalJoints = 0
+                    var totalBowls = 0
+                    
+                    // Get ALL activities in session
+                    val allSessionActivities = withContext(Dispatchers.IO) {
+                        repo.getLogsInTimeRange(sessionStart, now)
+                    }.sortedBy { it.timestamp }
+                    
+                    Log.d(TAG, "🎯 Found ${allSessionActivities.size} activities in session after GiantCounter")
+                    
+                    // Calculate stats for each smoker
+                    for (smoker in allSmokersFromDb) {
+                        val smokerActivities = allSessionActivities.filter { it.smokerId == smoker.smokerId }
+                        val cones = smokerActivities.count { it.type == ActivityType.CONE }
+                        val joints = smokerActivities.count { it.type == ActivityType.JOINT }
+                        val bowls = smokerActivities.count { it.type == ActivityType.BOWL }
+                        
+                        if (cones > 0 || joints > 0 || bowls > 0) {
+                            perSmokerList.add(PerSmokerStats(
+                                smokerName = smoker.name,
+                                totalCones = cones,
+                                totalJoints = joints,
+                                totalBowls = bowls
+                            ))
+                            
+                            totalCones += cones
+                            totalJoints += joints
+                            totalBowls += bowls
+                            
+                            Log.d(TAG, "🎯 ${smoker.name}: C=$cones, J=$joints, B=$bowls")
+                        }
+                    }
+                    
+                    // Create group stats
+                    val groupStats = GroupStats(
+                        totalCones = totalCones,
+                        totalJoints = totalJoints,
+                        totalBowls = totalBowls
+                    )
+                    
+                    // Update the session stats view model
+                    withContext(Dispatchers.Main) {
+                        sessionStatsVM.applyLocalStats(
+                            perSmoker = perSmokerList,
+                            groupStats = groupStats,
+                            sessionStart = sessionStart
+                        )
+                        
+                        // Also trigger additional refreshes
+                        sessionStatsVM.recalculateGaps()
+                        sessionStatsVM.forceLocalStatsRefresh()
+                        
+                        Log.d(TAG, "🎯 Stats force refreshed after GiantCounter: Total C=$totalCones, J=$totalJoints, B=$totalBowls")
+                    }
+                }
+            }
         }
     }
 

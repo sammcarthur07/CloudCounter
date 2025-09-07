@@ -272,7 +272,7 @@ class GiantCounterActivity : AppCompatActivity() {
         vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
         
         // Load preferences and session data
-        val prefs = getSharedPreferences("CloudCounterPrefs", MODE_PRIVATE)
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
         vibrationEnabled = prefs.getBoolean("vibration_enabled", true)
         currentSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
         val savedSessionStart = prefs.getLong("sessionStart", 0L)
