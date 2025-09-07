@@ -1354,7 +1354,10 @@ class GiantCounterActivity : AppCompatActivity() {
                 // Delete from database
                 withContext(Dispatchers.IO) {
                     val dao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).activityLogDao()
-                    dao.deleteById(lastActivityId)
+                    val activity = dao.getActivityById(lastActivityId)
+                    if (activity != null) {
+                        dao.delete(activity)
+                    }
                 }
                 
                 Log.d(TAG, "$LOG_PREFIX Undid activity with ID: $lastActivityId")
