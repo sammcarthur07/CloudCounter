@@ -10999,16 +10999,18 @@ class MainActivity : AppCompatActivity() {
                     val originalAutoMode = isAutoMode
                     isAutoMode = false
 
-                    Log.d(TAG, "🎯 Adding bowl for ${capturedSmoker.name}")
+                    Log.d(TAG, "🎯 🍶 Adding bowl for ${capturedSmoker.name} (auto disabled temporarily)")
                     val bowlTimestamp = now - 100
                     proceedWithLogHitWithSourceAndSmoker(ActivityType.BOWL, bowlTimestamp, finalStashSource, capturedSmoker)
 
                     delay(200)
 
-                    isAutoMode = originalAutoMode
-
-                    Log.d(TAG, "🎯 Adding cone for ${capturedSmoker.name}")
+                    Log.d(TAG, "🎯 🌿 Adding cone for ${capturedSmoker.name} (auto still disabled)")
                     proceedWithLogHitWithSourceAndSmoker(ActivityType.CONE, now, finalStashSource, capturedSmoker)
+                    
+                    // Restore auto mode
+                    isAutoMode = originalAutoMode
+                    Log.d(TAG, "🎯 ↻ Restored auto mode to: $originalAutoMode")
 
                     withContext(Dispatchers.Main) {
                         if (currentShareCode == null) {
@@ -11016,6 +11018,17 @@ class MainActivity : AppCompatActivity() {
                         }
                         sessionStatsVM.refreshTimer()
                         stashViewModel.onActivityLogged(ActivityType.CONE)
+                        
+                        // CRITICAL FIX: Manually trigger auto-advance after bowl+cone combo
+                        if (originalAutoMode && smokers.isNotEmpty()) {
+                            Log.d(TAG, "🎯 ➡️ Manually advancing smoker after bowl+cone combo")
+                            handler.postDelayed({
+                                moveToNextActiveSmoker()
+                                Log.d(TAG, "🎯 ✅ Auto-advance completed after bowl+cone combo")
+                            }, 300) // Small delay to ensure all operations complete
+                        } else {
+                            Log.d(TAG, "🎯 ❌ Not advancing: originalAutoMode=$originalAutoMode, smokersCount=${smokers.size}")
+                        }
                     }
                 }
             }
