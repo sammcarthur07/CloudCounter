@@ -2230,16 +2230,16 @@ class MainActivity : AppCompatActivity() {
                         R.font.bitcount_prop_double,
                         R.font.exile,
                         R.font.modak,
-                        R.font.nabla,
-                        R.font.atkinson_hyperlegible,
-                        R.font.jersey_10,
-                        R.font.londrina_shadow,
+                        R.font.oi,
+                        R.font.rubik_glitch,
+                        R.font.sankofa_display,
+                        R.font.silkscreen,
+                        R.font.rubik_puddles,
+                        R.font.rubik_beastly,
+                        R.font.sixtyfour,
                         R.font.monoton,
-                        R.font.orbitron,
-                        R.font.pixelify_sans,
-                        R.font.righteous,
-                        R.font.russo_one,
-                        R.font.silkscreen
+                        R.font.sedgwick_ave_display,
+                        R.font.splash
                     )
                     
                     // Find the font index by comparing typefaces
@@ -6087,16 +6087,16 @@ class MainActivity : AppCompatActivity() {
                                 R.font.bitcount_prop_double,
                                 R.font.exile,
                                 R.font.modak,
-                                R.font.nabla,
-                                R.font.atkinson_hyperlegible,
-                                R.font.jersey_10,
-                                R.font.londrina_shadow,
+                                R.font.oi,
+                                R.font.rubik_glitch,
+                                R.font.sankofa_display,
+                                R.font.silkscreen,
+                                R.font.rubik_puddles,
+                                R.font.rubik_beastly,
+                                R.font.sixtyfour,
                                 R.font.monoton,
-                                R.font.orbitron,
-                                R.font.pixelify_sans,
-                                R.font.righteous,
-                                R.font.russo_one,
-                                R.font.silkscreen
+                                R.font.sedgwick_ave_display,
+                                R.font.splash
                             )
                             
                             if (giantCounterFontIndex < fontList.size) {
