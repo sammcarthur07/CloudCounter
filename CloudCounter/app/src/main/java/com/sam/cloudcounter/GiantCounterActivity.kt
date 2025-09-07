@@ -275,14 +275,33 @@ class GiantCounterActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("CloudCounterPrefs", MODE_PRIVATE)
         vibrationEnabled = prefs.getBoolean("vibration_enabled", true)
         currentSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
-        sessionStart = prefs.getLong("sessionStart", System.currentTimeMillis())
+        val savedSessionStart = prefs.getLong("sessionStart", 0L)
+        val sessionActive = prefs.getBoolean("sessionActive", false)
         isAutoMode = prefs.getBoolean("is_auto_mode", true)
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        // Use saved session start if valid, otherwise try to find from recent activities
+        sessionStart = if (savedSessionStart > 0 && sessionActive) {
+            savedSessionStart
+        } else {
+            // Fallback: Find the earliest activity timestamp from today's session
+            val todayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            
+            Log.d(TAG, "$LOG_PREFIX No valid sessionStart in prefs, using today's start: $todayStart")
+            todayStart
+        }
+        
         Log.d(TAG, "$LOG_PREFIX Loaded prefs:")
         Log.d(TAG, "$LOG_PREFIX   currentSmoker: $currentSmoker")
-        Log.d(TAG, "$LOG_PREFIX   sessionStart: $sessionStart")
+        Log.d(TAG, "$LOG_PREFIX   savedSessionStart: $savedSessionStart")
+        Log.d(TAG, "$LOG_PREFIX   sessionActive: $sessionActive")
+        Log.d(TAG, "$LOG_PREFIX   sessionStart (using): $sessionStart")
         Log.d(TAG, "$LOG_PREFIX   isAutoMode: $isAutoMode")
         Log.d(TAG, "$LOG_PREFIX   currentActivityType: $currentActivityType")
         

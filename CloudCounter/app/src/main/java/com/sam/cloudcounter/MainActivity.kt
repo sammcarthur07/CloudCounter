@@ -2059,9 +2059,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveSessionToPrefs() {
-        prefs.edit()
+        val editor = prefs.edit()
             .putBoolean("sessionActive", sessionActive)
-            .putLong("sessionStart", sessionStart)
             .putLong("lastLogTime", lastLogTime)
             .putLong("actualLastLogTime", actualLastLogTime)
             .putLong("lastInterval", lastIntervalMillis)
@@ -2073,6 +2072,16 @@ class MainActivity : AppCompatActivity() {
             .putString("currentRoomName", currentRoomName)
             .putBoolean("isAutoMode", isAutoMode)
             .putLong("defaultSmokerId", (application as CloudCounterApplication).defaultSmokerId)
+        
+        // Only save sessionStart if it's valid (not 0)
+        if (sessionStart > 0) {
+            editor.putLong("sessionStart", sessionStart)
+            Log.d(TAG, "💾 Saving sessionStart: $sessionStart")
+        } else {
+            Log.d(TAG, "💾 Not saving sessionStart (value is 0)")
+        }
+        
+        editor
             .putLong("rewindOffset", rewindOffset)  // Save rewind offset
             .putString("activitiesTimestamps", activitiesTimestamps.joinToString(","))
             .apply()
