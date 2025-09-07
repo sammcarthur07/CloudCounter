@@ -15,6 +15,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -55,6 +56,15 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var konfettiView: KonfettiView
     // private lateinit var calculatorButton: TextView // REMOVED
     private lateinit var topControlsContainer: ViewGroup
+    private lateinit var timersButton: TextView
+    private lateinit var timerControlsContainer: ViewGroup
+    private lateinit var textTimeSinceLast: TextView
+    private lateinit var textLastGapCountdown: TextView
+    private lateinit var textThisSesh: TextView
+    private lateinit var roundsContainer: ViewGroup
+    private lateinit var btnRoundMinus: ImageView
+    private lateinit var btnRoundPlus: ImageView
+    private lateinit var textRoundsLeft: TextView
     
     // Data
     private var currentSmoker: String = "Sam"
@@ -70,6 +80,18 @@ class GiantCounterActivity : AppCompatActivity() {
     private var isAutoMode: Boolean = true
     private var timerEnabled: Boolean = false
     private var topSectionVisible: Boolean = true
+    private var timersVisible: Boolean = false
+    
+    // Timer data
+    private var lastLogTime: Long = 0L
+    private var lastConeTimestamp: Long = 0L
+    private var lastJointTimestamp: Long = 0L
+    private var lastBowlTimestamp: Long = 0L
+    private var roundsLeft: Int = 0
+    private var initialRoundsSet: Int = 0
+    private val intervalsList = mutableListOf<Long>()
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var timerRunnable: Runnable
     
     // ViewModels
     private lateinit var sessionStatsVM: SessionStatsViewModel
@@ -126,14 +148,178 @@ class GiantCounterActivity : AppCompatActivity() {
         }
         rootLayout.addView(backgroundImage)
         
-        // Smoker name at top
-        smokerNameText = TextView(this).apply {
+        // TIMERS button at top
+        timersButton = TextView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-                topMargin = 120 // Space from top
+                topMargin = 50.dpToPx()
+            }
+            text = "TIMERS"
+            textSize = 16f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+            setPadding(30.dpToPx(), 10.dpToPx(), 30.dpToPx(), 10.dpToPx())
+            // Create a neon green outline programmatically
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 8.dpToPx().toFloat()
+                setStroke(2.dpToPx(), Color.parseColor("#98FB98"))
+                setColor(Color.TRANSPARENT)
+            }
+            isClickable = true
+            isFocusable = true
+        }
+        rootLayout.addView(timersButton)
+        
+        // Timer controls container (initially hidden)
+        timerControlsContainer = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                topMargin = 100.dpToPx()
+            }
+            visibility = View.GONE
+        }
+        
+        // Create timer controls layout
+        val timerLayout = LinearLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dpToPx(), 8.dpToPx(), 16.dpToPx(), 8.dpToPx())
+        }
+        
+        // Timer row
+        val timerRow = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        
+        // Left timer (time since last)
+        val leftTimerContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            gravity = Gravity.CENTER
+        }
+        textTimeSinceLast = TextView(this).apply {
+            text = "0s"
+            textSize = 24f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+        }
+        leftTimerContainer.addView(textTimeSinceLast)
+        
+        // Middle timer (gap countdown)
+        val middleTimerContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            gravity = Gravity.CENTER
+        }
+        textLastGapCountdown = TextView(this).apply {
+            text = "0s"
+            textSize = 24f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+        }
+        middleTimerContainer.addView(textLastGapCountdown)
+        
+        // Right timer (session time)
+        val rightTimerContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            gravity = Gravity.CENTER
+        }
+        textThisSesh = TextView(this).apply {
+            text = "00:00:00"
+            textSize = 24f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+        }
+        rightTimerContainer.addView(textThisSesh)
+        
+        timerRow.addView(leftTimerContainer)
+        timerRow.addView(middleTimerContainer)
+        timerRow.addView(rightTimerContainer)
+        timerLayout.addView(timerRow)
+        
+        // Rounds counter row
+        roundsContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 8.dpToPx()
+            }
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        
+        btnRoundMinus = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                48.dpToPx(), 48.dpToPx()
+            )
+            setImageResource(android.R.drawable.ic_media_previous)
+            setColorFilter(Color.parseColor("#98FB98"))
+            isClickable = true
+            isFocusable = true
+            setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
+        }
+        
+        textRoundsLeft = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginStart = 16.dpToPx()
+                marginEnd = 16.dpToPx()
+            }
+            text = "0"
+            textSize = 24f
+            setTextColor(Color.parseColor("#98FB98"))
+            setShadowLayer(2f, 1f, 1f, Color.BLACK)
+        }
+        
+        btnRoundPlus = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                48.dpToPx(), 48.dpToPx()
+            )
+            setImageResource(android.R.drawable.ic_media_next)
+            setColorFilter(Color.parseColor("#98FB98"))
+            isClickable = true
+            isFocusable = true
+            setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
+        }
+        
+        roundsContainer.addView(btnRoundMinus)
+        roundsContainer.addView(textRoundsLeft)
+        roundsContainer.addView(btnRoundPlus)
+        timerLayout.addView(roundsContainer)
+        
+        timerControlsContainer.addView(timerLayout)
+        rootLayout.addView(timerControlsContainer)
+        
+        // Smoker name above button
+        smokerNameText = TextView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+                bottomMargin = 220.dpToPx() // Position above the button
             }
             text = "Loading..."
             textSize = 36f
@@ -270,6 +456,14 @@ class GiantCounterActivity : AppCompatActivity() {
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        // Load timer data from preferences
+        lastLogTime = prefs.getLong("lastLogTime", 0L)
+        lastConeTimestamp = prefs.getLong("lastConeTimestamp", 0L)
+        lastJointTimestamp = prefs.getLong("lastJointTimestamp", 0L)
+        lastBowlTimestamp = prefs.getLong("lastBowlTimestamp", 0L)
+        roundsLeft = prefs.getInt("roundsLeft", 0)
+        initialRoundsSet = prefs.getInt("initialRoundsSet", 0)
+        
         // Load stash source from preferences
         val stashSourceString = prefs.getString("stash_source", "MY_STASH") ?: "MY_STASH"
         val savedStashSource = when (stashSourceString) {
@@ -326,6 +520,9 @@ class GiantCounterActivity : AppCompatActivity() {
         
         // Set up button listeners
         setupButtonListeners()
+        
+        // Start timer updates
+        startTimerUpdates()
     }
     
     @Suppress("ClickableViewAccessibility")
@@ -375,6 +572,32 @@ class GiantCounterActivity : AppCompatActivity() {
         backButton.setOnClickListener {
             finish()
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
+        
+        // Timer button
+        timersButton.setOnClickListener {
+            toggleTimersVisibility()
+        }
+        
+        // Round buttons
+        btnRoundMinus.setOnClickListener {
+            if (initialRoundsSet > 0) {
+                roundsLeft = maxOf(0, roundsLeft - 1)
+                updateRoundsUI()
+                saveRoundsToPrefs()
+            }
+        }
+        
+        btnRoundPlus.setOnClickListener {
+            if (initialRoundsSet == 0) {
+                // From infinity to 1
+                initialRoundsSet = 1
+                roundsLeft = 1
+            } else {
+                roundsLeft++
+            }
+            updateRoundsUI()
+            saveRoundsToPrefs()
         }
         
         // Calculator button (toggle top section) - REMOVED
@@ -476,6 +699,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 }
                 
                 updateUI()
+                updateRoundsUI()
                 
                 // Refresh session stats to populate the ViewModel
                 refreshSessionStats()
@@ -621,6 +845,35 @@ class GiantCounterActivity : AppCompatActivity() {
                         
                         val insertedId = repository.insert(activity)
                         Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
+                        
+                        // Update timer data
+                        val currentTime = System.currentTimeMillis()
+                        if (lastLogTime > 0) {
+                            val interval = currentTime - lastLogTime
+                            intervalsList.add(interval)
+                            // Keep only last 20 intervals
+                            if (intervalsList.size > 20) {
+                                intervalsList.removeAt(0)
+                            }
+                        }
+                        lastLogTime = currentTime
+                        
+                        // Update activity type timestamps
+                        when (activityType) {
+                            com.sam.cloudcounter.ActivityType.CONE -> lastConeTimestamp = currentTime
+                            com.sam.cloudcounter.ActivityType.JOINT -> lastJointTimestamp = currentTime
+                            com.sam.cloudcounter.ActivityType.BOWL -> lastBowlTimestamp = currentTime
+                            else -> {}
+                        }
+                        
+                        // Update rounds if needed
+                        if (roundsLeft > 0) {
+                            roundsLeft--
+                            updateRoundsUI()
+                        }
+                        
+                        // Save timer data to preferences
+                        saveTimerDataToPrefs()
                         
                         // UPDATE STASH
                         withContext(Dispatchers.Main) {
@@ -817,6 +1070,112 @@ class GiantCounterActivity : AppCompatActivity() {
         }
         
         // Update calculator button appearance - REMOVED
+    }
+    
+    private fun toggleTimersVisibility() {
+        timersVisible = !timersVisible
+        
+        if (timersVisible) {
+            timersButton.text = "HIDE TIMERS"
+            timerControlsContainer.visibility = View.VISIBLE
+        } else {
+            timersButton.text = "TIMERS"
+            timerControlsContainer.visibility = View.GONE
+        }
+    }
+    
+    private fun updateRoundsUI() {
+        val displayText = when {
+            initialRoundsSet == 0 -> "∞"
+            roundsLeft < 0 -> "0"
+            else -> roundsLeft.toString()
+        }
+        textRoundsLeft.text = displayText
+    }
+    
+    private fun saveRoundsToPrefs() {
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            putInt("roundsLeft", roundsLeft)
+            putInt("initialRoundsSet", initialRoundsSet)
+            commit()
+        }
+    }
+    
+    private fun startTimerUpdates() {
+        timerRunnable = object : Runnable {
+            override fun run() {
+                updateTimers()
+                handler.postDelayed(this, 1000) // Update every second
+            }
+        }
+        handler.post(timerRunnable)
+    }
+    
+    private fun updateTimers() {
+        val now = System.currentTimeMillis()
+        
+        // LEFT TIMER: Time since last activity
+        val sinceLastMs = if (lastLogTime > 0) now - lastLogTime else 0
+        val sinceLastSec = sinceLastMs / 1000
+        textTimeSinceLast.text = formatInterval(sinceLastSec)
+        
+        // MIDDLE TIMER: Gap countdown
+        if (intervalsList.size >= 2) {
+            val averageInterval = intervalsList.takeLast(10).average().toLong()
+            val timeSinceLastActivity = now - lastLogTime
+            val remainingMs = averageInterval - timeSinceLastActivity
+            val remainingSec = remainingMs / 1000
+            
+            val gapFormatted = if (remainingSec >= 0) {
+                formatInterval(remainingSec)
+            } else {
+                "-${formatInterval(kotlin.math.abs(remainingSec))}"
+            }
+            textLastGapCountdown.text = gapFormatted
+        } else {
+            textLastGapCountdown.text = "0s"
+        }
+        
+        // RIGHT TIMER: Session elapsed time
+        val sessionElapsedMs = if (sessionStart > 0) now - sessionStart else 0
+        val sessionElapsedSec = sessionElapsedMs / 1000
+        textThisSesh.text = formatInterval(sessionElapsedSec)
+    }
+    
+    private fun saveTimerDataToPrefs() {
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            putLong("lastLogTime", lastLogTime)
+            putLong("lastConeTimestamp", lastConeTimestamp)
+            putLong("lastJointTimestamp", lastJointTimestamp)
+            putLong("lastBowlTimestamp", lastBowlTimestamp)
+            putInt("roundsLeft", roundsLeft)
+            putInt("initialRoundsSet", initialRoundsSet)
+            commit()
+        }
+    }
+    
+    private fun formatInterval(seconds: Long): String {
+        return when {
+            seconds < 60 -> "${seconds}s"
+            seconds < 3600 -> {
+                val mins = seconds / 60
+                val secs = seconds % 60
+                if (secs == 0L) "${mins}m" else "${mins}m ${secs}s"
+            }
+            else -> {
+                val hours = seconds / 3600
+                val mins = (seconds % 3600) / 60
+                val secs = seconds % 60
+                String.format("%02d:%02d:%02d", hours, mins, secs)
+            }
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(timerRunnable)
     }
     
     // Extension function for dp to px conversion
