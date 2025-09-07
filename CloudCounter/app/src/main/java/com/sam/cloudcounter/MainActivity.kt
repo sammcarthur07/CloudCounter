@@ -2201,11 +2201,20 @@ class MainActivity : AppCompatActivity() {
             val selectedSmokerObj = organizedSmokers.getOrNull(selectedPosition)
             val selectedSmoker = selectedSmokerObj?.name ?: "Sam"
             
+            // Get current stash source
+            val currentStashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+            val stashSourceString = when (currentStashSource) {
+                StashSource.MY_STASH -> "MY_STASH"
+                StashSource.THEIR_STASH -> "THEIR_STASH"
+                StashSource.EACH_TO_OWN -> "EACH_TO_OWN"
+            }
+            
             prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
                 .putString("current_activity_type", "cones") // Default to cones for now
                 .putBoolean("is_auto_mode", isAutoMode)
                 .putBoolean("timer_enabled", false) // Default to false for now
+                .putString("stash_source", stashSourceString) // Pass stash source
                 .commit()  // Use commit() for synchronous save
             
             // Launch Giant Counter Activity and expect result

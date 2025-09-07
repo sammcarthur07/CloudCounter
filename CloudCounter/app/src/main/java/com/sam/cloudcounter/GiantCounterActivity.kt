@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.sam.cloudcounter.StashSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -72,6 +73,10 @@ class GiantCounterActivity : AppCompatActivity() {
     
     // ViewModels
     private lateinit var sessionStatsVM: SessionStatsViewModel
+    private lateinit var stashViewModel: StashViewModel
+    
+    // Services
+    private lateinit var goalService: GoalService
     
     // Database
     private lateinit var db: FirebaseFirestore
@@ -281,6 +286,14 @@ class GiantCounterActivity : AppCompatActivity() {
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        // Load stash source from preferences
+        val stashSourceString = prefs.getString("stash_source", "MY_STASH") ?: "MY_STASH"
+        val savedStashSource = when (stashSourceString) {
+            "THEIR_STASH" -> StashSource.THEIR_STASH
+            "EACH_TO_OWN" -> StashSource.EACH_TO_OWN
+            else -> StashSource.MY_STASH
+        }
+        
         // Use saved session start if valid, otherwise try to find from recent activities
         sessionStart = if (savedSessionStart > 0 && sessionActive) {
             savedSessionStart
@@ -304,10 +317,19 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX   sessionStart (using): $sessionStart")
         Log.d(TAG, "$LOG_PREFIX   isAutoMode: $isAutoMode")
         Log.d(TAG, "$LOG_PREFIX   currentActivityType: $currentActivityType")
+        Log.d(TAG, "$LOG_PREFIX   stashSource: $savedStashSource (from '$stashSourceString')")
         
         // Initialize ViewModels
         val factory = SessionStatsViewModelFactory()
         sessionStatsVM = ViewModelProvider(this, factory).get(SessionStatsViewModel::class.java)
+        stashViewModel = ViewModelProvider(this).get(StashViewModel::class.java)
+        
+        // Set the stash source from preferences
+        stashViewModel.updateStashSource(savedStashSource)
+        Log.d(TAG, "$LOG_PREFIX Setting stash source to: $savedStashSource")
+        
+        // Initialize services
+        goalService = GoalService(application)
         
         // Observe session stats for real-time updates
         sessionStatsVM.perSmokerStats.observe(this) { stats ->
@@ -503,6 +525,8 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX   Current smoker: $currentSmoker")
         Log.d(TAG, "$LOG_PREFIX   Activity type: $currentActivityType")
         Log.d(TAG, "$LOG_PREFIX   Count before: $currentCount")
+        Log.d(TAG, "$LOG_PREFIX   🌿 Stash will be updated")
+        Log.d(TAG, "$LOG_PREFIX   🎯 Goals will be tracked")
         
         currentCount++
         counterText.text = currentCount.toString()
@@ -571,15 +595,76 @@ class GiantCounterActivity : AppCompatActivity() {
                         
                         Log.d(TAG, "$LOG_PREFIX Creating activity: type=$activityType, smokerId=${smoker.smokerId}")
                         
+                        // Determine stash source and payer
+                        val stashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+                        val payerStashOwnerId = when (stashSource) {
+                            StashSource.MY_STASH -> {
+                                Log.d(TAG, "$LOG_PREFIX 💰 Using MY_STASH - payerStashOwnerId = null")
+                                null
+                            }
+                            StashSource.THEIR_STASH -> {
+                                Log.d(TAG, "$LOG_PREFIX 💰 Using THEIR_STASH - payerStashOwnerId = 'their_stash'")
+                                "their_stash"
+                            }
+                            StashSource.EACH_TO_OWN -> {
+                                // In Giant Counter, we don't have cloud user context, so default to null
+                                Log.d(TAG, "$LOG_PREFIX 💰 Using EACH_TO_OWN - defaulting to MY_STASH")
+                                null
+                            }
+                        }
+                        
+                        // Get current ratios for grams calculation
+                        val ratios = stashViewModel.ratios.value
+                        val gramsForActivity = when (activityType) {
+                            com.sam.cloudcounter.ActivityType.CONE -> ratios?.coneGrams ?: 0.3
+                            com.sam.cloudcounter.ActivityType.JOINT -> ratios?.jointGrams ?: 0.5
+                            com.sam.cloudcounter.ActivityType.BOWL -> ratios?.bowlGrams ?: 0.2
+                            else -> 0.3
+                        }
+                        
+                        val currentStash = stashViewModel.currentStash.value
+                        val pricePerGram = currentStash?.pricePerGram ?: 0.0
+                        
+                        Log.d(TAG, "$LOG_PREFIX 💰 Activity will consume ${gramsForActivity}g at $${pricePerGram}/g")
+                        
                         val activity = com.sam.cloudcounter.ActivityLog(
                             smokerId = smoker.smokerId,
+                            consumerId = smoker.smokerId,
+                            payerStashOwnerId = payerStashOwnerId,
                             type = activityType,
                             timestamp = System.currentTimeMillis(),
-                            sessionStartTime = sessionStart
+                            sessionStartTime = sessionStart,
+                            gramsAtLog = gramsForActivity,
+                            pricePerGramAtLog = pricePerGram
                         )
                         
                         val insertedId = repository.insert(activity)
                         Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
+                        
+                        // UPDATE STASH
+                        withContext(Dispatchers.Main) {
+                            Log.d(TAG, "$LOG_PREFIX 🌿 Updating stash for activity type: $activityType")
+                            stashViewModel.onActivityLogged(activityType)
+                        }
+                        
+                        // UPDATE GOALS
+                        withContext(Dispatchers.Main) {
+                            Log.d(TAG, "$LOG_PREFIX 🎯 Updating goals for ${smoker.name}, type: $activityType")
+                            val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                            val sessionActive = prefs.getBoolean("sessionActive", false)
+                            val currentShareCode = if (sessionActive) prefs.getString("currentShareCode", null) else null
+                            
+                            try {
+                                goalService.updateGoalProgressForActivity(
+                                    activityType,
+                                    currentShareCode,
+                                    smoker.name
+                                )
+                                Log.d(TAG, "$LOG_PREFIX 🎯 Goal update completed successfully")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "$LOG_PREFIX 🎯 Error updating goals: ${e.message}", e)
+                            }
+                        }
                         
                         // Force refresh of session stats
                         val sessionActivities = repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
