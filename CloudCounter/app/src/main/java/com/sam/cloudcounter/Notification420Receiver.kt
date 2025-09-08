@@ -134,17 +134,12 @@ class Notification420Receiver : BroadcastReceiver() {
     }
     
     private fun handle5MinBeforeNotification(context: Context, isMorning: Boolean) {
-        val cityRotationManager = City420RotationManager(context)
         val notificationHelper = Notification420Helper(context)
-        
-        cityRotationManager.startRotationNotifications(isMorning)
         notificationHelper.show5MinBeforeNotification(isMorning)
     }
     
     private fun handleAt420Notification(context: Context, isMorning: Boolean) {
         val notificationHelper = Notification420Helper(context)
         notificationHelper.show420Notification(isMorning)
-        
-        City420RotationManager(context).stopRotationNotifications()
     }
 }

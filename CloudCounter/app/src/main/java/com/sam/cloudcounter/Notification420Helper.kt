@@ -130,14 +130,13 @@ class Notification420Helper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        val notification = NotificationCompat.Builder(context, CHANNEL_420_COUNTDOWN_ID)
+        val notification = NotificationCompat.Builder(context, CHANNEL_420_ID)
             .setSmallIcon(android.R.drawable.ic_menu_recent_history)
             .setContentTitle(title)
             .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setAutoCancel(false)
-            .setOngoing(true)
+            .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setVibrate(longArrayOf(0, 250, 100, 250))

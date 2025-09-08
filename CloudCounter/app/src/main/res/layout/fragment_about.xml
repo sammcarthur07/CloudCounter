@@ -144,6 +144,17 @@
                         android:scaleX="0.8"
                         android:scaleY="0.8" />
 
+                    <TextView
+                        android:id="@+id/text5MinTimer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-4dp"
+                        android:text="0h 0m 0s"
+                        android:textSize="10sp"
+                        android:textColor="@color/my_light_primary"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+
                 </LinearLayout>
 
             </LinearLayout>

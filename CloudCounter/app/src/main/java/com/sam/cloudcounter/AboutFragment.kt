@@ -1183,6 +1183,7 @@ class AboutFragment : Fragment() {
 
         binding.checkbox5MinBefore.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("five_min_before_enabled", isChecked).apply()
+            updateTimerVisibility()
             Notification420Receiver.schedule420Notifications(requireContext())
         }
     }
@@ -1190,6 +1191,8 @@ class AboutFragment : Fragment() {
     private fun updateTimerVisibility() {
         binding.textMorningTimer.visibility = if (binding.checkbox420Morning.isChecked) View.VISIBLE else View.GONE
         binding.textAfternoonTimer.visibility = if (binding.checkbox420Afternoon.isChecked) View.VISIBLE else View.GONE
+        binding.text5MinTimer.visibility = if (binding.checkbox5MinBefore.isChecked && 
+            (binding.checkbox420Morning.isChecked || binding.checkbox420Afternoon.isChecked)) View.VISIBLE else View.GONE
     }
 
     private fun start420Timers() {
@@ -1232,6 +1235,32 @@ class AboutFragment : Fragment() {
         // Update afternoon timer
         val afternoonMillis = afternoon420.timeInMillis - now.timeInMillis
         binding.textAfternoonTimer.text = formatTimeUntil(afternoonMillis)
+        
+        // Update 5-minute before timer
+        if (binding.checkbox5MinBefore.isChecked) {
+            val morningEnabled = binding.checkbox420Morning.isChecked
+            val afternoonEnabled = binding.checkbox420Afternoon.isChecked
+            
+            when {
+                morningEnabled && afternoonEnabled -> {
+                    // Both enabled - show timer for the closest one
+                    val morning5Min = morning420.timeInMillis - (5 * 60 * 1000)
+                    val afternoon5Min = afternoon420.timeInMillis - (5 * 60 * 1000)
+                    val closestMillis = minOf(morning5Min - now.timeInMillis, afternoon5Min - now.timeInMillis)
+                    binding.text5MinTimer.text = formatTimeUntil(closestMillis)
+                }
+                morningEnabled -> {
+                    // Only morning enabled
+                    val morning5Min = morning420.timeInMillis - (5 * 60 * 1000)
+                    binding.text5MinTimer.text = formatTimeUntil(morning5Min - now.timeInMillis)
+                }
+                afternoonEnabled -> {
+                    // Only afternoon enabled
+                    val afternoon5Min = afternoon420.timeInMillis - (5 * 60 * 1000)
+                    binding.text5MinTimer.text = formatTimeUntil(afternoon5Min - now.timeInMillis)
+                }
+            }
+        }
     }
 
     private fun formatTimeUntil(millis: Long): String {

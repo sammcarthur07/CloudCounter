@@ -429,7 +429,7 @@ class GoalAdapter(
 
             val progressPercentage = if (totalTarget > 0) {
                 if (goal.allowOverflow) {
-                    min((totalCurrent * 100f / totalTarget).toInt(), 2000)
+                    (totalCurrent * 100f / totalTarget).toInt()
                 } else {
                     min((totalCurrent * 100f / totalTarget).toInt(), 100)
                 }

@@ -156,13 +156,9 @@ class City420RotationManager(private val context: Context) {
         
         Log.d(TAG, "📱 NOTIFICATION_UPDATE: ${cityToShow.city.name} - $timeDisplay ${if (isUserCity) "[USER]" else ""}")
         
-        val notificationHelper = Notification420Helper(context)
-        notificationHelper.showRotatingCityNotification(
-            cityToShow.city.name,
-            cityToShow.secondsUntil420,
-            cityToShow.is420Now,
-            isUserCity
-        )
+        // Don't show rotating city notifications with vibrations
+        // This prevents the continuous vibrations during the 2 minutes before 4:20
+        // The actual 5-minute and 4:20 notifications will still work as expected
     }
     
     private fun shouldShowUserCity(): Boolean {
