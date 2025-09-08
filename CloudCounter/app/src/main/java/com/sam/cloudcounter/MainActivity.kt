@@ -246,6 +246,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var stashViewModel: StashViewModel
     private var stashIntegration: StashIntegration? = null
+    
+    // Turn notification manager
+    private lateinit var turnNotificationManager: TurnNotificationManager
 
     private var rewindOffset = 0L  // Total milliseconds rewound
     private val REWIND_AMOUNT_MS = 10000L  // 10 seconds per rewind
@@ -1944,6 +1947,9 @@ class MainActivity : AppCompatActivity() {
         cloudSyncService = (application as CloudCounterApplication).cloudSyncService
         sessionSyncService = SessionSyncService(repository = repo)
         passwordDialog = PasswordDialog(this)
+        
+        // Initialize turn notification manager
+        turnNotificationManager = TurnNotificationManager(this, repo)
 
         addSmokerDialog = AddSmokerDialog(
             context = this,
@@ -5887,6 +5893,28 @@ class MainActivity : AppCompatActivity() {
     private fun handleRoomUpdate(room: RoomData) {
         Log.d(TAG, "🎧 Room updated!")
         Log.d(TAG, "     Activities: ${room.safeActivities().size}")
+        
+        // Check for turn changes and show notification if needed
+        currentShareCode?.let { shareCode ->
+            lifecycleScope.launch {
+                // Get current selected smoker
+                val app = application as CloudCounterApplication
+                val currentSmoker = withContext(Dispatchers.IO) {
+                    repo.getSmokerById(app.defaultSmokerId)
+                }
+                
+                // Get current user's smoker ID in the room
+                val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+                val currentUserSmokerId = if (currentSmoker?.isCloudSmoker == true) {
+                    currentSmoker.cloudUserId ?: currentUserId
+                } else {
+                    "local_${currentSmoker?.uid ?: currentUserId}"
+                }
+                
+                // Process turn notification
+                turnNotificationManager.processRoomUpdate(room, currentUserSmokerId, shareCode)
+            }
+        }
 
         activitiesTimestamps.clear()
         room.safeActivities()
@@ -7129,6 +7157,8 @@ class MainActivity : AppCompatActivity() {
                 ).fold(
                     onSuccess = {
                         Log.d(TAG, "🎯 ✅ Activity synced to cloud room with smoker UID: $smokerActivityUid")
+                        // Save last activity type for turn notifications
+                        turnNotificationManager.saveLastActivityType(type)
                         lastHitCameFromUI = true
                         handler.postDelayed({
                             lastHitCameFromUI = false
@@ -11416,6 +11446,8 @@ class MainActivity : AppCompatActivity() {
             ).fold(
                 onSuccess = {
                     Log.d(TAG, "🎯 ✅ Activity added to cloud room for ${smoker.name}")
+                    // Save last activity type for turn notifications
+                    turnNotificationManager.saveLastActivityType(type)
                 },
                 onFailure = { error ->
                     Log.e(TAG, "🎯 ❌ Failed to add to room: ${error.message}")

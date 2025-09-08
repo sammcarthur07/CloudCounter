@@ -24,6 +24,13 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
         val repo = app.repository
         val sessionSyncService = SessionSyncService(repository = repo)
         val action = intent.action ?: return
+        
+        // Handle ACTION_ADD_FROM_TURN separately
+        if (action == NotificationHelper.ACTION_ADD_FROM_TURN) {
+            handleTurnNotificationAction(context, intent, app, repo, sessionSyncService)
+            return
+        }
+        
         val type = intent.getSerializableExtra(NotificationHelper.EXTRA_TYPE) as? ActivityType
             ?: return
 
@@ -588,6 +595,84 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error updating session stats: ${e.message}")
+        }
+    }
+    
+    private fun handleTurnNotificationAction(
+        context: Context,
+        intent: Intent,
+        app: CloudCounterApplication,
+        repo: ActivityRepository,
+        sessionSyncService: SessionSyncService
+    ) {
+        val typeString = intent.getStringExtra(NotificationHelper.EXTRA_TYPE) ?: return
+        val type = try {
+            ActivityType.valueOf(typeString)
+        } catch (e: Exception) {
+            Log.e(TAG, "Invalid activity type: $typeString")
+            return
+        }
+        
+        val roomCode = intent.getStringExtra("room_code")
+        
+        // Save last activity type to preferences
+        val prefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
+        prefs.edit().putString("last_activity_type", type.name).apply()
+        
+        // Cancel the turn notification
+        NotificationHelper(context).cancelTurnNotification()
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            val smoker = repo.getSmokerById(app.defaultSmokerId) ?: return@launch
+            val addedAt = System.currentTimeMillis()
+            
+            if (roomCode != null) {
+                // Cloud session - add to room
+                val smokerActivityUid = if (smoker.isCloudSmoker) {
+                    smoker.cloudUserId!!
+                } else {
+                    "local_${smoker.uid}"
+                }
+                
+                val deviceId = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                ) ?: "unknown"
+                
+                sessionSyncService.addActivityToRoom(
+                    shareCode = roomCode,
+                    smokerUid = smokerActivityUid,
+                    smokerName = smoker.name,
+                    activityType = type,
+                    timestamp = addedAt,
+                    deviceId = deviceId
+                ).fold(
+                    onSuccess = {
+                        Log.d(TAG, "✅ Added $type from turn notification")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "${type.name} added", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "❌ Failed to add from turn notification: ${error.message}")
+                        // Fallback to local
+                        repo.insert(ActivityLog(type = type, timestamp = addedAt, smokerId = smoker.smokerId))
+                    }
+                )
+            } else {
+                // Local session
+                repo.insert(ActivityLog(type = type, timestamp = addedAt, smokerId = smoker.smokerId))
+                Log.d(TAG, "✅ Added $type locally from turn notification")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "${type.name} added", Toast.LENGTH_SHORT).show()
+                }
+            }
+            
+            // Update session stats
+            val sessionPrefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            if (sessionPrefs.getBoolean("sessionActive", false)) {
+                updateSessionStatsFromNotification(context, sessionPrefs, addedAt, sessionPrefs.getBoolean("isAutoMode", true))
+            }
         }
     }
 }

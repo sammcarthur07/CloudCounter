@@ -44,14 +44,21 @@ class NotificationHelper(private val context: Context) {
         private const val CHAT_MESSAGE_CHANNEL_ID = "chat_messages"
         private const val CHAT_MESSAGE_CHANNEL_NAME = "Chat Messages"
         private const val CHAT_MESSAGE_CHANNEL_DESC = "Notifications for new chat messages"
+        
+        // Turn notification channel
+        private const val TURN_CHANNEL_ID = "turn_notifications"
+        private const val TURN_CHANNEL_NAME = "Turn Notifications"
+        private const val TURN_CHANNEL_DESC = "Notifications when it's your turn"
 
         private const val NOTIF_ID_BASE  = 1000
         private const val GOAL_NOTIF_ID_BASE = 2000
         private const val CHAT_NOTIF_ID_BASE = 3000
+        private const val TURN_NOTIF_ID = 4000
 
         const val ACTION_ADD_ENTRY         = "com.sam.cloudcounter.ACTION_ADD_ENTRY"
         const val ACTION_REMOVE_LAST_ENTRY = "com.sam.cloudcounter.ACTION_REMOVE_LAST_ENTRY"
         const val ACTION_REWIND_SESSION    = "com.sam.cloudcounter.ACTION_REWIND_SESSION"
+        const val ACTION_ADD_FROM_TURN     = "com.sam.cloudcounter.ACTION_ADD_FROM_TURN"
         const val EXTRA_TYPE               = "extra_activity_type"
 
         const val EXTRA_SESSION_SHARE_CODE = "extra_session_share_code"
@@ -112,6 +119,19 @@ class NotificationHelper(private val context: Context) {
                 setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), null)
             }
             notificationManager.createNotificationChannel(supportChannel)
+            
+            // Turn notifications channel
+            val turnChannel = NotificationChannel(
+                TURN_CHANNEL_ID,
+                TURN_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = TURN_CHANNEL_DESC
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000) // 1 second vibration
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), null)
+            }
+            notificationManager.createNotificationChannel(turnChannel)
         }
     }
 
@@ -670,6 +690,104 @@ class NotificationHelper(private val context: Context) {
         return baseMillis * (goal.timeDuration ?: 1)
     }
 
+    fun showTurnNotification(
+        roomCode: String,
+        lastActivityType: ActivityType? = null,
+        smokerName: String? = null
+    ) {
+        // Check app-wide notification and vibration settings
+        val appPrefs = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+        val notificationsEnabled = appPrefs.getBoolean("notifications_enabled", true)
+        val vibrationEnabled = appPrefs.getBoolean("vibration_enabled", true)
+        
+        // Don't show notification if disabled in settings
+        if (!notificationsEnabled) {
+            Log.d("NotificationHelper", "Turn notification skipped - notifications disabled")
+            return
+        }
+        
+        val turnPrefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
+        val storedLastActivity = lastActivityType ?: turnPrefs.getString("last_activity_type", null)?.let {
+            try { ActivityType.valueOf(it) } catch (e: Exception) { null }
+        }
+        
+        val title = "It's your turn!"
+        val text = if (smokerName != null) {
+            "It's your turn in the rotation, $smokerName"
+        } else {
+            "It's your turn in the rotation"
+        }
+        
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("open_tab", 1) // Open Sesh tab
+            putExtra("room_code", roomCode)
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            TURN_NOTIF_ID,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val notificationBuilder = NotificationCompat.Builder(context, TURN_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_rotate)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setTimeoutAfter(3000) // Auto-dismiss after 3 seconds
+        
+        // Only add vibration if enabled in settings
+        if (vibrationEnabled) {
+            notificationBuilder.setVibrate(longArrayOf(0, 1000)) // 1 second vibration
+        }
+        
+        // Add action button if last activity type is known
+        if (storedLastActivity != null) {
+            val actionText = when (storedLastActivity) {
+                ActivityType.CONE -> "Add Cone"
+                ActivityType.JOINT -> "Add Joint"
+                ActivityType.BOWL -> "Add Bowl"
+                else -> null
+            }
+            
+            if (actionText != null) {
+                val actionIntent = Intent(context, ActivityNotificationReceiver::class.java).apply {
+                    action = ACTION_ADD_FROM_TURN
+                    putExtra(EXTRA_TYPE, storedLastActivity.name)
+                    putExtra("room_code", roomCode)
+                }
+                
+                val actionPendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    TURN_NOTIF_ID + 1,
+                    actionIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                
+                notificationBuilder.addAction(
+                    android.R.drawable.ic_input_add,
+                    actionText,
+                    actionPendingIntent
+                )
+            }
+        }
+        
+        if (hasNotificationPermission()) {
+            NotificationManagerCompat.from(context)
+                .notify(TURN_NOTIF_ID, notificationBuilder.build())
+        }
+    }
+    
+    fun cancelTurnNotification() {
+        NotificationManagerCompat.from(context).cancel(TURN_NOTIF_ID)
+    }
+    
     private fun hasNotificationPermission(): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
