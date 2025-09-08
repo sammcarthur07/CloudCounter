@@ -58,8 +58,10 @@ class SmokerManager(
 
     private val smokerFontMap = mutableMapOf<Long, Typeface>()
     private val smokerColorMap = mutableMapOf<Long, Int>()
+    private val smokerFontIndexMap = mutableMapOf<Long, Int>()  // Track font indices for each smoker
     private var defaultFont: Typeface? = null
     private var lastSelectedFontIndex = -1
+    private var globalLockedFontIndex = -1  // Track the global locked font index
 
     // Global lock values - these persist across all smokers when locked
     private var globalLockedFont: Typeface? = null
@@ -93,6 +95,7 @@ class SmokerManager(
         // When fonts are locked, return the global locked font for ALL smokers
         if (!randomFontsEnabled && globalLockedFont != null) {
             Log.d(TAG, "🎨   FONTS LOCKED - Returning global locked font for all smokers")
+            smokerFontIndexMap[smokerId] = globalLockedFontIndex  // Track the locked font index
             return globalLockedFont!!
         }
 
@@ -116,12 +119,13 @@ class SmokerManager(
             randomIndex = (randomIndex + 1) % fontList.size
         }
         lastSelectedFontIndex = randomIndex
+        smokerFontIndexMap[smokerId] = randomIndex  // Track the font index
 
         val font = try {
             val newFont = ResourcesCompat.getFont(context, fontList[randomIndex])
             if (newFont != null) {
                 smokerFontMap[smokerId] = newFont
-                Log.d(TAG, "🎨   Generated new font for smoker $smokerId")
+                Log.d(TAG, "🎨   Generated new font for smoker $smokerId at index $randomIndex")
                 newFont
             } else {
                 getDefaultFont()
@@ -580,5 +584,65 @@ class SmokerManager(
     fun setColorForSmoker(smokerId: Long, color: Int) {
         smokerColorMap[smokerId] = color
         Log.d(TAG, "🎨 Set color for smoker $smokerId: $color")
+    }
+    
+    fun getFontIndexForSmoker(smokerId: Long): Int {
+        // If we have a cached index, return it
+        val cachedIndex = smokerFontIndexMap[smokerId]
+        if (cachedIndex != null) {
+            return cachedIndex
+        }
+        
+        // If font is locked, return the global locked index
+        if (!randomFontsEnabled && globalLockedFontIndex != -1) {
+            smokerFontIndexMap[smokerId] = globalLockedFontIndex
+            return globalLockedFontIndex
+        }
+        
+        // Try to find the index from the current font
+        val currentFont = smokerFontMap[smokerId]
+        if (currentFont != null) {
+            for (i in fontList.indices) {
+                try {
+                    val testFont = ResourcesCompat.getFont(context, fontList[i])
+                    if (testFont == currentFont) {
+                        smokerFontIndexMap[smokerId] = i
+                        return i
+                    }
+                } catch (e: Exception) {
+                    // Continue checking other fonts
+                }
+            }
+        }
+        
+        // Default to 0 if nothing found
+        return 0
+    }
+    
+    fun setFontIndexForSmoker(smokerId: Long, index: Int) {
+        smokerFontIndexMap[smokerId] = index
+        // Also update the font itself
+        try {
+            val font = ResourcesCompat.getFont(context, fontList.getOrElse(index) { fontList[0] })
+            if (font != null) {
+                smokerFontMap[smokerId] = font
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting font index $index for smoker $smokerId", e)
+        }
+    }
+    
+    fun setGlobalLockedFontIndex(index: Int) {
+        globalLockedFontIndex = index
+        try {
+            globalLockedFont = ResourcesCompat.getFont(context, fontList.getOrElse(index) { fontList[0] })
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting global locked font index $index", e)
+        }
+    }
+    
+    fun setGlobalLockedColor(color: Int) {
+        globalLockedColor = color
+        Log.d(TAG, "Set global locked color: $color")
     }
 }

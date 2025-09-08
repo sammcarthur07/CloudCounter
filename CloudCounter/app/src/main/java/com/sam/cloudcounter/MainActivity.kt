@@ -1697,14 +1697,26 @@ class MainActivity : AppCompatActivity() {
         }
         smokerManager.onUpdateSyncStatusDot = { dot, smoker -> updateSyncStatusDot(dot, smoker) }
 
-        // Sync state
-        // CURRENT (ERROR):
+        // Load lock states from preferences
         smokerManager.randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
         smokerManager.colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
-
-// FIX - Access through smokerManager:
-        smokerManager.randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
-        smokerManager.colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
+        
+        // Load global locked values if they exist
+        val globalLockedColor = prefs.getInt("global_locked_color", -1)
+        if (globalLockedColor != -1 && !smokerManager.colorChangingEnabled) {
+            smokerManager.setGlobalLockedColor(globalLockedColor)
+        }
+        
+        val globalLockedFontIndex = prefs.getInt("global_font_index", -1)
+        if (globalLockedFontIndex != -1 && !smokerManager.randomFontsEnabled) {
+            smokerManager.setGlobalLockedFontIndex(globalLockedFontIndex)
+        }
+        
+        Log.d(TAG, "🔒 Loaded lock states on app start:")
+        Log.d(TAG, "   randomFontsEnabled: ${smokerManager.randomFontsEnabled}")
+        Log.d(TAG, "   colorChangingEnabled: ${smokerManager.colorChangingEnabled}")
+        Log.d(TAG, "   globalLockedColor: $globalLockedColor")
+        Log.d(TAG, "   globalLockedFontIndex: $globalLockedFontIndex")
     }
 
     private fun setupSpinnerNew() {
@@ -2199,6 +2211,15 @@ class MainActivity : AppCompatActivity() {
             // Save current session and state to prefs for GiantCounterActivity
             saveSessionToPrefs()
             
+            // Save lock states from smokerManager to SharedPreferences
+            Log.d(TAG, "🔒 Saving lock states before launching GiantCounter:")
+            Log.d(TAG, "   randomFontsEnabled: ${smokerManager.randomFontsEnabled}")
+            Log.d(TAG, "   colorChangingEnabled: ${smokerManager.colorChangingEnabled}")
+            prefs.edit()
+                .putBoolean("random_fonts_enabled", smokerManager.randomFontsEnabled)
+                .putBoolean("color_changing_enabled", smokerManager.colorChangingEnabled)
+                .apply()
+            
             // Get the actual smoker name, not the toString() of the object
             val selectedPosition = binding.spinnerSmoker.selectedItemPosition
             val organizedSmokers = organizeSmokers().flatMap { it.smokers }
@@ -2214,46 +2235,77 @@ class MainActivity : AppCompatActivity() {
             }
             
             // Save current spinner font and color
-            val spinnerView = binding.spinnerSmoker.selectedView
-            if (spinnerView != null && selectedSmokerObj != null) {
-                val container = spinnerView as? FrameLayout
-                val textView = container?.findViewById<TextView>(R.id.textName)
-                if (textView != null) {
-                    // Get current color from the TextView
-                    val currentColor = textView.currentTextColor
-                    Log.d(TAG, "🎨 Saving spinner color: $currentColor")
-                    prefs.edit().putInt("current_spinner_color", currentColor).apply()
-                    
-                    // Get current font from SmokerManager
-                    val currentFont = smokerManager.getFontForSmoker(selectedSmokerObj.smokerId)
-                    val fontList = listOf(
-                        R.font.bitcount_prop_double,
-                        R.font.exile,
-                        R.font.modak,
-                        R.font.oi,
-                        R.font.rubik_glitch,
-                        R.font.sankofa_display,
-                        R.font.silkscreen,
-                        R.font.rubik_puddles,
-                        R.font.rubik_beastly,
-                        R.font.sixtyfour,
-                        R.font.monoton,
-                        R.font.sedgwick_ave_display,
-                        R.font.splash
-                    )
-                    
-                    // Find the font index by comparing typefaces
-                    var fontIndex = 0
-                    for (i in fontList.indices) {
-                        val testFont = ResourcesCompat.getFont(this, fontList[i])
-                        if (testFont == currentFont) {
-                            fontIndex = i
-                            break
+            if (selectedSmokerObj != null) {
+                // Try to get from the current view first (most accurate for current display)
+                val spinnerView = binding.spinnerSmoker.selectedView
+                var actualColor: Int
+                var actualFontIndex: Int
+                
+                if (spinnerView != null) {
+                    val container = spinnerView as? FrameLayout
+                    val textView = container?.findViewById<TextView>(R.id.textName)
+                    if (textView != null) {
+                        // Get the actual displayed color
+                        actualColor = textView.currentTextColor
+                        
+                        // Get the actual displayed font and find its index
+                        val currentTypeface = textView.typeface
+                        val fontList = listOf(
+                            R.font.bitcount_prop_double,
+                            R.font.exile,
+                            R.font.modak,
+                            R.font.oi,
+                            R.font.rubik_glitch,
+                            R.font.sankofa_display,
+                            R.font.silkscreen,
+                            R.font.rubik_puddles,
+                            R.font.rubik_beastly,
+                            R.font.sixtyfour,
+                            R.font.monoton,
+                            R.font.sedgwick_ave_display,
+                            R.font.splash
+                        )
+                        
+                        // Try to match the typeface to find index
+                        actualFontIndex = 0 // Default
+                        for (i in fontList.indices) {
+                            try {
+                                val testFont = ResourcesCompat.getFont(this, fontList[i])
+                                if (testFont == currentTypeface) {
+                                    actualFontIndex = i
+                                    break
+                                }
+                            } catch (e: Exception) {
+                                // Continue
+                            }
                         }
+                        
+                        Log.d(TAG, "🎨 Saving spinner color: $actualColor (from view)")
+                        Log.d(TAG, "🔤 Saving spinner font index: $actualFontIndex (from view)")
+                    } else {
+                        // TextView is null, use defaults
+                        actualColor = Color.parseColor("#98FB98")
+                        actualFontIndex = 0
+                        Log.d(TAG, "⚠️ TextView is null, using defaults")
                     }
-                    Log.d(TAG, "🔤 Saving spinner font index: $fontIndex")
-                    prefs.edit().putInt("current_spinner_font_index", fontIndex).apply()
+                } else {
+                    // View is null, use defaults
+                    actualColor = Color.parseColor("#98FB98")
+                    actualFontIndex = 0
+                    Log.d(TAG, "⚠️ Spinner view is null, using defaults")
                 }
+                
+                prefs.edit()
+                    .putInt("current_spinner_color", actualColor)
+                    .putInt("current_spinner_font_index", actualFontIndex)
+                    .apply()
+            } else {
+                // No smoker selected, save defaults
+                Log.d(TAG, "⚠️ No smoker selected, saving default font/color")
+                prefs.edit()
+                    .putInt("current_spinner_color", Color.parseColor("#98FB98"))
+                    .putInt("current_spinner_font_index", 0)
+                    .apply()
             }
             
             prefs.edit()
@@ -6054,6 +6106,15 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == GIANT_COUNTER_REQUEST_CODE) {
             Log.d(TAG, "🎯 Returned from GiantCounterActivity, forcing stats refresh...")
             
+            // Reload lock states from GiantCounter
+            val updatedRandomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
+            val updatedColorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
+            smokerManager.randomFontsEnabled = updatedRandomFontsEnabled
+            smokerManager.colorChangingEnabled = updatedColorChangingEnabled
+            Log.d(TAG, "🔒 Reloaded lock states from GiantCounter:")
+            Log.d(TAG, "   randomFontsEnabled: $updatedRandomFontsEnabled")
+            Log.d(TAG, "   colorChangingEnabled: $updatedColorChangingEnabled")
+            
             // Reload font and color changes from GiantCounter
             val giantCounterColor = prefs.getInt("giant_counter_color", -1)
             val giantCounterFontIndex = prefs.getInt("giant_counter_font_index", -1)
@@ -6061,62 +6122,116 @@ class MainActivity : AppCompatActivity() {
             if (giantCounterColor != -1 || giantCounterFontIndex != -1) {
                 Log.d(TAG, "🎨 Reloading font/color from GiantCounter - color: $giantCounterColor, fontIndex: $giantCounterFontIndex")
                 
-                // Apply to current spinner view
-                val spinnerView = binding.spinnerSmoker.selectedView
-                if (spinnerView != null) {
-                    val container = spinnerView as? FrameLayout
-                    val textView = container?.findViewById<TextView>(R.id.textName)
-                    if (textView != null) {
-                        // Apply color if changed
-                        if (giantCounterColor != -1) {
-                            textView.setTextColor(giantCounterColor)
-                            Log.d(TAG, "🎨 Applied color $giantCounterColor to spinner")
-                            
-                            // Also update SmokerManager's cache
-                            val selectedPosition = binding.spinnerSmoker.selectedItemPosition
-                            val organizedSmokers = organizeSmokers().flatMap { it.smokers }
-                            val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
-                            if (selectedSmoker != null) {
-                                smokerManager.setColorForSmoker(selectedSmoker.smokerId, giantCounterColor)
-                            }
-                        }
-                        
-                        // Apply font if changed
-                        if (giantCounterFontIndex != -1) {
-                            val fontList = listOf(
-                                R.font.bitcount_prop_double,
-                                R.font.exile,
-                                R.font.modak,
-                                R.font.oi,
-                                R.font.rubik_glitch,
-                                R.font.sankofa_display,
-                                R.font.silkscreen,
-                                R.font.rubik_puddles,
-                                R.font.rubik_beastly,
-                                R.font.sixtyfour,
-                                R.font.monoton,
-                                R.font.sedgwick_ave_display,
-                                R.font.splash
-                            )
-                            
-                            if (giantCounterFontIndex < fontList.size) {
-                                val newFont = ResourcesCompat.getFont(this, fontList[giantCounterFontIndex])
-                                textView.typeface = newFont
-                                Log.d(TAG, "🔤 Applied font index $giantCounterFontIndex to spinner")
-                                
-                                // Also update SmokerManager's cache
-                                val selectedPosition = binding.spinnerSmoker.selectedItemPosition
-                                val organizedSmokers = organizeSmokers().flatMap { it.smokers }
-                                val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
-                                if (selectedSmoker != null && newFont != null) {
-                                    smokerManager.setFontForSmoker(selectedSmoker.smokerId, newFont)
-                                }
-                            }
-                        }
-                        
-                        // Update adapter to reflect changes
-                        smokerAdapterNew.notifyDataSetChanged()
+                // Check if fonts/colors are locked - if so, update global values
+                if (!smokerManager.colorChangingEnabled && giantCounterColor != -1) {
+                    // Color is locked - update global locked color
+                    smokerManager.setGlobalLockedColor(giantCounterColor)
+                    prefs.edit().putInt("global_locked_color", giantCounterColor).apply()
+                    Log.d(TAG, "🔒 Updated global locked color: $giantCounterColor")
+                }
+                
+                if (!smokerManager.randomFontsEnabled && giantCounterFontIndex != -1) {
+                    // Font is locked - update global locked font
+                    smokerManager.setGlobalLockedFontIndex(giantCounterFontIndex)
+                    prefs.edit().putInt("global_font_index", giantCounterFontIndex).apply()
+                    Log.d(TAG, "🔒 Updated global locked font index: $giantCounterFontIndex")
+                }
+                
+                // Also update for the current smoker if unlocked
+                val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+                val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+                val selectedSmoker = organizedSmokers.getOrNull(selectedPosition)
+                
+                if (selectedSmoker != null) {
+                    // Update individual smoker values (for when unlocked)
+                    if (giantCounterColor != -1 && smokerManager.colorChangingEnabled) {
+                        smokerManager.setColorForSmoker(selectedSmoker.smokerId, giantCounterColor)
+                        Log.d(TAG, "🎨 Updated smoker ${selectedSmoker.smokerId} color: $giantCounterColor")
                     }
+                    
+                    if (giantCounterFontIndex != -1 && smokerManager.randomFontsEnabled) {
+                        val fontList = listOf(
+                            R.font.bitcount_prop_double,
+                            R.font.exile,
+                            R.font.modak,
+                            R.font.oi,
+                            R.font.rubik_glitch,
+                            R.font.sankofa_display,
+                            R.font.silkscreen,
+                            R.font.rubik_puddles,
+                            R.font.rubik_beastly,
+                            R.font.sixtyfour,
+                            R.font.monoton,
+                            R.font.sedgwick_ave_display,
+                            R.font.splash
+                        )
+                        
+                        if (giantCounterFontIndex < fontList.size) {
+                            val newFont = ResourcesCompat.getFont(this, fontList[giantCounterFontIndex])
+                            if (newFont != null) {
+                                smokerManager.setFontForSmoker(selectedSmoker.smokerId, newFont)
+                                smokerManager.setFontIndexForSmoker(selectedSmoker.smokerId, giantCounterFontIndex)
+                                Log.d(TAG, "🔤 Updated smoker ${selectedSmoker.smokerId} font: index $giantCounterFontIndex")
+                            }
+                        }
+                    }
+                    
+                    // Force the spinner to completely refresh
+                    Log.d(TAG, "🔄 Forcing spinner refresh...")
+                    
+                    // First invalidate the current view to force redraw
+                    binding.spinnerSmoker.invalidate()
+                    
+                    // Notify adapter that data changed
+                    smokerAdapterNew.notifyDataSetChanged()
+                    
+                    // Force recreate the spinner view by setting adapter again
+                    val currentPosition = binding.spinnerSmoker.selectedItemPosition
+                    binding.spinnerSmoker.adapter = null
+                    binding.spinnerSmoker.adapter = smokerAdapterNew
+                    binding.spinnerSmoker.setSelection(currentPosition, false)
+                    Log.d(TAG, "🔄 Reset spinner adapter and restored position $currentPosition")
+                    
+                    // Wait a bit then update the view directly as a fallback
+                    binding.spinnerSmoker.post {
+                        val spinnerView = binding.spinnerSmoker.selectedView
+                        if (spinnerView != null) {
+                            val container = spinnerView as? FrameLayout
+                            val textView = container?.findViewById<TextView>(R.id.textName)
+                            if (textView != null) {
+                                if (giantCounterColor != -1) {
+                                    textView.setTextColor(giantCounterColor)
+                                    Log.d(TAG, "🎨 Also applied color directly to current view")
+                                }
+                                if (giantCounterFontIndex != -1 && giantCounterFontIndex < 13) {
+                                    val fontList = listOf(
+                                        R.font.bitcount_prop_double,
+                                        R.font.exile,
+                                        R.font.modak,
+                                        R.font.oi,
+                                        R.font.rubik_glitch,
+                                        R.font.sankofa_display,
+                                        R.font.silkscreen,
+                                        R.font.rubik_puddles,
+                                        R.font.rubik_beastly,
+                                        R.font.sixtyfour,
+                                        R.font.monoton,
+                                        R.font.sedgwick_ave_display,
+                                        R.font.splash
+                                    )
+                                    val newFont = ResourcesCompat.getFont(this@MainActivity, fontList[giantCounterFontIndex])
+                                    textView.typeface = newFont
+                                    Log.d(TAG, "🔤 Also applied font directly to current view")
+                                }
+                            } else {
+                                Log.d(TAG, "⚠️ TextView in spinner view is null")
+                            }
+                        } else {
+                            Log.d(TAG, "⚠️ Spinner selected view is null")
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "⚠️ No selected smoker found at position $selectedPosition")
                 }
             }
             

@@ -590,6 +590,7 @@ class GiantCounterActivity : AppCompatActivity() {
         
         val savedFontIndex = prefs.getInt("global_font_index", -1)
         if (savedFontIndex != -1 && !randomFontsEnabled) {
+            lastSelectedFontIndex = savedFontIndex  // Track the global locked font index
             try {
                 globalLockedFont = ResourcesCompat.getFont(this, fontList.getOrElse(savedFontIndex) { R.font.sedgwick_ave_display })
             } catch (e: Exception) {
@@ -607,52 +608,29 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX   colorChangingEnabled: $colorChangingEnabled")
         Log.d(TAG, "$LOG_PREFIX   randomFontsEnabled: $randomFontsEnabled")
         
-        // Determine color based on lock state
+        // Determine color - ALWAYS use spinner color if available
         smokerFontColor = when {
-            !colorChangingEnabled && globalLockedColor != null && globalLockedColor != -1 -> {
-                // Color is locked, use the locked color
-                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked color: $globalLockedColor")
-                globalLockedColor!!
-            }
-            colorChangingEnabled -> {
-                // Color changing is enabled (unlocked), generate random color
-                val randomColor = NEON_COLORS.random()
-                Log.d(TAG, "$LOG_PREFIX 🎨 Color unlocked, using random: $randomColor")
-                randomColor
-            }
             spinnerColor != -1 -> {
-                // Use spinner color as fallback
+                // Always use spinner color as it represents the current state
                 Log.d(TAG, "$LOG_PREFIX 📱 Using spinner color: $spinnerColor")
                 spinnerColor
             }
+            !colorChangingEnabled && globalLockedColor != null && globalLockedColor != -1 -> {
+                // Fallback to locked color if no spinner color
+                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked color: $globalLockedColor")
+                globalLockedColor!!
+            }
             else -> {
-                // Default
+                // Default fallback
                 Color.parseColor("#98FB98")
             }
         }
         
-        // Determine font based on lock state
+        // Determine font - ALWAYS use spinner font if available
         smokerFontTypeface = when {
-            !randomFontsEnabled && globalLockedFont != null -> {
-                // Font is locked, use the locked font
-                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked font")
-                globalLockedFont
-            }
-            randomFontsEnabled -> {
-                // Font randomization is enabled (unlocked), generate random font
-                val randomIndex = (0 until fontList.size).random()
-                lastSelectedFontIndex = randomIndex
-                try {
-                    val randomFont = ResourcesCompat.getFont(this, fontList[randomIndex])
-                    Log.d(TAG, "$LOG_PREFIX 🔤 Font unlocked, using random index: $randomIndex")
-                    randomFont
-                } catch (e: Exception) {
-                    Log.e(TAG, "$LOG_PREFIX Error loading random font", e)
-                    android.graphics.Typeface.DEFAULT_BOLD
-                }
-            }
             spinnerFontIndex != -1 && spinnerFontIndex < fontList.size -> {
-                // Use spinner font as fallback
+                // Always use spinner font as it represents the current state
+                lastSelectedFontIndex = spinnerFontIndex  // Track the current font index
                 try {
                     val font = ResourcesCompat.getFont(this, fontList[spinnerFontIndex])
                     Log.d(TAG, "$LOG_PREFIX 📱 Using spinner font index: $spinnerFontIndex")
@@ -662,8 +640,13 @@ class GiantCounterActivity : AppCompatActivity() {
                     android.graphics.Typeface.DEFAULT_BOLD
                 }
             }
+            !randomFontsEnabled && globalLockedFont != null -> {
+                // Fallback to locked font if no spinner font
+                Log.d(TAG, "$LOG_PREFIX 🔒 Using locked font")
+                globalLockedFont
+            }
             else -> {
-                // Default
+                // Default fallback
                 android.graphics.Typeface.DEFAULT_BOLD
             }
         }
@@ -1612,17 +1595,10 @@ class GiantCounterActivity : AppCompatActivity() {
             putInt("giant_counter_color", currentColor)
             Log.d(TAG, "$LOG_PREFIX 💾 Saving display color: $currentColor")
             
-            val currentFontIndex = fontList.indexOfFirst { 
-                try {
-                    ResourcesCompat.getFont(this@GiantCounterActivity, it) == smokerNameText.typeface
-                } catch (e: Exception) {
-                    false
-                }
-            }
-            if (currentFontIndex != -1) {
-                putInt("giant_counter_font_index", currentFontIndex)
-                Log.d(TAG, "$LOG_PREFIX 💾 Saving display font index: $currentFontIndex")
-            }
+            // Use the tracked font index instead of trying to compare typefaces
+            putInt("giant_counter_font_index", lastSelectedFontIndex)
+            Log.d(TAG, "$LOG_PREFIX 💾 Saving display font index: $lastSelectedFontIndex")
+            
             apply()
         }
     }
@@ -1897,29 +1873,12 @@ class GiantCounterActivity : AppCompatActivity() {
                 putInt("global_locked_color", globalLockedColor!!)
             }
             if (globalLockedFont != null) {
-                val fontIndex = fontList.indexOfFirst { 
-                    try {
-                        ResourcesCompat.getFont(this@GiantCounterActivity, it) == globalLockedFont
-                    } catch (e: Exception) {
-                        false
-                    }
-                }
-                if (fontIndex != -1) {
-                    putInt("global_font_index", fontIndex)
-                }
+                // Use the tracked font index instead of trying to compare typefaces
+                putInt("global_font_index", lastSelectedFontIndex)
             }
             // Also save current display values for MainActivity to load
             putInt("giant_counter_color", smokerNameText.currentTextColor)
-            val currentFontIndex = fontList.indexOfFirst { 
-                try {
-                    ResourcesCompat.getFont(this@GiantCounterActivity, it) == smokerNameText.typeface
-                } catch (e: Exception) {
-                    false
-                }
-            }
-            if (currentFontIndex != -1) {
-                putInt("giant_counter_font_index", currentFontIndex)
-            }
+            putInt("giant_counter_font_index", lastSelectedFontIndex)
             apply()
         }
         Log.d(TAG, "$LOG_PREFIX 💾 Lock states saved, color=${smokerNameText.currentTextColor}")
