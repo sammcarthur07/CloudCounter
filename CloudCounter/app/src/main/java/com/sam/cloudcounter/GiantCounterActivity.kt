@@ -190,6 +190,8 @@ class GiantCounterActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(Color.BLACK)
+            clipChildren = false  // Allow children to render outside bounds
+            clipToPadding = false
         }
         
         // Background image
@@ -429,6 +431,8 @@ class GiantCounterActivity : AppCompatActivity() {
             ).apply {
                 gravity = Gravity.CENTER
             }
+            clipChildren = false  // Allow text to render outside container bounds
+            clipToPadding = false
         }
         
         // Giant button image
@@ -467,7 +471,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = (3).dpToPx()  // Adjust this value to move text up/down (higher value = higher position)
+                bottomMargin = (-10).dpToPx()  // Adjust this value to move text up/down (higher value = higher position)
             }
             text = ""
             textSize = 20f
