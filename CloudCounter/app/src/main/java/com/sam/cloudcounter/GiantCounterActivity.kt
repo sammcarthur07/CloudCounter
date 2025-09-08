@@ -410,7 +410,7 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.CENTER
-                bottomMargin = 220.dpToPx() // Position above the button
+                bottomMargin = 240.dpToPx() // Moved up by ~0.5cm (20dp) to prevent accidental button presses
             }
             text = "Loading..."
             textSize = 48f  // Increased from 36f to 48f
@@ -467,11 +467,13 @@ class GiantCounterActivity : AppCompatActivity() {
                 FrameLayout.LayoutParams.WRAP_CONTENT
             ).apply {
                 gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                bottomMargin = (3).dpToPx()  // Negative margin moves it down further from bottom
+                bottomMargin = (3).dpToPx()  // Adjust this value to move text up/down (higher value = higher position)
             }
             text = ""
             textSize = 20f
-            setTextColor(Color.parseColor("#98FB98"))
+            // Use same color and font as smokerNameText
+            setTextColor(smokerFontColor)
+            typeface = smokerFontTypeface ?: android.graphics.Typeface.DEFAULT_BOLD
             setShadowLayer(2f, 1f, 1f, Color.BLACK)
         }
         buttonContainer.addView(recentStatsText)
@@ -654,6 +656,9 @@ class GiantCounterActivity : AppCompatActivity() {
         // Apply font settings to smoker name
         smokerNameText.setTextColor(smokerFontColor)
         smokerNameText.typeface = smokerFontTypeface
+        // Also update recent stats text to match
+        recentStatsText.setTextColor(smokerFontColor)
+        recentStatsText.typeface = smokerFontTypeface
         
         Log.d(TAG, "$LOG_PREFIX 🔒 Lock states loaded:")
         Log.d(TAG, "$LOG_PREFIX   colorChangingEnabled: $colorChangingEnabled")
@@ -959,6 +964,7 @@ class GiantCounterActivity : AppCompatActivity() {
             try {
                 val randomFont = ResourcesCompat.getFont(this, fontList[randomIndex])
                 smokerNameText.typeface = randomFont
+                recentStatsText.typeface = randomFont
                 smokerFontTypeface = randomFont
                 Log.d(TAG, "$LOG_PREFIX 🔤 Rotation: new random font index $randomIndex")
             } catch (e: Exception) {
@@ -970,6 +976,7 @@ class GiantCounterActivity : AppCompatActivity() {
             // Generate new random color for new smoker
             val randomColor = NEON_COLORS.random()
             smokerNameText.setTextColor(randomColor)
+            recentStatsText.setTextColor(randomColor)
             smokerFontColor = randomColor
             Log.d(TAG, "$LOG_PREFIX 🎨 Rotation: new random color $randomColor")
         }
@@ -1644,6 +1651,8 @@ class GiantCounterActivity : AppCompatActivity() {
                                             globalLockedFont = nextFont
                                             smokerNameText.typeface = nextFont
                                             smokerNameText.setTextColor(globalLockedColor ?: currentColor)
+                                            recentStatsText.typeface = nextFont
+                                            recentStatsText.setTextColor(globalLockedColor ?: currentColor)
                                             vibrateFeedback(30)
                                             fontCycleHandler?.postDelayed(this, 2000)
                                         }
@@ -1739,6 +1748,8 @@ class GiantCounterActivity : AppCompatActivity() {
                                 val nextColor = NEON_COLORS.random()
                                 smokerNameText.typeface = nextFont
                                 smokerNameText.setTextColor(nextColor)
+                                recentStatsText.typeface = nextFont
+                                recentStatsText.setTextColor(nextColor)
                                 smokerFontTypeface = nextFont
                                 smokerFontColor = nextColor
                                 saveDisplayState()
@@ -1749,6 +1760,7 @@ class GiantCounterActivity : AppCompatActivity() {
                                 Log.d(TAG, "$LOG_PREFIX 🔤 Tap: cycling font only (color locked)")
                                 val nextFont = cycleToNextFont()
                                 smokerNameText.typeface = nextFont
+                                recentStatsText.typeface = nextFont
                                 smokerFontTypeface = nextFont
                                 saveDisplayState()
                                 vibrateFeedback(30)
@@ -1758,6 +1770,7 @@ class GiantCounterActivity : AppCompatActivity() {
                                 Log.d(TAG, "$LOG_PREFIX 🎨 Tap: cycling color only (font locked)")
                                 val nextColor = NEON_COLORS.random()
                                 smokerNameText.setTextColor(nextColor)
+                                recentStatsText.setTextColor(nextColor)
                                 smokerFontColor = nextColor
                                 saveDisplayState()
                                 vibrateFeedback(30)
@@ -1781,27 +1794,107 @@ class GiantCounterActivity : AppCompatActivity() {
     private fun showSmokerSelection() {
         Log.d(TAG, "$LOG_PREFIX 👥 Showing smoker selection dialog")
         
-        val smokerNames = allSmokers.map { it.name }.toTypedArray()
         val currentIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
         
-        AlertDialog.Builder(this)
-            .setTitle("Select Smoker")
-            .setSingleChoiceItems(smokerNames, currentIndex) { dialog, which ->
-                val selectedSmoker = allSmokers[which]
-                currentSmoker = selectedSmoker.name
-                currentSmokerIndex = which
+        // Create custom dialog with styled theme
+        val dialog = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog)
+            .create()
+        
+        // Create custom view for the dialog
+        val dialogView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#CC000000")) // Black semi-transparent background
+            setPadding(24.dpToPx(), 24.dpToPx(), 24.dpToPx(), 24.dpToPx())
+        }
+        
+        // Add title
+        val titleView = TextView(this).apply {
+            text = "SELECT SMOKER"
+            textSize = 20f
+            setTextColor(Color.parseColor("#98FB98")) // Light neon green from main view
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16.dpToPx())
+        }
+        dialogView.addView(titleView)
+        
+        // Add smoker items
+        allSmokers.forEachIndexed { index, smoker ->
+            val itemView = TextView(this).apply {
+                text = smoker.name
+                textSize = 18f
+                // Use the current font and color from smokerNameText
+                setTextColor(smokerNameText.currentTextColor)
+                typeface = smokerNameText.typeface
+                setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+                gravity = Gravity.CENTER
                 
-                Log.d(TAG, "$LOG_PREFIX 🔄 Switched to smoker: $currentSmoker")
-                
-                // Reload count for new smoker
-                lifecycleScope.launch {
-                    loadCurrentData()
+                // Highlight selected smoker with neon green border
+                if (index == currentIndex) {
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border like main view
+                        cornerRadius = 8.dpToPx().toFloat()
+                    }
                 }
                 
+                setOnClickListener {
+                    currentSmoker = smoker.name
+                    currentSmokerIndex = index
+                    
+                    Log.d(TAG, "$LOG_PREFIX 🔄 Switched to smoker: $currentSmoker")
+                    
+                    // Reload count for new smoker
+                    lifecycleScope.launch {
+                        loadCurrentData()
+                    }
+                    
+                    dialog.dismiss()
+                }
+            }
+            dialogView.addView(itemView)
+            
+            // Add small spacing between items
+            if (index < allSmokers.size - 1) {
+                val spacer = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        4.dpToPx()
+                    )
+                }
+                dialogView.addView(spacer)
+            }
+        }
+        
+        // Add cancel button
+        val cancelButton = TextView(this).apply {
+            text = "CANCEL"
+            textSize = 14f  // Smaller font size
+            setTextColor(Color.parseColor("#98FB98")) // Light neon green
+            gravity = Gravity.CENTER
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 4.dpToPx())  // Smaller padding
+            setOnClickListener {
                 dialog.dismiss()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+        dialogView.addView(cancelButton)
+        
+        // Apply neon green border to the entire dialog
+        dialogView.background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.parseColor("#CC000000")) // Black semi-transparent
+            setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border
+            cornerRadius = 12.dpToPx().toFloat()
+        }
+        
+        dialog.setView(dialogView)
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            // Move dialog 2cm higher
+            setGravity(Gravity.CENTER)
+            attributes = attributes?.apply {
+                y = -80.dpToPx()  // Move up by ~2cm (80dp)
+            }
+        }
+        dialog.show()
     }
     
     private fun cycleToNextFont(): android.graphics.Typeface {
