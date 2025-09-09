@@ -680,9 +680,27 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
             
             // Update session stats
             val sessionPrefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
-            if (sessionPrefs.getBoolean("sessionActive", false)) {
-                updateSessionStatsFromNotification(context, sessionPrefs, addedAt, sessionPrefs.getBoolean("isAutoMode", true))
+            val sessionActive = sessionPrefs.getBoolean("sessionActive", false)
+            val isAutoMode = sessionPrefs.getBoolean("isAutoMode", true)
+            
+            if (sessionActive) {
+                updateSessionStatsFromNotification(context, sessionPrefs, addedAt, isAutoMode)
+                
+                // Perform smoker rotation if in auto mode
+                if (isAutoMode) {
+                    if (roomCode != null) {
+                        // Cloud session - rotate smoker in cloud session
+                        handleSmokerRotationInNotification(app, repo, roomCode, context)
+                    } else {
+                        // Local session - rotate smoker locally
+                        handleLocalSmokerRotation(app, repo, context)
+                    }
+                    Log.d(TAG, "🔄 Performed smoker rotation after turn notification action")
+                }
             }
+            
+            // Send broadcast to update the MainActivity UI
+            sendSmokerUpdateBroadcast(context, smoker)
         }
     }
 }

@@ -81,6 +81,7 @@
                 <action android:name="com.sam.cloudcounter.ACTION_ADD_ENTRY" />
                 <action android:name="com.sam.cloudcounter.ACTION_REMOVE_LAST_ENTRY" />
                 <action android:name="com.sam.cloudcounter.ACTION_REWIND_SESSION" />
+                <action android:name="com.sam.cloudcounter.ACTION_ADD_FROM_TURN" />
             </intent-filter>
         </receiver>
 

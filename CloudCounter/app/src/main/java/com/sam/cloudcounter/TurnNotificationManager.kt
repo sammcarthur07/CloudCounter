@@ -124,6 +124,21 @@ class TurnNotificationManager(
                     return@launch
                 }
                 
+                // Log room smokers for debugging
+                Log.d(TAG, "===== TURN DETECTION DEBUG =====")
+                Log.d(TAG, "Room share code: $currentShareCode")
+                Log.d(TAG, "Current user Firebase UID: $currentUserId")
+                Log.d(TAG, "Current user smoker ID: $currentUserSmokerId")
+                Log.d(TAG, "Active participants: $activeParticipants")
+                
+                roomData.sharedSmokers?.forEach { (smokerId, smokerData) ->
+                    val data = smokerData as? Map<*, *>
+                    val name = data?.get("name")
+                    val cloudUserId = data?.get("cloudUserId")
+                    val isCloudSmoker = data?.get("isCloudSmoker")
+                    Log.d(TAG, "Smoker in room: ID=$smokerId, name=$name, cloudUserId=$cloudUserId, isCloud=$isCloudSmoker")
+                }
+                
                 // Calculate current turn
                 val totalHits = roomData.activities.size
                 val currentTurnIndex = if (activeParticipants.size > 0) {
@@ -132,6 +147,8 @@ class TurnNotificationManager(
                     0
                 }
                 
+                Log.d(TAG, "Turn calculation: totalHits=$totalHits, participantCount=${activeParticipants.size}, turnIndex=$currentTurnIndex")
+                
                 // Get the smoker whose turn it is
                 val currentTurnSmokerId = activeParticipants.getOrNull(currentTurnIndex)
                 if (currentTurnSmokerId == null) {
@@ -139,14 +156,25 @@ class TurnNotificationManager(
                     return@launch
                 }
                 
-                // Check if it's the current user's turn - only check Firebase UID for cloud users
-                // This ensures each app instance only gets notifications for its own user
-                val isUserTurn = currentTurnSmokerId == currentUserId
+                Log.d(TAG, "Current turn belongs to: $currentTurnSmokerId")
+                
+                // Check if it's the current user's turn
+                // For cloud users: compare Firebase UID with the smoker's cloudUserId
+                // For local smokers: compare the "local_xxx" format
+                val isUserTurn = if (currentTurnSmokerId.startsWith("local_")) {
+                    // It's a local smoker - check if it matches the current user's local smoker
+                    currentTurnSmokerId == currentUserSmokerId
+                } else {
+                    // It's a cloud user - compare with Firebase UID
+                    currentTurnSmokerId == currentUserId
+                }
                 
                 // Debug logging for turn detection
-                Log.d(TAG, "Turn check - Current user: $currentUserId, Turn user: $currentTurnSmokerId, Is user turn: $isUserTurn, App in foreground: ${isAppInForeground()}")
+                Log.d(TAG, "Turn check - Current Firebase user: $currentUserId, Current user smoker ID: $currentUserSmokerId")
+                Log.d(TAG, "Turn smoker ID: $currentTurnSmokerId, Is user turn: $isUserTurn")
                 Log.d(TAG, "Active participants: $activeParticipants")
                 Log.d(TAG, "Total activities: $totalHits, Current turn index: $currentTurnIndex")
+                Log.d(TAG, "App in foreground: ${isAppInForeground()}")
                 
                 // Get a unique key for this user in this room
                 val userRoomKey = "${KEY_LAST_NOTIFIED_ACTIVITY_COUNT}_${currentShareCode}_${currentUserId}"
@@ -163,17 +191,28 @@ class TurnNotificationManager(
                         .putInt(userRoomKey, totalHits)
                         .apply()
                     
-                    // Get user's smoker name - find their smoker by cloud user ID
-                    val userSmokerName = roomData.sharedSmokers?.entries?.firstOrNull { entry ->
-                        val smokerData = entry.value as? Map<*, *>
-                        val cloudUserId = smokerData?.get("cloudUserId") as? String
-                        cloudUserId == currentUserId
-                    }?.let { entry ->
-                        val smokerData = entry.value as? Map<*, *>
-                        smokerData?.get("name") as? String
+                    // Get user's smoker name - handle both cloud and local smokers
+                    val userSmokerName = when {
+                        currentTurnSmokerId.startsWith("local_") -> {
+                            // For local smokers, look up directly by the smoker ID
+                            roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
+                                (smokerData as? Map<*, *>)?.get("name") as? String
+                            }
+                        }
+                        else -> {
+                            // For cloud users, find by cloudUserId
+                            roomData.sharedSmokers?.entries?.firstOrNull { entry ->
+                                val smokerData = entry.value as? Map<*, *>
+                                val cloudUserId = smokerData?.get("cloudUserId") as? String
+                                cloudUserId == currentUserId
+                            }?.let { entry ->
+                                val smokerData = entry.value as? Map<*, *>
+                                smokerData?.get("name") as? String
+                            }
+                        }
                     }
                     
-                    Log.d(TAG, "User smoker name for turn: $userSmokerName")
+                    Log.d(TAG, "User smoker name for turn: $userSmokerName (smokerId: $currentTurnSmokerId)")
                     
                     // Get last activity type
                     val lastActivityType = getLastActivityType(roomData)
@@ -219,9 +258,20 @@ class TurnNotificationManager(
         val pausedSmokers = roomData.pausedSmokers ?: emptyList()
         val awaySmokers = roomData.awayParticipants ?: emptyList()
         
-        return participantsFromActivities.filter { participantId ->
-            !pausedSmokers.contains(participantId) && !awaySmokers.contains(participantId)
+        Log.d(TAG, "getActiveParticipants - All participants from activities: $participantsFromActivities")
+        Log.d(TAG, "getActiveParticipants - Paused smokers: $pausedSmokers")
+        Log.d(TAG, "getActiveParticipants - Away smokers: $awaySmokers")
+        
+        val activeParticipants = participantsFromActivities.filter { participantId ->
+            val isPaused = pausedSmokers.contains(participantId)
+            val isAway = awaySmokers.contains(participantId)
+            val isActive = !isPaused && !isAway
+            Log.d(TAG, "Participant $participantId: paused=$isPaused, away=$isAway, active=$isActive")
+            isActive
         }
+        
+        Log.d(TAG, "getActiveParticipants - Final active list: $activeParticipants")
+        return activeParticipants
     }
     
     /**

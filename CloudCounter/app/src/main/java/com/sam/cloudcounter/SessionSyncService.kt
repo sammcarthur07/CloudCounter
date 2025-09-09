@@ -1477,15 +1477,21 @@ class SessionSyncService(
                 var smokersAdded = 0
 
                 localSmokers.forEach { localSmoker ->
-                    // The ID in the room is based on the UID
-                    val roomSmokerId = "local_${localSmoker.uid}"
+                    // The ID in the room depends on whether it's a cloud or local smoker
+                    val roomSmokerId = if (localSmoker.isCloudSmoker && !localSmoker.cloudUserId.isNullOrEmpty()) {
+                        // For cloud smokers, use their Firebase UID directly
+                        localSmoker.cloudUserId!!
+                    } else {
+                        // For local smokers, use the local_ prefix
+                        "local_${localSmoker.uid}"
+                    }
 
                     // Check only by ID (UID) because name can be changed.
                     if (!currentSharedSmokers.containsKey(roomSmokerId)) {
                         val smokerData = mapOf(
                             "smokerId" to roomSmokerId,
                             "name" to localSmoker.name,
-                            "isLocal" to true,
+                            "isLocal" to !localSmoker.isCloudSmoker,
                             "addedBy" to userId,
                             "addedAt" to now,
                             "order" to now,
@@ -1496,9 +1502,9 @@ class SessionSyncService(
                         )
                         currentSharedSmokers[roomSmokerId] = smokerData
                         smokersAdded++
-                        Log.d(TAG, "🔄 Adding smoker to room: ${localSmoker.name} (UID: $roomSmokerId)")
+                        Log.d(TAG, "🔄 Adding smoker to room: ${localSmoker.name} (ID: $roomSmokerId, isCloud: ${localSmoker.isCloudSmoker})")
                     } else {
-                        Log.d(TAG, "🔄 Skipping duplicate smoker (already in room by UID): ${localSmoker.name}")
+                        Log.d(TAG, "🔄 Skipping duplicate smoker (already in room by ID): ${localSmoker.name}")
                     }
                 }
 
