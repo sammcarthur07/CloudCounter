@@ -42,21 +42,43 @@ class TurnNotificationManager(
      */
     fun isAppInForeground(): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val appProcesses = activityManager.runningAppProcesses ?: return false
         
-        // Get the current process ID
-        val currentPid = android.os.Process.myPid()
+        // Get running app processes
+        val appProcesses = activityManager.runningAppProcesses
+        if (appProcesses.isNullOrEmpty()) {
+            Log.d(TAG, "No running app processes found")
+            return false
+        }
         
+        val packageName = context.packageName
+        
+        // Find our app's process
         for (process in appProcesses) {
-            // Check if THIS specific process (not just package) is in foreground
-            if (process.pid == currentPid && 
-                process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
-                Log.d(TAG, "App IS in foreground (PID: $currentPid, importance: ${process.importance})")
-                return true
+            if (process.processName == packageName) {
+                // Check if the app is truly in foreground (visible to user)
+                // IMPORTANCE_FOREGROUND = 100 (has visible activity)
+                // IMPORTANCE_FOREGROUND_SERVICE = 125 (has foreground service but no visible activity)
+                // IMPORTANCE_VISIBLE = 200 (visible but not in foreground)
+                
+                Log.d(TAG, "Foreground check - Package: $packageName, Importance: ${process.importance}")
+                
+                // Only return true if importance is exactly FOREGROUND (100) 
+                // This means the app has a visible activity in the foreground
+                // It excludes FOREGROUND_SERVICE (125) which means service running but no visible activity
+                if (process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                    Log.d(TAG, "App IS in foreground (importance = 100, visible activity)")
+                    return true
+                } else if (process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE) {
+                    Log.d(TAG, "App has foreground service but no visible activity (importance = 125)")
+                    return false
+                } else {
+                    Log.d(TAG, "App NOT in foreground (importance = ${process.importance})")
+                    return false
+                }
             }
         }
         
-        Log.d(TAG, "App NOT in foreground (PID: $currentPid)")
+        Log.d(TAG, "App process not found")
         return false
     }
     
@@ -82,10 +104,17 @@ class TurnNotificationManager(
                 // Get the actual signed-in user for this app instance
                 val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: getAndroidDeviceId()
                 
-                // Don't show notifications if app is in foreground
-                if (isAppInForeground()) {
+                // Check if we should force notifications (for testing)
+                val forceNotifications = prefs.getBoolean("force_turn_notifications", false)
+                
+                // Don't show notifications if app is in foreground (unless forced)
+                if (!forceNotifications && isAppInForeground()) {
                     Log.d(TAG, "App in foreground, skipping turn notification")
                     return@launch
+                }
+                
+                if (forceNotifications) {
+                    Log.d(TAG, "Force notifications enabled, bypassing foreground check")
                 }
                 
                 // Get active participants
@@ -118,17 +147,19 @@ class TurnNotificationManager(
                 Log.d(TAG, "Active participants: $activeParticipants")
                 Log.d(TAG, "Total activities: $totalHits, Current turn index: $currentTurnIndex")
                 
-                // Track the last activity count we notified for
-                val lastNotifiedCount = prefs.getInt(KEY_LAST_NOTIFIED_ACTIVITY_COUNT, -1)
+                // Get a unique key for this user in this room
+                val userRoomKey = "${KEY_LAST_NOTIFIED_ACTIVITY_COUNT}_${currentShareCode}_${currentUserId}"
+                val lastNotifiedCount = prefs.getInt(userRoomKey, -1)
                 
                 if (isUserTurn && totalHits > lastNotifiedCount) {
                     // It's the user's turn and there are new activities
                     Log.d(TAG, "It's user's turn! Activity count: $totalHits (last notified: $lastNotifiedCount)")
                     Log.d(TAG, "Showing notification for user: $currentUserId / $currentUserSmokerId")
+                    Log.d(TAG, "Room: $currentShareCode, User room key: $userRoomKey")
                     
-                    // Update last notified count
+                    // Update last notified count for this specific user and room
                     prefs.edit()
-                        .putInt(KEY_LAST_NOTIFIED_ACTIVITY_COUNT, totalHits)
+                        .putInt(userRoomKey, totalHits)
                         .apply()
                     
                     // Get user's smoker name
@@ -225,5 +256,13 @@ class TurnNotificationManager(
             .remove(KEY_LAST_ACTIVITY_TYPE)
             .remove(KEY_CURRENT_USER_SMOKER_ID)
             .apply()
+    }
+    
+    /**
+     * Enable/disable force notifications (bypasses foreground check)
+     */
+    fun setForceNotifications(enabled: Boolean) {
+        prefs.edit().putBoolean("force_turn_notifications", enabled).apply()
+        Log.d(TAG, "Force notifications set to: $enabled")
     }
 }

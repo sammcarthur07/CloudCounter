@@ -16,6 +16,7 @@ import java.text.DateFormat
 import java.util.Date
 import android.util.Log
 import androidx.core.app.RemoteInput
+import android.graphics.Color
 
 @Suppress("SpellCheckingInspection")
 class NotificationHelper(private val context: Context) {
@@ -45,8 +46,8 @@ class NotificationHelper(private val context: Context) {
         private const val CHAT_MESSAGE_CHANNEL_NAME = "Chat Messages"
         private const val CHAT_MESSAGE_CHANNEL_DESC = "Notifications for new chat messages"
         
-        // Turn notification channel
-        private const val TURN_CHANNEL_ID = "turn_notifications"
+        // Turn notification channel - Use rotating channel IDs to bypass Android's channel caching
+        private const val TURN_CHANNEL_BASE_ID = "turn_notifications_"
         private const val TURN_CHANNEL_NAME = "Turn Notifications"
         private const val TURN_CHANNEL_DESC = "Notifications when it's your turn"
 
@@ -120,9 +121,9 @@ class NotificationHelper(private val context: Context) {
             }
             notificationManager.createNotificationChannel(supportChannel)
             
-            // Turn notifications channel
+            // Create initial turn notification channel
             val turnChannel = NotificationChannel(
-                TURN_CHANNEL_ID,
+                "${TURN_CHANNEL_BASE_ID}0",
                 TURN_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
@@ -706,6 +707,49 @@ class NotificationHelper(private val context: Context) {
             return
         }
         
+        Log.d("NotificationHelper", "showTurnNotification called - roomCode: $roomCode, smokerName: $smokerName")
+        
+        // Use rotating channel IDs to ensure notifications always show with HIGH importance
+        var channelId = "${TURN_CHANNEL_BASE_ID}0" // Default for older Android versions
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val turnPrefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
+            
+            // Get current channel rotation index and increment it
+            val channelIndex = turnPrefs.getInt("channel_rotation_index", 0)
+            val nextIndex = (channelIndex + 1) % 100 // Rotate through 100 channels for less frequent reuse
+            turnPrefs.edit().putInt("channel_rotation_index", nextIndex).apply()
+            
+            channelId = "${TURN_CHANNEL_BASE_ID}$nextIndex"
+            
+            // Create a fresh channel with URGENT importance for heads-up display
+            val newChannel = NotificationChannel(
+                channelId,
+                "$TURN_CHANNEL_NAME ${if (nextIndex > 0) nextIndex else ""}",
+                NotificationManager.IMPORTANCE_HIGH // HIGH importance for heads-up
+            ).apply {
+                description = TURN_CHANNEL_DESC
+                enableVibration(vibrationEnabled) // Only enable if user wants vibration
+                if (vibrationEnabled) {
+                    vibrationPattern = longArrayOf(0, 500) // Single short vibration
+                }
+                setShowBadge(true)
+                enableLights(true)
+                lightColor = android.graphics.Color.BLUE
+                setBypassDnd(false) // Don't bypass DND
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), null)
+            }
+            
+            notificationManager.createNotificationChannel(newChannel)
+            Log.d("NotificationHelper", "Created turn notification channel: $channelId with HIGH importance")
+            
+            // Log the actual channel importance after creation
+            val createdChannel = notificationManager.getNotificationChannel(channelId)
+            Log.d("NotificationHelper", "Channel $channelId actual importance: ${createdChannel?.importance}")
+        }
+        
         val turnPrefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
         val storedLastActivity = lastActivityType ?: turnPrefs.getString("last_activity_type", null)?.let {
             try { ActivityType.valueOf(it) } catch (e: Exception) { null }
@@ -731,21 +775,34 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        val notificationBuilder = NotificationCompat.Builder(context, TURN_CHANNEL_ID)
+        // Create a unique notification each time
+        val uniqueTime = System.currentTimeMillis()
+        
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_menu_rotate)
             .setContentTitle(title)
             .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setPriority(NotificationCompat.PRIORITY_MAX) // MAX priority for heads-up
+            .setCategory(NotificationCompat.CATEGORY_CALL) // Use CALL category for highest priority
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
-            .setTimeoutAfter(3000) // Auto-dismiss after 3 seconds
-        
-        // Only add vibration if enabled in settings
+            .setWhen(uniqueTime) // Unique timestamp
+            .setShowWhen(true) // Show the timestamp
+            .setOnlyAlertOnce(false) // Alert every time
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Show on lock screen
+            .setFullScreenIntent(pendingIntent, true) // Force heads-up with full screen intent
+            .setTimeoutAfter(60000) // Auto dismiss after 60 seconds
+            .setColorized(true) // Make it stand out
+            .setColor(android.graphics.Color.BLUE) // Blue color
+            
+        // Set sound and vibration based on settings
         if (vibrationEnabled) {
-            notificationBuilder.setVibrate(longArrayOf(0, 1000)) // 1 second vibration
+            notificationBuilder.setVibrate(longArrayOf(0, 500)) // Short vibration
         }
+        notificationBuilder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        
+        // The vibration is already handled by the channel settings
+        // No need to set it on the notification itself
         
         // Add action button if last activity type is known
         if (storedLastActivity != null) {
@@ -779,12 +836,48 @@ class NotificationHelper(private val context: Context) {
         }
         
         if (hasNotificationPermission()) {
-            NotificationManagerCompat.from(context)
-                .notify(TURN_NOTIF_ID, notificationBuilder.build())
+            // Use a completely unique ID for each notification
+            val notificationId = (System.currentTimeMillis() / 1000).toInt() // Use seconds as ID
+            
+            // Store the notification ID so we can cancel it later
+            val prefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
+            prefs.edit().putInt("last_turn_notification_id", notificationId).apply()
+            
+            val notification = notificationBuilder.build()
+            
+            // Don't use FLAG_INSISTENT as it causes constant vibration
+            // Just use normal notification flags
+            
+            Log.d("NotificationHelper", "Posting turn notification with ID: $notificationId, channel: $channelId")
+            Log.d("NotificationHelper", "Notification priority: ${notification.priority}, flags: ${notification.flags}")
+            Log.d("NotificationHelper", "Notification category: ${notification.category}, visibility: ${notification.visibility}")
+            
+            try {
+                // Post the notification using the system notification manager directly
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                notificationManager.notify(notificationId, notification)
+                Log.d("NotificationHelper", "Turn notification posted successfully with ID: $notificationId")
+                
+                // Verify it was posted
+                val activeNotifications = notificationManager.activeNotifications
+                val found = activeNotifications.any { it.id == notificationId }
+                Log.d("NotificationHelper", "Notification verification - found in active notifications: $found")
+                
+            } catch (e: Exception) {
+                Log.e("NotificationHelper", "Failed to post turn notification", e)
+            }
+        } else {
+            Log.w("NotificationHelper", "No notification permission")
         }
     }
     
     fun cancelTurnNotification() {
+        // Cancel the last shown turn notification using the stored ID
+        val prefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
+        val lastNotificationId = prefs.getInt("last_turn_notification_id", TURN_NOTIF_ID)
+        NotificationManagerCompat.from(context).cancel(lastNotificationId)
+        
+        // Also try to cancel the base ID in case there's an old notification
         NotificationManagerCompat.from(context).cancel(TURN_NOTIF_ID)
     }
     

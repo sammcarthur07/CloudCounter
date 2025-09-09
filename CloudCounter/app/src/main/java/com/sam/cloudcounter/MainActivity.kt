@@ -1950,6 +1950,10 @@ class MainActivity : AppCompatActivity() {
         
         // Initialize turn notification manager
         turnNotificationManager = TurnNotificationManager(this, repo)
+        
+        // TEMPORARY: Enable force notifications for testing (bypasses foreground check)
+        turnNotificationManager.setForceNotifications(true)
+        Log.d("MainActivity", "Force notifications enabled for testing")
 
         addSmokerDialog = AddSmokerDialog(
             context = this,
