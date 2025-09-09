@@ -243,6 +243,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var smokerUpdateReceiver: BroadcastReceiver
     private lateinit var undoReceiver: BroadcastReceiver
     private lateinit var deletionReceiver: BroadcastReceiver
+    private lateinit var autoAdvanceReceiver: BroadcastReceiver
 
     private lateinit var stashViewModel: StashViewModel
     private var stashIntegration: StashIntegration? = null
@@ -1938,6 +1939,14 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "Error unregistering deletion receiver: ${e.message}")
         }
 
+        try {
+            if (::autoAdvanceReceiver.isInitialized) {
+                unregisterReceiver(autoAdvanceReceiver)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering auto-advance receiver: ${e.message}")
+        }
+
         super.onDestroy()
     }
 
@@ -2892,7 +2901,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // CORRECTED SECTION
+        // Register rewind receiver
         val rewindFilter = IntentFilter("com.sam.cloudcounter.SESSION_REWOUND")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(rewindReceiver, rewindFilter, Context.RECEIVER_NOT_EXPORTED)
@@ -2900,9 +2909,8 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(rewindReceiver, rewindFilter)
         }
         Log.d(TAG, "⏪📡 Rewind broadcast receiver registered")
-        // END CORRECTED SECTION
 
-
+        // Register undo receiver
         val undoFilter = IntentFilter("com.sam.cloudcounter.ACTIVITY_UNDONE")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(undoReceiver, undoFilter, Context.RECEIVER_NOT_EXPORTED)
@@ -2962,7 +2970,6 @@ class MainActivity : AppCompatActivity() {
         }
         Log.d(TAG, "🔄📡 Broadcast receiver registered")
 
-
         // Add activity deletion receiver
         deletionReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -3006,7 +3013,87 @@ class MainActivity : AppCompatActivity() {
         } else {
             registerReceiver(deletionReceiver, deletionFilter)
         }
-        Log.d(TAG, "📡 All broadcast receivers registered (undo, smoker update, deletion)")
+
+        // Add auto-advance receiver for notification activities - COMPLETE REPLACEMENT
+        autoAdvanceReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "com.sam.cloudcounter.TRIGGER_AUTO_ADVANCE") {
+                    Log.d(TAG, "🔄📡 Received auto-advance broadcast from notification")
+
+                    // Check if this came from a notification
+                    val fromNotification = intent.getBooleanExtra("from_notification", false)
+                    val activityType = intent.getStringExtra("activity_type")
+                    val smokerId = intent.getLongExtra("smoker_id", -1L)
+
+                    Log.d(TAG, "🔄📡 From notification: $fromNotification, Activity: $activityType, Smoker ID: $smokerId")
+
+                    runOnUiThread {
+                        // Get the current state
+                        val shareCode = currentShareCode
+                        val sections = organizeSmokers()
+                        val organizedSmokers = sections.flatMap { it.smokers }
+
+                        if (organizedSmokers.isEmpty()) {
+                            Log.w(TAG, "🔄📡 No smokers available for rotation")
+                            return@runOnUiThread
+                        }
+
+                        if (shareCode != null && !fromNotification) {
+                            // Cloud session - room sync will handle rotation (unless from notification)
+                            Log.d(TAG, "🔄📡 Cloud session detected, rotation handled by room sync")
+                        } else {
+                            // Local session OR notification action - manually advance the spinner
+                            val sessionType = if (shareCode != null) "Cloud session (from notification)" else "Local session"
+                            Log.d(TAG, "🔄📡 $sessionType, manually advancing spinner")
+
+                            // Get current position
+                            val currentPos = binding.spinnerSmoker.selectedItemPosition
+                            Log.d(TAG, "🔄📡 Current spinner position: $currentPos")
+
+                            // Calculate next position
+                            val nextPos = if (currentPos >= 0 && currentPos < organizedSmokers.size - 1) {
+                                currentPos + 1
+                            } else {
+                                0 // Wrap around to first smoker
+                            }
+
+                            Log.d(TAG, "🔄📡 Next spinner position: $nextPos")
+
+                            if (nextPos < organizedSmokers.size) {
+                                val nextSmoker = organizedSmokers[nextPos]
+                                Log.d(TAG, "🔄📡 Advancing to: ${nextSmoker.name} (ID: ${nextSmoker.smokerId})")
+
+                                // Update the spinner selection
+                                binding.spinnerSmoker.setSelection(nextPos, false)
+
+                                // Update the application's default smoker
+                                val app = application as CloudCounterApplication
+                                app.defaultSmokerId = nextSmoker.smokerId
+
+                                // Call selectSmoker to ensure all state is updated
+                                selectSmoker(nextSmoker)
+
+                                // Force adapter refresh to ensure UI updates
+                                smokerAdapterNew.notifyDataSetChanged()
+
+                                Log.d(TAG, "🔄📡 Successfully advanced to ${nextSmoker.name}")
+                            } else {
+                                Log.e(TAG, "🔄📡 Invalid next position: $nextPos (smokers count: ${organizedSmokers.size})")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        val autoAdvanceFilter = IntentFilter("com.sam.cloudcounter.TRIGGER_AUTO_ADVANCE")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(autoAdvanceReceiver, autoAdvanceFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(autoAdvanceReceiver, autoAdvanceFilter)
+        }
+
+        Log.d(TAG, "📡 All broadcast receivers registered (undo, smoker update, deletion, auto-advance)")
     }
 
     private fun updateRoundsInRoom() {
@@ -5689,10 +5776,16 @@ class MainActivity : AppCompatActivity() {
 
                             Log.d(TAG, "🎧 Checking auto-advance: activitySmoker=${act.smokerId}, currentSmoker=$currentSmokerUid, autoMode=$isAutoMode, isFromUI=$isFromUI, timeSince=${timeSinceActivity}ms")
 
-                            // Check if the activity is from the current smoker and we should advance
-                            if (isAutoMode && isFromUI && act.smokerId == currentSmokerUid && smokers.isNotEmpty()) {
+                            // Check if we should advance the spinner
+                            val shouldAdvance = isAutoMode && smokers.isNotEmpty() && (
+                                // Original condition: UI activity from current smoker
+                                (isFromUI && act.smokerId == currentSmokerUid) ||
+                                // New condition: Recent activity from any smoker (for notification-triggered activities)
+                                (timeSinceActivity < 1000)
+                            )
+                            if (shouldAdvance) {
                                 runOnUiThread {
-                                    Log.d(TAG, "🎧 Auto-advancing to next smoker from room sync")
+                                    Log.d(TAG, "🎧 Auto-advancing to next smoker from room sync (fromUI=$isFromUI, recent=${timeSinceActivity < 1000})")
                                     moveToNextActiveSmoker()
                                 }
                             }
@@ -5903,26 +5996,11 @@ class MainActivity : AppCompatActivity() {
                     repo.getSmokerById(app.defaultSmokerId)
                 }
                 
-                // Get current user's smoker ID in the room
+                // Get current user's Firebase ID - turn notifications are based on the signed-in user, not selected smoker
                 val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
-                val currentUserSmokerId = when {
-                    currentSmoker?.isCloudSmoker == true -> currentSmoker.cloudUserId ?: currentUserId
-                    else -> {
-                        // For local smokers, check if they exist in room activities
-                        val localSmokerId = "local_${currentSmoker?.uid ?: currentUserId}"
-                        // If this local smoker hasn't participated yet, use their cloud ID if available
-                        val hasParticipated = room.activities.any { it.smokerId == localSmokerId }
-                        if (!hasParticipated && currentSmoker?.isCloudSmoker == false) {
-                            // This local smoker might be represented by a cloud ID in activities
-                            room.activities.find { it.smokerName == currentSmoker.name }?.smokerId ?: localSmokerId
-                        } else {
-                            localSmokerId
-                        }
-                    }
-                }
                 
                 // Process turn notification
-                turnNotificationManager.processRoomUpdate(room, currentUserSmokerId, shareCode)
+                turnNotificationManager.processRoomUpdate(room, currentUserId, shareCode)
             }
         }
 

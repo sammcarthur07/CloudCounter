@@ -159,15 +159,8 @@ class TurnNotificationManager(
                 Log.d(TAG, "Current turn belongs to: $currentTurnSmokerId")
                 
                 // Check if it's the current user's turn
-                // For cloud users: compare Firebase UID with the smoker's cloudUserId
-                // For local smokers: compare the "local_xxx" format
-                val isUserTurn = if (currentTurnSmokerId.startsWith("local_")) {
-                    // It's a local smoker - check if it matches the current user's local smoker
-                    currentTurnSmokerId == currentUserSmokerId
-                } else {
-                    // It's a cloud user - compare with Firebase UID
-                    currentTurnSmokerId == currentUserId
-                }
+                // Turn notifications are based on Firebase user ID only
+                val isUserTurn = currentTurnSmokerId == currentUserId
                 
                 // Debug logging for turn detection
                 Log.d(TAG, "Turn check - Current Firebase user: $currentUserId, Current user smoker ID: $currentUserSmokerId")
@@ -191,24 +184,18 @@ class TurnNotificationManager(
                         .putInt(userRoomKey, totalHits)
                         .apply()
                     
-                    // Get user's smoker name - handle both cloud and local smokers
-                    val userSmokerName = when {
-                        currentTurnSmokerId.startsWith("local_") -> {
-                            // For local smokers, look up directly by the smoker ID
-                            roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
-                                (smokerData as? Map<*, *>)?.get("name") as? String
-                            }
-                        }
-                        else -> {
-                            // For cloud users, find by cloudUserId
-                            roomData.sharedSmokers?.entries?.firstOrNull { entry ->
-                                val smokerData = entry.value as? Map<*, *>
-                                val cloudUserId = smokerData?.get("cloudUserId") as? String
-                                cloudUserId == currentUserId
-                            }?.let { entry ->
-                                val smokerData = entry.value as? Map<*, *>
-                                smokerData?.get("name") as? String
-                            }
+                    // Get user's smoker name - look up by the turn smoker ID
+                    val userSmokerName = roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
+                        (smokerData as? Map<*, *>)?.get("name") as? String
+                    } ?: run {
+                        // Fallback: try to find by cloudUserId if direct lookup fails
+                        roomData.sharedSmokers?.entries?.firstOrNull { entry ->
+                            val smokerData = entry.value as? Map<*, *>
+                            val cloudUserId = smokerData?.get("cloudUserId") as? String
+                            cloudUserId == currentTurnSmokerId
+                        }?.let { entry ->
+                            val smokerData = entry.value as? Map<*, *>
+                            smokerData?.get("name") as? String
                         }
                     }
                     

@@ -678,7 +678,7 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
                 }
             }
             
-            // Update session stats
+            // Update session stats and trigger auto-advance
             val sessionPrefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
             val sessionActive = sessionPrefs.getBoolean("sessionActive", false)
             val isAutoMode = sessionPrefs.getBoolean("isAutoMode", true)
@@ -686,21 +686,18 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
             if (sessionActive) {
                 updateSessionStatsFromNotification(context, sessionPrefs, addedAt, isAutoMode)
                 
-                // Perform smoker rotation if in auto mode
+                // Send broadcast to trigger auto-advance in MainActivity
                 if (isAutoMode) {
-                    if (roomCode != null) {
-                        // Cloud session - rotate smoker in cloud session
-                        handleSmokerRotationInNotification(app, repo, roomCode, context)
-                    } else {
-                        // Local session - rotate smoker locally
-                        handleLocalSmokerRotation(app, repo, context)
+                    val autoAdvanceIntent = Intent("com.sam.cloudcounter.TRIGGER_AUTO_ADVANCE").apply {
+                        // Remove setPackage to allow cross-app broadcast (for secure folder communication)
+                        putExtra("from_notification", true)
+                        putExtra("activity_type", type.name)
+                        putExtra("smoker_id", smoker.smokerId)
                     }
-                    Log.d(TAG, "🔄 Performed smoker rotation after turn notification action")
+                    context.sendBroadcast(autoAdvanceIntent)
+                    Log.d(TAG, "🔄 Sent auto-advance broadcast for notification activity (type: ${type.name}, smoker: ${smoker.smokerId})")
                 }
             }
-            
-            // Send broadcast to update the MainActivity UI
-            sendSmokerUpdateBroadcast(context, smoker)
         }
     }
 }
