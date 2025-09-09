@@ -159,8 +159,8 @@ class TurnNotificationManager(
                 Log.d(TAG, "Current turn belongs to: $currentTurnSmokerId")
                 
                 // Check if it's the current user's turn
-                // Turn notifications are based on Firebase user ID only
-                val isUserTurn = currentTurnSmokerId == currentUserId
+                // Compare the turn smoker ID with both Firebase UID and current user smoker ID
+                val isUserTurn = currentTurnSmokerId == currentUserId || currentTurnSmokerId == currentUserSmokerId
                 
                 // Debug logging for turn detection
                 Log.d(TAG, "Turn check - Current Firebase user: $currentUserId, Current user smoker ID: $currentUserSmokerId")
