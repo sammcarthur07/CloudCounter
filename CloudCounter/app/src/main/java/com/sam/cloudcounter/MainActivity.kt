@@ -5905,10 +5905,20 @@ class MainActivity : AppCompatActivity() {
                 
                 // Get current user's smoker ID in the room
                 val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
-                val currentUserSmokerId = if (currentSmoker?.isCloudSmoker == true) {
-                    currentSmoker.cloudUserId ?: currentUserId
-                } else {
-                    "local_${currentSmoker?.uid ?: currentUserId}"
+                val currentUserSmokerId = when {
+                    currentSmoker?.isCloudSmoker == true -> currentSmoker.cloudUserId ?: currentUserId
+                    else -> {
+                        // For local smokers, check if they exist in room activities
+                        val localSmokerId = "local_${currentSmoker?.uid ?: currentUserId}"
+                        // If this local smoker hasn't participated yet, use their cloud ID if available
+                        val hasParticipated = room.activities.any { it.smokerId == localSmokerId }
+                        if (!hasParticipated && currentSmoker?.isCloudSmoker == false) {
+                            // This local smoker might be represented by a cloud ID in activities
+                            room.activities.find { it.smokerName == currentSmoker.name }?.smokerId ?: localSmokerId
+                        } else {
+                            localSmokerId
+                        }
+                    }
                 }
                 
                 // Process turn notification

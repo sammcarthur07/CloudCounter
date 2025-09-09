@@ -2,7 +2,9 @@ package com.sam.cloudcounter
 
 import android.app.ActivityManager
 import android.content.Context
+import android.provider.Settings
 import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,7 +19,7 @@ class TurnNotificationManager(
     companion object {
         private const val TAG = "TurnNotificationManager"
         private const val PREFS_NAME = "turn_notifications"
-        private const val KEY_LAST_TURN_INDEX = "last_turn_index"
+        private const val KEY_LAST_NOTIFIED_ACTIVITY_COUNT = "last_notified_activity_count"
         private const val KEY_LAST_ACTIVITY_TYPE = "last_activity_type"
         private const val KEY_CURRENT_USER_SMOKER_ID = "current_user_smoker_id"
     }
@@ -26,18 +28,35 @@ class TurnNotificationManager(
     private val notificationHelper = NotificationHelper(context)
     
     /**
+     * Get Android device ID as fallback for user identification
+     */
+    private fun getAndroidDeviceId(): String {
+        return Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        ) ?: "unknown"
+    }
+    
+    /**
      * Check if app is in foreground
      */
     fun isAppInForeground(): Boolean {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val appProcesses = activityManager.runningAppProcesses ?: return false
         
+        // Get the current process ID
+        val currentPid = android.os.Process.myPid()
+        
         for (process in appProcesses) {
-            if (process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND &&
-                process.processName == context.packageName) {
+            // Check if THIS specific process (not just package) is in foreground
+            if (process.pid == currentPid && 
+                process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND) {
+                Log.d(TAG, "App IS in foreground (PID: $currentPid, importance: ${process.importance})")
                 return true
             }
         }
+        
+        Log.d(TAG, "App NOT in foreground (PID: $currentPid)")
         return false
     }
     
@@ -59,6 +78,9 @@ class TurnNotificationManager(
                     Log.d(TAG, "Notifications disabled in settings, skipping turn notification")
                     return@launch
                 }
+                
+                // Get the actual signed-in user for this app instance
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: getAndroidDeviceId()
                 
                 // Don't show notifications if app is in foreground
                 if (isAppInForeground()) {
@@ -88,37 +110,50 @@ class TurnNotificationManager(
                     return@launch
                 }
                 
-                // Check if it's the current user's turn
-                val isUserTurn = currentTurnSmokerId == currentUserSmokerId
+                // Check if it's the current user's turn - comparing against the Firebase UID for cloud users
+                val isUserTurn = currentTurnSmokerId == currentUserId || currentTurnSmokerId == currentUserSmokerId
                 
-                // Get last turn index to check if turn changed
-                val lastTurnIndex = prefs.getInt(KEY_LAST_TURN_INDEX, -1)
-                val turnChanged = currentTurnIndex != lastTurnIndex
+                // Debug logging for turn detection
+                Log.d(TAG, "Turn check - Current user: $currentUserId, Turn user: $currentTurnSmokerId, Is user turn: $isUserTurn, App in foreground: ${isAppInForeground()}")
+                Log.d(TAG, "Active participants: $activeParticipants")
+                Log.d(TAG, "Total activities: $totalHits, Current turn index: $currentTurnIndex")
                 
-                if (turnChanged) {
-                    prefs.edit().putInt(KEY_LAST_TURN_INDEX, currentTurnIndex).apply()
+                // Track the last activity count we notified for
+                val lastNotifiedCount = prefs.getInt(KEY_LAST_NOTIFIED_ACTIVITY_COUNT, -1)
+                
+                if (isUserTurn && totalHits > lastNotifiedCount) {
+                    // It's the user's turn and there are new activities
+                    Log.d(TAG, "It's user's turn! Activity count: $totalHits (last notified: $lastNotifiedCount)")
+                    Log.d(TAG, "Showing notification for user: $currentUserId / $currentUserSmokerId")
                     
-                    if (isUserTurn) {
-                        Log.d(TAG, "It's user's turn! Showing notification")
-                        
-                        // Get user's smoker name
-                        val userSmokerName = getUserSmokerName(roomData, currentUserSmokerId)
-                        
-                        // Get last activity type
-                        val lastActivityType = getLastActivityType(roomData)
-                        
-                        // Save last activity type if found
-                        lastActivityType?.let {
-                            prefs.edit().putString(KEY_LAST_ACTIVITY_TYPE, it.name).apply()
-                        }
-                        
-                        // Show notification
-                        notificationHelper.showTurnNotification(
-                            roomCode = currentShareCode,
-                            lastActivityType = lastActivityType,
-                            smokerName = userSmokerName
-                        )
+                    // Update last notified count
+                    prefs.edit()
+                        .putInt(KEY_LAST_NOTIFIED_ACTIVITY_COUNT, totalHits)
+                        .apply()
+                    
+                    // Get user's smoker name
+                    val userSmokerName = getUserSmokerName(roomData, currentUserSmokerId)
+                    Log.d(TAG, "User smoker name: $userSmokerName")
+                    
+                    // Get last activity type
+                    val lastActivityType = getLastActivityType(roomData)
+                    Log.d(TAG, "Last activity type: $lastActivityType")
+                    
+                    // Save last activity type if found
+                    lastActivityType?.let {
+                        prefs.edit().putString(KEY_LAST_ACTIVITY_TYPE, it.name).apply()
                     }
+                    
+                    // Show notification
+                    notificationHelper.showTurnNotification(
+                        roomCode = currentShareCode,
+                        lastActivityType = lastActivityType,
+                        smokerName = userSmokerName
+                    )
+                } else if (isUserTurn) {
+                    Log.d(TAG, "It's user's turn but no new activities ($totalHits <= $lastNotifiedCount)")
+                } else {
+                    Log.d(TAG, "Not user's turn (turn belongs to: $currentTurnSmokerId)")
                 }
                 
             } catch (e: Exception) {
@@ -131,18 +166,18 @@ class TurnNotificationManager(
      * Get active participants (not paused, not away)
      */
     private fun getActiveParticipants(roomData: RoomData): List<String> {
-        val allParticipants = roomData.sharedSmokers?.keys?.toList() ?: emptyList()
+        // Get all activities to find unique participants
+        val participantsFromActivities = roomData.activities
+            .map { it.smokerId }
+            .distinct()
+            .sorted() // Sort for consistent order
+        
         val pausedSmokers = roomData.pausedSmokers ?: emptyList()
         val awaySmokers = roomData.awayParticipants ?: emptyList()
         
-        return allParticipants.filter { smokerId ->
-            val userId = if (smokerId.startsWith("local_")) {
-                smokerId.removePrefix("local_")
-            } else {
-                smokerId
-            }
-            !pausedSmokers.contains(smokerId) && !awaySmokers.contains(userId)
-        }.sorted() // Sort to ensure consistent order
+        return participantsFromActivities.filter { participantId ->
+            !pausedSmokers.contains(participantId) && !awaySmokers.contains(participantId)
+        }
     }
     
     /**
@@ -186,7 +221,7 @@ class TurnNotificationManager(
      */
     fun clearTurnData() {
         prefs.edit()
-            .remove(KEY_LAST_TURN_INDEX)
+            .remove(KEY_LAST_NOTIFIED_ACTIVITY_COUNT)
             .remove(KEY_LAST_ACTIVITY_TYPE)
             .remove(KEY_CURRENT_USER_SMOKER_ID)
             .apply()
