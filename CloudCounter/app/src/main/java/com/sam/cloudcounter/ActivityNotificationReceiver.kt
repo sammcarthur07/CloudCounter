@@ -614,6 +614,7 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
         }
         
         val roomCode = intent.getStringExtra("room_code")
+        val turnUserSmokerId = intent.getStringExtra("turn_user_smoker_id")
         
         // Save last activity type to preferences
         val prefs = context.getSharedPreferences("turn_notifications", Context.MODE_PRIVATE)
@@ -623,7 +624,16 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
         NotificationHelper(context).cancelTurnNotification()
         
         CoroutineScope(Dispatchers.IO).launch {
-            val smoker = repo.getSmokerById(app.defaultSmokerId) ?: return@launch
+            // Find the correct smoker for the turn user
+            val smoker = if (turnUserSmokerId != null) {
+                // Try to find smoker by cloud user ID or local smoker ID
+                repo.getSmokerByCloudUserId(turnUserSmokerId) 
+                    ?: repo.getAllSmokersList().firstOrNull { "local_${it.uid}" == turnUserSmokerId }
+                    ?: repo.getSmokerById(app.defaultSmokerId)
+            } else {
+                repo.getSmokerById(app.defaultSmokerId)
+            } ?: return@launch
+            
             val addedAt = System.currentTimeMillis()
             
             if (roomCode != null) {

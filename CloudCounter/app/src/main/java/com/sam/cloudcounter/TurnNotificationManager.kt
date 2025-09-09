@@ -139,8 +139,9 @@ class TurnNotificationManager(
                     return@launch
                 }
                 
-                // Check if it's the current user's turn - comparing against the Firebase UID for cloud users
-                val isUserTurn = currentTurnSmokerId == currentUserId || currentTurnSmokerId == currentUserSmokerId
+                // Check if it's the current user's turn - only check Firebase UID for cloud users
+                // This ensures each app instance only gets notifications for its own user
+                val isUserTurn = currentTurnSmokerId == currentUserId
                 
                 // Debug logging for turn detection
                 Log.d(TAG, "Turn check - Current user: $currentUserId, Turn user: $currentTurnSmokerId, Is user turn: $isUserTurn, App in foreground: ${isAppInForeground()}")
@@ -162,24 +163,36 @@ class TurnNotificationManager(
                         .putInt(userRoomKey, totalHits)
                         .apply()
                     
-                    // Get user's smoker name
-                    val userSmokerName = getUserSmokerName(roomData, currentUserSmokerId)
-                    Log.d(TAG, "User smoker name: $userSmokerName")
+                    // Get user's smoker name - find their smoker by cloud user ID
+                    val userSmokerName = roomData.sharedSmokers?.entries?.firstOrNull { entry ->
+                        val smokerData = entry.value as? Map<*, *>
+                        val cloudUserId = smokerData?.get("cloudUserId") as? String
+                        cloudUserId == currentUserId
+                    }?.let { entry ->
+                        val smokerData = entry.value as? Map<*, *>
+                        smokerData?.get("name") as? String
+                    }
+                    
+                    Log.d(TAG, "User smoker name for turn: $userSmokerName")
                     
                     // Get last activity type
                     val lastActivityType = getLastActivityType(roomData)
                     Log.d(TAG, "Last activity type: $lastActivityType")
                     
-                    // Save last activity type if found
+                    // Save last activity type and turn user's smoker ID
                     lastActivityType?.let {
-                        prefs.edit().putString(KEY_LAST_ACTIVITY_TYPE, it.name).apply()
+                        prefs.edit()
+                            .putString(KEY_LAST_ACTIVITY_TYPE, it.name)
+                            .putString("turn_user_smoker_id", currentTurnSmokerId)
+                            .apply()
                     }
                     
-                    // Show notification
+                    // Show notification with the correct user's name
                     notificationHelper.showTurnNotification(
                         roomCode = currentShareCode,
                         lastActivityType = lastActivityType,
-                        smokerName = userSmokerName
+                        smokerName = userSmokerName,
+                        turnUserSmokerId = currentTurnSmokerId
                     )
                 } else if (isUserTurn) {
                     Log.d(TAG, "It's user's turn but no new activities ($totalHits <= $lastNotifiedCount)")

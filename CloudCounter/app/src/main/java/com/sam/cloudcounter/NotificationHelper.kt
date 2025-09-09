@@ -694,7 +694,8 @@ class NotificationHelper(private val context: Context) {
     fun showTurnNotification(
         roomCode: String,
         lastActivityType: ActivityType? = null,
-        smokerName: String? = null
+        smokerName: String? = null,
+        turnUserSmokerId: String? = null
     ) {
         // Check app-wide notification and vibration settings
         val appPrefs = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
@@ -755,12 +756,12 @@ class NotificationHelper(private val context: Context) {
             try { ActivityType.valueOf(it) } catch (e: Exception) { null }
         }
         
-        val title = "It's your turn!"
-        val text = if (smokerName != null) {
-            "It's your turn in the rotation, $smokerName"
+        val title = if (!smokerName.isNullOrEmpty()) {
+            "It's your turn $smokerName!"
         } else {
-            "It's your turn in the rotation"
+            "It's your turn!"
         }
+        val text = "Time to take your turn in the rotation"
         
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -818,6 +819,7 @@ class NotificationHelper(private val context: Context) {
                     action = ACTION_ADD_FROM_TURN
                     putExtra(EXTRA_TYPE, storedLastActivity.name)
                     putExtra("room_code", roomCode)
+                    putExtra("turn_user_smoker_id", turnUserSmokerId)
                 }
                 
                 val actionPendingIntent = PendingIntent.getBroadcast(
