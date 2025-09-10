@@ -960,6 +960,329 @@ class MainActivity : AppCompatActivity() {
         dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
     }
 
+    // Add this function to show bowl quantity dialog when long-pressing cone confirmation
+    private fun showBowlQuantityDialogForCone(smoker: Smoker, stashSource: StashSource, coneTimestamp: Long) {
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+
+        val container = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#80000000"))
+            isClickable = true
+        }
+
+        val card = androidx.cardview.widget.CardView(this).apply {
+            radius = 12.dpToPx(this@MainActivity).toFloat()
+            cardElevation = 8.dpToPx(this@MainActivity).toFloat()
+            setCardBackgroundColor(Color.parseColor("#2A2A2A"))
+
+            val params = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            layoutParams = params
+        }
+
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.dpToPx(this@MainActivity), 16.dpToPx(this@MainActivity),
+                20.dpToPx(this@MainActivity), 16.dpToPx(this@MainActivity))
+            gravity = Gravity.CENTER
+        }
+
+        val title = TextView(this).apply {
+            text = "Add activities"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(title)
+
+        val gridLayout = GridLayout(this).apply {
+            rowCount = 2
+            columnCount = 2
+            alignmentMode = GridLayout.ALIGN_BOUNDS
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+        }
+
+        // Load the last saved quantity from preferences
+        val lastBowlQuantity = prefs.getInt("last_bowl_quantity", 1)
+
+        // Create number options
+        val numbers = listOf("1", "2", "3", "More")
+
+        numbers.forEachIndexed { index, number ->
+            val button = com.google.android.material.button.MaterialButton(this).apply {
+                text = number
+                setTextColor(Color.WHITE)
+
+                // Highlight the last used quantity
+                if ((number == "1" && lastBowlQuantity == 1) ||
+                    (number == "2" && lastBowlQuantity == 2) ||
+                    (number == "3" && lastBowlQuantity == 3)) {
+                    setBackgroundColor(Color.parseColor("#5A5A5A")) // Slightly lighter to show it was last used
+                } else {
+                    setBackgroundColor(Color.parseColor("#424242"))
+                }
+
+                val gridParams = GridLayout.LayoutParams().apply {
+                    width = 80.dpToPx(this@MainActivity)
+                    height = 60.dpToPx(this@MainActivity)
+                    rowSpec = GridLayout.spec(index / 2, 1f)
+                    columnSpec = GridLayout.spec(index % 2, 1f)
+                    setMargins(4.dpToPx(this@MainActivity), 4.dpToPx(this@MainActivity),
+                        4.dpToPx(this@MainActivity), 4.dpToPx(this@MainActivity))
+                }
+                layoutParams = gridParams
+
+                setOnTouchListener { v, event ->
+                    when (event.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            setBackgroundColor(Color.parseColor("#98FB98"))
+                            setTextColor(Color.parseColor("#424242"))
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_UP,
+                        android.view.MotionEvent.ACTION_CANCEL -> {
+                            setBackgroundColor(Color.parseColor("#424242"))
+                            setTextColor(Color.WHITE)
+
+                            if (event.action == android.view.MotionEvent.ACTION_UP) {
+                                v.performClick()
+                            }
+                            true
+                        }
+                        else -> false
+                    }
+                }
+
+                setOnClickListener {
+                    when (number) {
+                        "More" -> {
+                            dialog.dismiss()
+                            showBowlQuantityInputDialogForCone(smoker, stashSource, coneTimestamp)
+                        }
+                        else -> {
+                            val quantity = number.toInt()
+                            // Save the selected quantity to preferences
+                            prefs.edit().putInt("last_bowl_quantity", quantity).apply()
+                            dialog.dismiss()
+                            logBowlsAndConeWithQuantity(quantity, smoker, stashSource, coneTimestamp)
+                        }
+                    }
+                }
+            }
+            gridLayout.addView(button)
+        }
+
+        contentLayout.addView(gridLayout)
+        card.addView(contentLayout)
+        container.addView(card)
+
+        container.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.setContentView(container)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+
+        dialog.show()
+    }
+
+    // Add this function for manual number input for cone scenario
+    private fun showBowlQuantityInputDialogForCone(smoker: Smoker, stashSource: StashSource, coneTimestamp: Long) {
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+
+        val container = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#80000000"))
+            isClickable = true
+        }
+
+        val card = androidx.cardview.widget.CardView(this).apply {
+            radius = 12.dpToPx(this@MainActivity).toFloat()
+            cardElevation = 8.dpToPx(this@MainActivity).toFloat()
+            setCardBackgroundColor(Color.parseColor("#2A2A2A"))
+
+            val params = FrameLayout.LayoutParams(
+                280.dpToPx(this@MainActivity),
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            layoutParams = params
+        }
+
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity),
+                24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity))
+        }
+
+        val title = TextView(this).apply {
+            text = "Enter number of bowls"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(title)
+
+        val input = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Number of bowls"
+
+            // Load the last saved value from preferences
+            val lastBowlQuantity = prefs.getInt("last_bowl_quantity", 1)
+            setText(lastBowlQuantity.toString())
+            selectAll() // Select all text for easy replacement
+
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.parseColor("#808080"))
+            gravity = Gravity.CENTER
+
+            // Fix the input field background
+            setBackgroundColor(Color.parseColor("#1A1A1A"))  // Darker than dialog background
+            setPadding(16.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity),
+                16.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity))
+
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(input)
+
+        val buttonLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        val cancelButton = Button(this).apply {
+            text = "CANCEL"
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#424242"))
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        val okButton = Button(this).apply {
+            text = "Add activities"
+            setTextColor(Color.parseColor("#424242"))
+            setBackgroundColor(Color.parseColor("#98FB98"))
+            setOnClickListener {
+                val quantity = input.text.toString().toIntOrNull() ?: 1
+                if (quantity > 0) {
+                    // Save the quantity to preferences
+                    prefs.edit().putInt("last_bowl_quantity", quantity).apply()
+
+                    dialog.dismiss()
+                    logBowlsAndConeWithQuantity(quantity, smoker, stashSource, coneTimestamp)
+                } else {
+                    Toast.makeText(this@MainActivity, "Please enter a valid number", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        buttonLayout.addView(cancelButton)
+        buttonLayout.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(16.dpToPx(this@MainActivity), 0)
+        })
+        buttonLayout.addView(okButton)
+
+        contentLayout.addView(buttonLayout)
+        card.addView(contentLayout)
+        container.addView(card)
+
+        container.setOnClickListener { dialog.dismiss() }
+
+        dialog.setContentView(container)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+
+        dialog.show()
+
+        // Show keyboard
+        input.requestFocus()
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+    }
+
+    // Add this function to log multiple bowls and then the cone
+    private fun logBowlsAndConeWithQuantity(quantity: Int, smoker: Smoker, stashSource: StashSource, coneTimestamp: Long) {
+        if (quantity <= 0) return
+
+        Log.d(TAG, "🎯 Logging $quantity bowls and cone for ${smoker.name}")
+        confettiHelper.showSuccessConfetti()
+
+        lifecycleScope.launch {
+            val originalAutoMode = isAutoMode
+            isAutoMode = false
+
+            // Add the bowls first
+            for (i in 0 until quantity) {
+                val bowlTimestamp = coneTimestamp - ((quantity - i) * 100) // Bowls before cone
+                Log.d(TAG, "🎯 🍶 Adding bowl ${i + 1}/$quantity for ${smoker.name}")
+                proceedWithLogHitWithSourceAndSmoker(ActivityType.BOWL, bowlTimestamp, stashSource, smoker)
+                delay(50) // Small delay between bowls
+            }
+
+            // Add the cone
+            delay(200)
+            Log.d(TAG, "🎯 🌿 Adding cone for ${smoker.name}")
+            proceedWithLogHitWithSourceAndSmoker(ActivityType.CONE, coneTimestamp, stashSource, smoker)
+
+            // Restore auto mode
+            isAutoMode = originalAutoMode
+            Log.d(TAG, "🎯 ↻ Restored auto mode to: $originalAutoMode")
+
+            withContext(Dispatchers.Main) {
+                if (currentShareCode == null) {
+                    refreshLocalSessionStatsIfNeeded()
+                }
+                sessionStatsVM.refreshTimer()
+                stashViewModel.onActivityLogged(ActivityType.CONE)
+                
+                // CRITICAL FIX: Manually trigger auto-advance after bowl+cone combo
+                if (originalAutoMode && smokers.isNotEmpty()) {
+                    Log.d(TAG, "🎯 ➡️ Manually advancing smoker after bowl+cone combo")
+                    handler.postDelayed({
+                        moveToNextActiveSmoker()
+                        Log.d(TAG, "🎯 ✅ Auto-advance completed after bowl+cone combo")
+                    }, 300) // Small delay to ensure all operations complete
+                }
+            }
+        }
+    }
+
     // Add this function to log bowls with quantity
     private fun logBowlsWithQuantity(quantity: Int) {
         if (quantity <= 0) return
@@ -11303,6 +11626,154 @@ class MainActivity : AppCompatActivity() {
         return rootContainer
     }
 
+    private fun createImagePressButtonWithLongPress(
+        text: String, 
+        isPrimary: Boolean, 
+        onClick: () -> Unit,
+        onLongClick: (() -> Unit)? = null
+    ): View {
+        val buttonContainer = androidx.cardview.widget.CardView(this).apply {
+            radius = 20.dpToPx(context).toFloat()
+            cardElevation = if (isPrimary) 4.dpToPx(context).toFloat() else 0f
+            setCardBackgroundColor(
+                if (isPrimary) Color.parseColor("#98FB98")
+                else Color.parseColor("#33FFFFFF")
+            )
+
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                48.dpToPx(this@MainActivity)
+            ).apply {
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+
+            isClickable = true
+            isFocusable = true
+        }
+
+        // Create a FrameLayout to hold background image and text
+        val contentFrame = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Image view for pressed state (initially hidden)
+        val imageView = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageResource(R.drawable.button_pressed_background)
+            visibility = View.GONE
+        }
+
+        // Text on top
+        val buttonText = TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(
+                if (isPrimary) Color.parseColor("#424242")
+                else Color.WHITE
+            )
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Add views in correct order
+        contentFrame.addView(imageView)
+        contentFrame.addView(buttonText)
+        buttonContainer.addView(contentFrame)
+
+        // Store original colors
+        val originalBackgroundColor = if (isPrimary) Color.parseColor("#98FB98") else Color.parseColor("#33FFFFFF")
+        val originalTextColor = if (isPrimary) Color.parseColor("#424242") else Color.WHITE
+
+        // Variables for long press detection
+        var longPressHandler: Handler? = null
+        var longPressRunnable: Runnable? = null
+        val longPressDelay = 1000L // 1 second for long press
+
+        // Handle touch events
+        buttonContainer.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    // Show image, hide solid color
+                    buttonContainer.setCardBackgroundColor(Color.TRANSPARENT)
+                    imageView.visibility = View.VISIBLE
+
+                    // Change text color to white for both button types when pressed
+                    buttonText.setTextColor(Color.WHITE)
+                    buttonText.setShadowLayer(4f, 2f, 2f, Color.BLACK)
+                    
+                    // Set up long press detection if handler provided
+                    if (onLongClick != null) {
+                        longPressHandler = Handler(Looper.getMainLooper())
+                        longPressRunnable = Runnable {
+                            // Long press detected
+                            onLongClick()
+                            // Reset visual state
+                            imageView.visibility = View.GONE
+                            buttonContainer.setCardBackgroundColor(originalBackgroundColor)
+                            buttonText.setTextColor(originalTextColor)
+                            buttonText.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+                        }
+                        longPressHandler?.postDelayed(longPressRunnable!!, longPressDelay)
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    // Cancel long press if it hasn't fired
+                    longPressRunnable?.let {
+                        longPressHandler?.removeCallbacks(it)
+                    }
+                    
+                    // Hide image, restore solid color
+                    imageView.visibility = View.GONE
+                    buttonContainer.setCardBackgroundColor(originalBackgroundColor)
+
+                    // Restore original text color
+                    buttonText.setTextColor(originalTextColor)
+                    buttonText.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+
+                    // Only trigger click if long press hasn't been triggered
+                    if (longPressRunnable != null) {
+                        v.performClick()
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    // Cancel long press
+                    longPressRunnable?.let {
+                        longPressHandler?.removeCallbacks(it)
+                    }
+                    
+                    // Hide image, restore solid color
+                    imageView.visibility = View.GONE
+                    buttonContainer.setCardBackgroundColor(originalBackgroundColor)
+
+                    // Restore original text color
+                    buttonText.setTextColor(originalTextColor)
+                    buttonText.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        buttonContainer.setOnClickListener {
+            onClick()
+        }
+
+        return buttonContainer
+    }
+
     private fun createImagePressButton(text: String, isPrimary: Boolean, onClick: () -> Unit): View {
         val buttonContainer = androidx.cardview.widget.CardView(this).apply {
             radius = 20.dpToPx(context).toFloat()
@@ -11596,48 +12067,59 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        // Add with new bowl button (primary - green)
-        val addWithBowlButton = createImagePressButton("Add with new bowl", true) {
-            animateCardSelection(dialog) {
-                confettiHelper.showSuccessConfetti()
-                lifecycleScope.launch {
-                    val originalAutoMode = isAutoMode
-                    isAutoMode = false
+        // Add with new bowl button (primary - green) with long-press support
+        val addWithBowlButton = createImagePressButtonWithLongPress(
+            text = "Add with new bowl",
+            isPrimary = true,
+            onClick = {
+                // Regular click - add 1 bowl and cone
+                animateCardSelection(dialog) {
+                    confettiHelper.showSuccessConfetti()
+                    lifecycleScope.launch {
+                        val originalAutoMode = isAutoMode
+                        isAutoMode = false
 
-                    Log.d(TAG, "🎯 🍶 Adding bowl for ${capturedSmoker.name} (auto disabled temporarily)")
-                    val bowlTimestamp = now - 100
-                    proceedWithLogHitWithSourceAndSmoker(ActivityType.BOWL, bowlTimestamp, finalStashSource, capturedSmoker)
+                        Log.d(TAG, "🎯 🍶 Adding bowl for ${capturedSmoker.name} (auto disabled temporarily)")
+                        val bowlTimestamp = now - 100
+                        proceedWithLogHitWithSourceAndSmoker(ActivityType.BOWL, bowlTimestamp, finalStashSource, capturedSmoker)
 
-                    delay(200)
+                        delay(200)
 
-                    Log.d(TAG, "🎯 🌿 Adding cone for ${capturedSmoker.name} (auto still disabled)")
-                    proceedWithLogHitWithSourceAndSmoker(ActivityType.CONE, now, finalStashSource, capturedSmoker)
-                    
-                    // Restore auto mode
-                    isAutoMode = originalAutoMode
-                    Log.d(TAG, "🎯 ↻ Restored auto mode to: $originalAutoMode")
-
-                    withContext(Dispatchers.Main) {
-                        if (currentShareCode == null) {
-                            refreshLocalSessionStatsIfNeeded()
-                        }
-                        sessionStatsVM.refreshTimer()
-                        stashViewModel.onActivityLogged(ActivityType.CONE)
+                        Log.d(TAG, "🎯 🌿 Adding cone for ${capturedSmoker.name} (auto still disabled)")
+                        proceedWithLogHitWithSourceAndSmoker(ActivityType.CONE, now, finalStashSource, capturedSmoker)
                         
-                        // CRITICAL FIX: Manually trigger auto-advance after bowl+cone combo
-                        if (originalAutoMode && smokers.isNotEmpty()) {
-                            Log.d(TAG, "🎯 ➡️ Manually advancing smoker after bowl+cone combo")
-                            handler.postDelayed({
-                                moveToNextActiveSmoker()
-                                Log.d(TAG, "🎯 ✅ Auto-advance completed after bowl+cone combo")
-                            }, 300) // Small delay to ensure all operations complete
-                        } else {
-                            Log.d(TAG, "🎯 ❌ Not advancing: originalAutoMode=$originalAutoMode, smokersCount=${smokers.size}")
+                        // Restore auto mode
+                        isAutoMode = originalAutoMode
+                        Log.d(TAG, "🎯 ↻ Restored auto mode to: $originalAutoMode")
+
+                        withContext(Dispatchers.Main) {
+                            if (currentShareCode == null) {
+                                refreshLocalSessionStatsIfNeeded()
+                            }
+                            sessionStatsVM.refreshTimer()
+                            stashViewModel.onActivityLogged(ActivityType.CONE)
+                            
+                            // CRITICAL FIX: Manually trigger auto-advance after bowl+cone combo
+                            if (originalAutoMode && smokers.isNotEmpty()) {
+                                Log.d(TAG, "🎯 ➡️ Manually advancing smoker after bowl+cone combo")
+                                handler.postDelayed({
+                                    moveToNextActiveSmoker()
+                                    Log.d(TAG, "🎯 ✅ Auto-advance completed after bowl+cone combo")
+                                }, 300) // Small delay to ensure all operations complete
+                            } else {
+                                Log.d(TAG, "🎯 ❌ Not advancing: originalAutoMode=$originalAutoMode, smokersCount=${smokers.size}")
+                            }
                         }
                     }
                 }
+            },
+            onLongClick = {
+                // Long press - show bowl quantity dialog
+                vibrateFeedback(50) // Short vibration feedback
+                dialog.dismiss() // Dismiss cone confirmation dialog
+                showBowlQuantityDialogForCone(capturedSmoker, finalStashSource, now)
             }
-        }
+        )
         buttonContainer.addView(addWithBowlButton)
 
         // Continue with last bowl button (neon yellow)
