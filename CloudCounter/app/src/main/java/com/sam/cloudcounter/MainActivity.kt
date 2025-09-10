@@ -3305,6 +3305,32 @@ class MainActivity : AppCompatActivity() {
      * Manually animates the fade in using a Handler to guarantee the animation runs for the full duration
      * This bypasses any system optimizations that might skip the animation
      */
+    private fun calculateRoundsFromActivities(activities: List<ActivityLog>): Int {
+        if (activities.isEmpty()) return 0
+        
+        // Group activities by smoker to track rounds
+        val smokerActivities = mutableMapOf<Long, Int>()
+        var rounds = 0
+        
+        for (activity in activities.sortedBy { it.timestamp }) {
+            val smokerId = activity.smokerId
+            val currentCount = smokerActivities.getOrDefault(smokerId, 0)
+            smokerActivities[smokerId] = currentCount + 1
+            
+            // When we see a smoker for the second+ time, it's a new round
+            if (currentCount > 0 && smokerActivities.values.all { it > rounds }) {
+                rounds++
+            }
+        }
+        
+        // If everyone has had at least one hit, we're in round 1 minimum
+        if (smokerActivities.isNotEmpty() && smokerActivities.values.all { it > 0 }) {
+            rounds = smokerActivities.values.minOrNull() ?: 0
+        }
+        
+        return rounds
+    }
+
     private fun performManualFadeIn(view: View, durationMs: Long) {
         val handler = Handler(Looper.getMainLooper())
         val startTime = System.currentTimeMillis()
@@ -4901,6 +4927,9 @@ class MainActivity : AppCompatActivity() {
         // Clear any editing state - we're starting a NEW session
         editingSummaryId = null
         lastLoadedSummary = null
+        
+        // Clear carried-over stats when starting a fresh session
+        sessionStatsVM.clearCarriedOverStats()
 
         // Set the session start time which will be used as the session ID
         sessionStart = startTime
@@ -4967,27 +4996,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endSession() {
-        // CRITICAL: Store the session ID before clearing anything
+        // CRITICAL: Store the session ID and times before clearing anything
         val completedSessionId = if (sessionActive && sessionStart > 0) {
             sessionStart
         } else {
             null
         }
+        val sessionEndTime = System.currentTimeMillis()
 
-        Log.d(TAG, "📊 Ending session with ID: $completedSessionId")
+        Log.d(TAG, "📊 Ending session with ID: $completedSessionId at time: $sessionEndTime")
 
         // Store in preferences immediately if we have a valid session ID
         if (completedSessionId != null && completedSessionId > 0) {
             prefs.edit().putLong("last_completed_session_id", completedSessionId).apply()
             Log.d(TAG, "📊 Saved last completed session ID to prefs: $completedSessionId")
 
-            // Update both ViewModels immediately
+            // Update both ViewModels immediately with session ID and times
             sessionStatsVM.lastCompletedSessionId = completedSessionId
+            sessionStatsVM.lastCompletedSessionStart = completedSessionId // Session ID is the start time
+            sessionStatsVM.lastCompletedSessionEnd = sessionEndTime
             stashViewModel.setLastCompletedSessionId(completedSessionId)
 
             // Also ensure all activities in this session have the session ID
             lifecycleScope.launch(Dispatchers.IO) {
-                val sessionEndTime = System.currentTimeMillis()
                 repo.updateSessionIdsForTimeRange(completedSessionId, completedSessionId, sessionEndTime)
                 Log.d(TAG, "📊 Updated session IDs for all activities in session")
 
@@ -7551,16 +7582,26 @@ class MainActivity : AppCompatActivity() {
         }
 
         val isConnectedToCloud = currentShareCode != null && currentRoom != null && authManager.isSignedIn
+        
+        // Check if we're in continue mode - if so, we need to refresh even if in a room
+        val isInContinueMode = sessionStatsVM.isInContinueMode()
 
-        if (isConnectedToCloud) {
-            Log.d(TAG, "🔍 Skipping local stats refresh - connected to cloud room")
+        if (isConnectedToCloud && !isInContinueMode) {
+            Log.d(TAG, "🔍 Skipping local stats refresh - connected to cloud room and not in continue mode")
             return
+        }
+        
+        if (isConnectedToCloud && isInContinueMode) {
+            Log.d(TAG, "🔍 In cloud room but continue mode active - proceeding with refresh")
         }
 
         lifecycleScope.launch {
+            Log.d(TAG, "🔍🚀 Starting refresh coroutine...")
+            
             val allSmokersFromDb = withContext(Dispatchers.IO) {
                 repo.getAllSmokersList()
             }
+            Log.d(TAG, "🔍👥 Found ${allSmokersFromDb.size} smokers in database")
 
             val now = System.currentTimeMillis()
             val perSmokerList = mutableListOf<PerSmokerStats>()
@@ -7575,6 +7616,12 @@ class MainActivity : AppCompatActivity() {
             var lastConeTimestamp: Long = 0L
             var lastBowlTimestamp: Long = 0L
             var conesSinceLastBowl = 0
+            
+            // Get carried-over stats from ViewModel early so we can use them throughout
+            val (carriedOverCones, carriedOverRounds, carriedOverBowls) = sessionStatsVM.getCarriedOverStats()
+            val isInContinueMode = sessionStatsVM.isInContinueMode()
+            Log.d(TAG, "🔍📦 Carried-over stats - Cones: $carriedOverCones, Rounds: $carriedOverRounds, Bowls: $carriedOverBowls")
+            Log.d(TAG, "🔍🌁 Continue mode active: $isInContinueMode")
 
             // Track gaps - these will be calculated from ALL activities
             var lastGapMs: Long? = null  // The gap between the two most recent activities
@@ -7714,9 +7761,21 @@ class MainActivity : AppCompatActivity() {
                 }
                 lastBowlSmokerName = bowlSmoker?.name
                 Log.d(TAG, "🔍🟢 Found last BOWL smoker: $lastBowlSmokerName")
-                conesSinceLastBowl = allSessionActivities
+                
+                // Check if this bowl has associated cones from a previous session
+                val associatedCones = lastBowl.associatedConesCount ?: 0
+                Log.d(TAG, "🔍🌿 Bowl has associated cones from previous session: $associatedCones")
+                
+                // Count cones since this bowl in current session
+                val currentSessionCones = allSessionActivities
                     .filter { it.type == ActivityType.CONE && it.timestamp > lastBowlTimestamp }
                     .size
+                    
+                // If this bowl has associated cones, those are already counted in totalCones
+                // So we only count cones AFTER this bowl
+                conesSinceLastBowl = currentSessionCones
+                
+                Log.d(TAG, "🔍🌿 Cones since last bowl: $conesSinceLastBowl (current session only)")
             } else {
                 conesSinceLastBowl = coneLogs.size
             }
@@ -7733,10 +7792,23 @@ class MainActivity : AppCompatActivity() {
                 val joints = sessionLogs.count { it.type == ActivityType.JOINT }
                 val bowls = sessionLogs.count { it.type == ActivityType.BOWL }
 
-                if (cones > 0 || joints > 0 || bowls > 0) {
+                // Check if this smoker should get carried-over bowls
+                val continueBowlSmokerId = sessionStatsVM.getContinueBowlSmokerId()
+                Log.d(TAG, "🔍🔍 Checking smoker ${smoker.name} (ID: ${smoker.smokerId}) vs continue ID: $continueBowlSmokerId")
+                val isThisSmokerContinuing = isInContinueMode && smoker.smokerId == continueBowlSmokerId
+                val adjustedBowls = if (isThisSmokerContinuing) {
+                    // Add carried-over bowls to the specific smoker who continued
+                    Log.d(TAG, "🔍🎯 Continue mode MATCH: Adding ${carriedOverBowls} carried bowls to ${smoker.name} (had $bowls session bowls)")
+                    bowls + carriedOverBowls
+                } else {
+                    Log.d(TAG, "🔍❌ No match for ${smoker.name}: continue=${isInContinueMode}, match=${smoker.smokerId == continueBowlSmokerId}")
+                    bowls
+                }
+                
+                if (cones > 0 || joints > 0 || adjustedBowls > 0) {  // Check adjustedBowls not bowls
                     totalCones += cones
                     totalJoints += joints
-                    totalBowls += bowls
+                    totalBowls += bowls  // Still sum raw bowls for group total
 
                     // Calculate gaps for each activity type
                     val coneGaps = calculateGapsForType(sessionLogs, ActivityType.CONE)
@@ -7747,7 +7819,7 @@ class MainActivity : AppCompatActivity() {
                         smokerName = smoker.name,
                         totalCones = cones,
                         totalJoints = joints,
-                        totalBowls = bowls,
+                        totalBowls = adjustedBowls,  // Use adjusted bowls for display
                         avgGapMs = coneGaps.avg,
                         longestGapMs = coneGaps.longest,
                         shortestGapMs = coneGaps.shortest,
@@ -7760,6 +7832,8 @@ class MainActivity : AppCompatActivity() {
                     )
 
                     perSmokerList.add(perSmokerStat)
+                    
+                    Log.d(TAG, "🔍📊 ${smoker.name} stats: C=$cones, J=$joints, B=$adjustedBowls (session=$bowls, carried=$carriedOverBowls)")
                 }
             }
 
@@ -7792,22 +7866,71 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🔍🔴   - sinceLastJointMs = $sinceLastJointMs")
             Log.d(TAG, "🔍🔴   - sinceLastBowlMs = $sinceLastBowlMs")
             
+            // Adjust stats based on continue mode
+            var groupTotalCones = if (isInContinueMode) {
+                // In continue mode, use carried-over cones plus new ones
+                carriedOverCones + totalCones
+            } else {
+                totalCones  // Normal mode - just use per-smoker sum
+            }
+            
+            var adjustedTotalBowls = if (isInContinueMode) {
+                // In continue mode, add carried-over bowls to session bowls
+                carriedOverBowls + totalBowls
+            } else {
+                totalBowls
+            }
+            
+            var adjustedTotalRounds = if (isInContinueMode) {
+                // In continue mode, use carried-over rounds plus new ones
+                carriedOverRounds + actualRounds
+            } else {
+                actualRounds
+            }
+            
+            var adjustedConesSinceLastBowl = if (isInContinueMode) {
+                // In continue mode, show carried-over cones plus new ones since continue started
+                carriedOverCones + totalCones
+            } else {
+                conesSinceLastBowl
+            }
+            
+            // If we have bowls in this session, check for associated cones
+            if (bowlLogs.isNotEmpty()) {
+                val bowlsWithAssociatedCones = bowlLogs.filter { (it.associatedConesCount ?: 0) > 0 }
+                if (bowlsWithAssociatedCones.isNotEmpty()) {
+                    val totalAssociatedCones = bowlsWithAssociatedCones.sumOf { it.associatedConesCount ?: 0 }
+                    Log.d(TAG, "🔍🍶 Found ${bowlsWithAssociatedCones.size} bowls with total associated cones: $totalAssociatedCones")
+                    
+                    // Add associated cones ONLY to group total, not per-smoker
+                    groupTotalCones += totalAssociatedCones
+                    Log.d(TAG, "🔍🌿 Group total cones (with carried-over): $groupTotalCones")
+                    Log.d(TAG, "🔍🌿 Per-smoker total cones (without carried-over): $totalCones")
+                    
+                    // Also add carried-over rounds if we have a bowl with associated cones
+                    if (carriedOverRounds > 0) {
+                        adjustedTotalRounds += carriedOverRounds
+                        Log.d(TAG, "🔍🌁 Added carried-over rounds: $carriedOverRounds")
+                    }
+                }
+            }
+            
             val groupStats = GroupStats(
-                totalCones = totalCones,
+                totalCones = groupTotalCones,  // This includes carried-over cones
                 totalJoints = totalJoints,
-                totalBowls = totalBowls,
+                totalBowls = adjustedTotalBowls,  // This includes carried-over bowls
                 longestGapMs = longestConeGapMs,  // This is specifically for cones
                 shortestGapMs = shortestConeGapMs,  // This is specifically for cones
                 sinceLastGapMs = sinceLastConeMs,
                 sinceLastJointMs = sinceLastJointMs,
                 sinceLastBowlMs = sinceLastBowlMs,
-                totalRounds = actualRounds,
+                totalRounds = adjustedTotalRounds,
                 hitsInCurrentRound = hitsThisRound,
                 participantCount = perSmokerList.size,
                 lastConeSmokerName = lastConeSmokerName,
                 lastJointSmokerName = lastJointSmokerName,
                 lastBowlSmokerName = lastBowlSmokerName,
-                conesSinceLastBowl = conesSinceLastBowl,
+                conesSinceLastBowl = adjustedConesSinceLastBowl,
                 lastGapMs = lastGapMs,  // Gap between last two activities of ANY type
                 previousGapMs = previousGapMs  // Gap before that
             )
@@ -7816,11 +7939,25 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "🔍 === FINAL STATS SUMMARY ===")
                 Log.d(TAG, "🔍 Total activities: ${allSessionActivities.size}")
                 Log.d(TAG, "🔍🔴 Last smoker names - Cone: $lastConeSmokerName, Joint: $lastJointSmokerName, Bowl: $lastBowlSmokerName")
+                Log.d(TAG, "🔍 Group total cones: $groupTotalCones (per-smoker sum: $totalCones)")
+                Log.d(TAG, "🔍 Total bowls: $adjustedTotalBowls (session: $totalBowls, carried: $carriedOverBowls)")
+                Log.d(TAG, "🔍 Total rounds: $adjustedTotalRounds")
+                Log.d(TAG, "🔍 Cones since last bowl: $adjustedConesSinceLastBowl")
+                Log.d(TAG, "🔍 Carried-over values - Cones: $carriedOverCones, Rounds: $carriedOverRounds, Bowls: $carriedOverBowls")
+                Log.d(TAG, "🔍 Continue mode active: $isInContinueMode")
                 Log.d(TAG, "🔍 Last gap (any type): ${lastGapMs?.let { "${it / 1000}s" } ?: "N/A"}")
                 Log.d(TAG, "🔍 Previous gap (any type): ${previousGapMs?.let { "${it / 1000}s" } ?: "N/A"}")
                 Log.d(TAG, "🔍 Longest cone gap: ${longestConeGapMs / 1000}s")
                 Log.d(TAG, "🔍 Shortest cone gap: ${shortestConeGapMs / 1000}s")
                 Log.d(TAG, "🔍 ============================")
+                
+                // Log what we're sending to ViewModel
+                Log.d(TAG, "🔍📤 Sending to ViewModel:")
+                Log.d(TAG, "🔍📤 Per-smoker count: ${perSmokerList.size}")
+                perSmokerList.forEach { stat ->
+                    Log.d(TAG, "🔍📤   ${stat.smokerName}: C=${stat.totalCones}, J=${stat.totalJoints}, B=${stat.totalBowls}")
+                }
+                Log.d(TAG, "🔍📤 Group: C=${groupStats.totalCones}, J=${groupStats.totalJoints}, B=${groupStats.totalBowls}, R=${groupStats.totalRounds}")
 
                 sessionStatsVM.applyLocalStats(
                     perSmokerList,
@@ -11264,6 +11401,103 @@ class MainActivity : AppCompatActivity() {
         return buttonContainer
     }
 
+    private fun createImagePressButtonYellow(text: String, onClick: () -> Unit): View {
+        val buttonContainer = androidx.cardview.widget.CardView(this).apply {
+            radius = 20.dpToPx(context).toFloat()
+            cardElevation = 2.dpToPx(context).toFloat()
+            setCardBackgroundColor(Color.parseColor("#FFFF66")) // Neon yellow
+
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                48.dpToPx(this@MainActivity)
+            ).apply {
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+
+            isClickable = true
+            isFocusable = true
+        }
+
+        // Create a FrameLayout to hold background image and text
+        val contentFrame = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Image view for pressed state (initially hidden)
+        val imageView = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageResource(R.drawable.button_pressed_background)
+            visibility = View.GONE
+        }
+
+        // Text on top
+        val buttonText = TextView(this).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(Color.parseColor("#424242")) // Dark text on yellow
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Add views in correct order
+        contentFrame.addView(imageView)
+        contentFrame.addView(buttonText)
+        buttonContainer.addView(contentFrame)
+
+        // Store original colors
+        val originalBackgroundColor = Color.parseColor("#FFFF66")
+        val originalTextColor = Color.parseColor("#424242")
+
+        // Handle touch events
+        buttonContainer.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    // Show image, hide solid color
+                    buttonContainer.setCardBackgroundColor(Color.TRANSPARENT)
+                    imageView.visibility = View.VISIBLE
+
+                    // Change text color to white when pressed
+                    buttonText.setTextColor(Color.WHITE)
+                    buttonText.setShadowLayer(4f, 2f, 2f, Color.BLACK)
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    // Hide image, restore solid color
+                    imageView.visibility = View.GONE
+                    buttonContainer.setCardBackgroundColor(originalBackgroundColor)
+
+                    // Restore original text color
+                    buttonText.setTextColor(originalTextColor)
+                    buttonText.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+
+                    if (event.action == android.view.MotionEvent.ACTION_UP) {
+                        v.performClick()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+
+        buttonContainer.setOnClickListener {
+            onClick()
+        }
+
+        return buttonContainer
+    }
+
 
 
 
@@ -11400,6 +11634,167 @@ class MainActivity : AppCompatActivity() {
             }
         }
         buttonContainer.addView(addWithBowlButton)
+
+        // Continue with last bowl button (neon yellow)
+        val continueWithLastBowlButton = createImagePressButtonYellow("Continue with last bowl") {
+            animateCardSelection(dialog) {
+                confettiHelper.showSuccessConfetti()
+                lifecycleScope.launch {
+                    val originalAutoMode = isAutoMode
+                    isAutoMode = false
+
+                    Log.d(TAG, "🔄 CONTINUE_BOWL: Starting continue with last bowl for ${capturedSmoker.name}")
+                    Log.d(TAG, "🔄 CONTINUE_BOWL: Current session active: ${sessionActive}")
+                    
+                    try {
+                        // Get all bowls from the database to find the most recent ones
+                        val allBowls = repo.getLogsInTimeRange(0L, System.currentTimeMillis())
+                            .filter { it.type == ActivityType.BOWL }
+                            .sortedByDescending { it.timestamp }
+                        
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Found ${allBowls.size} total bowls in database")
+                        
+                        // Find the last "batch" of bowls (bowls added close together)
+                        val recentBowls = mutableListOf<ActivityLog>()
+                        if (allBowls.isNotEmpty()) {
+                            val latestBowl = allBowls.first()
+                            recentBowls.add(latestBowl)
+                            
+                            // Find other bowls within 5 seconds of the latest bowl (likely added together)
+                            for (bowl in allBowls.drop(1)) {
+                                if (latestBowl.timestamp - bowl.timestamp <= 5000) {
+                                    recentBowls.add(bowl)
+                                } else {
+                                    break // Stop when we find a gap larger than 5 seconds
+                                }
+                            }
+                        }
+                        
+                        val allBowlsSinceLastSession = recentBowls.reversed() // Put in chronological order
+                        
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Found ${allBowlsSinceLastSession.size} recent bowls to continue from")
+                        
+                        if (allBowlsSinceLastSession.isNotEmpty()) {
+                            // Get the earliest bowl to count from
+                            val earliestBowl = allBowlsSinceLastSession.first()
+                            val latestBowl = allBowlsSinceLastSession.last()
+                            
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Earliest bowl timestamp: ${earliestBowl.timestamp}")
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Latest bowl timestamp: ${latestBowl.timestamp}")
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Total bowls to continue: ${allBowlsSinceLastSession.size}")
+                            
+                            // Count cones since the latest bowl (most recent bowl)
+                            val conesSinceLastBowl = repo.countConesBetweenTimestamps(
+                                latestBowl.timestamp, 
+                                System.currentTimeMillis()
+                            )
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Cones since last bowl: $conesSinceLastBowl")
+                            
+                            // Get all activities from the earliest bowl to now
+                            val activitiesSinceBowls = repo.getLogsInTimeRange(
+                                earliestBowl.timestamp,
+                                System.currentTimeMillis()
+                            )
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Activities since bowls: ${activitiesSinceBowls.size}")
+                            
+                            // Calculate rounds from activities after the earliest bowl
+                            val roundsFromBowls = if (activitiesSinceBowls.isNotEmpty()) {
+                                calculateRoundsFromActivities(activitiesSinceBowls)
+                            } else {
+                                0
+                            }
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Rounds from bowls: $roundsFromBowls")
+                            
+                            // Get who had the last bowl and last cone
+                            val lastBowlSmoker = repo.getSmokerById(latestBowl.smokerId)
+                            val lastBowlSmokerName = lastBowlSmoker?.name ?: "Unknown"
+                            
+                            val lastCone = repo.getLastLogByType(ActivityType.CONE)
+                            val lastConeSmokerName = if (lastCone != null) {
+                                repo.getSmokerById(lastCone.smokerId)?.name ?: "Unknown"
+                            } else {
+                                "None"
+                            }
+                            
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Last bowl by: $lastBowlSmokerName")
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Last cone by: $lastConeSmokerName")
+                            
+                            // Store stats to preserve them
+                            val bowlsCount = allBowlsSinceLastSession.size
+                            
+                            // Store the carried-over values in the ViewModel
+                            // These will be used by refreshLocalSessionStatsIfNeeded to adjust the displayed stats
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Setting carried-over stats - Cones: $conesSinceLastBowl, Rounds: $roundsFromBowls, Bowls: $bowlsCount")
+                            sessionStatsVM.setCarriedOverStats(conesSinceLastBowl, roundsFromBowls, bowlsCount)
+                            
+                            // Store which smoker should get the carried-over bowls
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Setting continue smoker ID: ${capturedSmoker.smokerId} (${capturedSmoker.name})")
+                            sessionStatsVM.setContinueBowlSmoker(capturedSmoker.smokerId)
+                            
+                            // Now call refresh to display the stats with continue mode active
+                            withContext(Dispatchers.Main) {
+                                Log.d(TAG, "🔄 CONTINUE_BOWL: Calling refresh with continue mode active")
+                                refreshLocalSessionStatsIfNeeded()
+                                Log.d(TAG, "🔄 CONTINUE_BOWL: Initial stats displayed")
+                            }
+                            
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Continue mode activated, stats will be adjusted during refresh")
+                            
+                            delay(200)
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Ready to add cone with continue mode active")
+                        } else {
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: No previous bowls found, adding a fresh bowl")
+                            // If no previous bowls found, clear continue mode and add a new bowl normally
+                            sessionStatsVM.clearCarriedOverStats()
+                            
+                            val bowlTimestamp = now - 100
+                            proceedWithLogHitWithSourceAndSmoker(ActivityType.BOWL, bowlTimestamp, finalStashSource, capturedSmoker)
+                            delay(200)
+                        }
+                        
+                        // Add the cone
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Adding cone at timestamp: $now")
+                        proceedWithLogHitWithSourceAndSmoker(ActivityType.CONE, now, finalStashSource, capturedSmoker)
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Cone added successfully")
+                        
+                        // Don't manually update stats - let the normal flow handle it
+                        // The refresh will pick up the cone and add it to the carried-over stats
+                        
+                        // Restore auto mode
+                        isAutoMode = originalAutoMode
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Restored auto mode to: $originalAutoMode")
+
+                        withContext(Dispatchers.Main) {
+                            // The continue mode is set, so refresh will respect it
+                            sessionStatsVM.refreshTimer()
+                            stashViewModel.onActivityLogged(ActivityType.CONE)
+                            
+                            // Don't manually refresh here - proceedWithLogHitWithSourceAndSmoker already calls refresh internally
+                            Log.d(TAG, "🔄 CONTINUE_BOWL: Stats will be refreshed by logHit function with continue mode active")
+                            
+                            // CRITICAL FIX: Manually trigger auto-advance after bowl+cone combo
+                            if (originalAutoMode && smokers.isNotEmpty()) {
+                                Log.d(TAG, "🔄 CONTINUE_BOWL: Manually advancing smoker after bowl+cone combo")
+                                handler.postDelayed({
+                                    moveToNextActiveSmoker()
+                                    Log.d(TAG, "🔄 CONTINUE_BOWL: Auto-advance completed")
+                                }, 300) // Small delay to ensure all operations complete
+                            } else {
+                                Log.d(TAG, "🔄 CONTINUE_BOWL: Not advancing - autoMode=$originalAutoMode, smokersCount=${smokers.size}")
+                            }
+                        }
+                        
+                        Log.d(TAG, "🔄 CONTINUE_BOWL: Process completed successfully")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "🔄 CONTINUE_BOWL: Error during continue with last bowl", e)
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(this@MainActivity, "Error continuing with last bowl", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+        buttonContainer.addView(continueWithLastBowlButton)
 
         // Add without bowl button (secondary)
         val addWithoutBowlButton = createImagePressButton("Add without bowl", false) {

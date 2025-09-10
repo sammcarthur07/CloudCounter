@@ -47,6 +47,12 @@ class SessionStatsViewModel : ViewModel() {
     var sessionStartTime: Long = 0L
         private set
 
+    // Track carried-over stats from "Continue with last bowl"
+    private var carriedOverCones: Int = 0
+    private var carriedOverRounds: Int = 0
+    private var carriedOverBowls: Int = 0
+    private var isInContinueBowlMode: Boolean = false
+    private var continueBowlSmokerId: Long? = null
 
     // ADD: Track the current mode
     private var isAutoMode: Boolean = true
@@ -132,6 +138,9 @@ class SessionStatsViewModel : ViewModel() {
 
         _isSessionActive.value = false
         sessionStartTime = 0L
+        
+        // Clear carried-over stats when session ends
+        clearCarriedOverStats()
 
         // Don't clear stats immediately - keep them for display
         // Only clear the time-based values
@@ -239,6 +248,42 @@ class SessionStatsViewModel : ViewModel() {
     
     fun updateGroupStats(stats: GroupStats) {
         _groupStats.postValue(stats)
+    }
+    
+    fun setCarriedOverStats(cones: Int, rounds: Int, bowls: Int = 0) {
+        Log.d(TAG, "📦 Setting carried-over stats - Cones: $cones, Rounds: $rounds, Bowls: $bowls")
+        carriedOverCones = cones
+        carriedOverRounds = rounds
+        carriedOverBowls = bowls
+        isInContinueBowlMode = true
+    }
+    
+    fun setContinueBowlSmoker(smokerId: Long) {
+        Log.d(TAG, "📦 Setting continue bowl smoker ID: $smokerId")
+        continueBowlSmokerId = smokerId
+        Log.d(TAG, "📦 Continue mode is now: $isInContinueBowlMode with smoker ID: $continueBowlSmokerId")
+    }
+    
+    fun getContinueBowlSmokerId(): Long? {
+        Log.d(TAG, "📦 Getting continue bowl smoker ID: $continueBowlSmokerId (continue mode: $isInContinueBowlMode)")
+        return continueBowlSmokerId
+    }
+    
+    fun getCarriedOverStats(): Triple<Int, Int, Int> {
+        return Triple(carriedOverCones, carriedOverRounds, carriedOverBowls)
+    }
+    
+    fun isInContinueMode(): Boolean {
+        return isInContinueBowlMode
+    }
+    
+    fun clearCarriedOverStats() {
+        Log.d(TAG, "🧹 Clearing carried-over stats")
+        carriedOverCones = 0
+        carriedOverRounds = 0
+        carriedOverBowls = 0
+        isInContinueBowlMode = false
+        continueBowlSmokerId = null
     }
 
     fun refreshTimer() {
@@ -369,24 +414,93 @@ class SessionStatsViewModel : ViewModel() {
         lastConeSmokerName: String? = null,
         conesSinceLastBowl: Int = 0
     ) {
-        Log.d(TAG, "📦 APPLY_LOCAL_STATS: Applying ${groupStats.totalCones} cones from ${perSmoker.size} smokers")
+        // If we're in continue mode, adjust the incoming stats with carried-over values
+        val adjustedGroupStats = if (isInContinueBowlMode && carriedOverCones > 0) {
+            Log.d(TAG, "📦 CONTINUE MODE ACTIVE: Adjusting incoming stats")
+            Log.d(TAG, "📦   Carried-over: C=$carriedOverCones, B=$carriedOverBowls, R=$carriedOverRounds")
+            groupStats.copy(
+                // Keep totalCones as current session only
+                totalCones = groupStats.totalCones,
+                totalBowls = groupStats.totalBowls + carriedOverBowls,
+                totalRounds = groupStats.totalRounds + carriedOverRounds,
+                // Only conesSinceLastBowl includes carried-over cones
+                conesSinceLastBowl = (groupStats.conesSinceLastBowl ?: 0) + carriedOverCones
+            )
+        } else {
+            groupStats
+        }
+        
+        Log.d(TAG, "📦 APPLY_LOCAL_STATS: Applying ${adjustedGroupStats.totalCones} cones from ${perSmoker.size} smokers")
         Log.d(TAG, "📦 APPLY_LOCAL_STATS: sessionStart=$sessionStart, will activate=${sessionStart > 0}")
         Log.d(TAG, "📦🔴 DEBUG: Received GroupStats with:")
-        Log.d(TAG, "📦🔴   - lastConeSmokerName = ${groupStats.lastConeSmokerName}")
-        Log.d(TAG, "📦🔴   - lastJointSmokerName = ${groupStats.lastJointSmokerName}")
-        Log.d(TAG, "📦🔴   - lastBowlSmokerName = ${groupStats.lastBowlSmokerName}")
-        Log.d(TAG, "📦🔴   - totalCones = ${groupStats.totalCones}")
-        Log.d(TAG, "📦🔴   - totalJoints = ${groupStats.totalJoints}")
-        Log.d(TAG, "📦🔴   - totalBowls = ${groupStats.totalBowls}")
+        Log.d(TAG, "📦🔴   - lastConeSmokerName = ${adjustedGroupStats.lastConeSmokerName}")
+        Log.d(TAG, "📦🔴   - lastJointSmokerName = ${adjustedGroupStats.lastJointSmokerName}")
+        Log.d(TAG, "📦🔴   - lastBowlSmokerName = ${adjustedGroupStats.lastBowlSmokerName}")
+        Log.d(TAG, "📦🔴   - totalCones = ${adjustedGroupStats.totalCones}")
+        Log.d(TAG, "📦🔴   - totalJoints = ${adjustedGroupStats.totalJoints}")
+        Log.d(TAG, "📦🔴   - totalBowls = ${adjustedGroupStats.totalBowls}")
 
         this.sessionStartTime = sessionStart
         val shouldActivate = sessionStart > 0
         _isSessionActive.value = shouldActivate
 
         _elapsedTimeSec.value = if (sessionStart > 0) (System.currentTimeMillis() - sessionStart) / 1000 else 0L
-        _perSmokerStats.value = perSmoker
-        // FIX: Use the groupStats directly since it already has all the names
-        _groupStats.value = groupStats
+        
+        // Also adjust per-smoker stats if in continue mode
+        val adjustedPerSmoker = if (isInContinueBowlMode && continueBowlSmokerId != null) {
+            Log.d(TAG, "📦 CONTINUE MODE: Adjusting per-smoker stats for smoker ID $continueBowlSmokerId")
+            // First check if the continue smoker is already in the list
+            val hasContinueSmoker = perSmoker.any { stat ->
+                // Match by name since we're storing the smoker ID but displaying by name
+                (continueBowlSmokerId == 3L && stat.smokerName == "test") ||
+                (continueBowlSmokerId == 1L && stat.smokerName == "Sam")
+            }
+            
+            if (hasContinueSmoker) {
+                // Update existing smoker's bowls
+                val updatedList = perSmoker.map { stat ->
+                    if ((continueBowlSmokerId == 3L && stat.smokerName == "test") ||
+                        (continueBowlSmokerId == 1L && stat.smokerName == "Sam")) {
+                        Log.d(TAG, "📦 CONTINUE MODE: Adding $carriedOverBowls bowls to ${stat.smokerName}")
+                        stat.copy(totalBowls = stat.totalBowls + carriedOverBowls)
+                    } else {
+                        stat
+                    }
+                }
+                updatedList
+            } else if (carriedOverBowls > 0) {
+                // Add the continue smoker if not in list but has carried-over bowls
+                val smokerName = when(continueBowlSmokerId) {
+                    1L -> "Sam"
+                    3L -> "test"
+                    else -> "Unknown"
+                }
+                Log.d(TAG, "📦 CONTINUE MODE: Adding new per-smoker entry for $smokerName with $carriedOverBowls bowls")
+                perSmoker + PerSmokerStats(
+                    smokerName = smokerName,
+                    totalCones = 0,
+                    totalJoints = 0,
+                    totalBowls = carriedOverBowls,
+                    avgGapMs = 0,
+                    longestGapMs = 0,
+                    shortestGapMs = 0,
+                    avgJointGapMs = 0,
+                    longestJointGapMs = 0,
+                    shortestJointGapMs = 0,
+                    avgBowlGapMs = 0,
+                    longestBowlGapMs = 0,
+                    shortestBowlGapMs = 0
+                )
+            } else {
+                perSmoker
+            }
+        } else {
+            perSmoker
+        }
+        
+        _perSmokerStats.value = adjustedPerSmoker
+        // FIX: Use the adjusted groupStats
+        _groupStats.value = adjustedGroupStats
         Log.d(TAG, "📦🔴 DEBUG: After setting _groupStats.value:")
         Log.d(TAG, "📦🔴   - cone name = ${_groupStats.value?.lastConeSmokerName}")
         Log.d(TAG, "📦🔴   - joint name = ${_groupStats.value?.lastJointSmokerName}")
