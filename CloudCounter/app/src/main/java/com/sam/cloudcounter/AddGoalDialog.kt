@@ -87,16 +87,11 @@ class AddGoalDialog : DialogFragment() {
     }
 
     private fun startAdvancedAnimations(view: View) {
-        // Glowing Border Animation
+        // Hide the neon border - we'll use throbbing animation on cards instead
         val neonBorder = view.findViewById<View>(R.id.neonBorder)
-        ObjectAnimator.ofFloat(neonBorder, "rotation", 0f, 360f).apply {
-            duration = 10000
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            start()
-        }
+        neonBorder.visibility = View.GONE
 
-        // Background Shimmer Animation
+        // Background Shimmer Animation (keep this for background effect)
         val shimmerOverlay = view.findViewById<View>(R.id.shimmerOverlay)
         shimmerOverlay.post { // Wait for the view to be measured
             ObjectAnimator.ofFloat(shimmerOverlay, "translationY", -shimmerOverlay.height.toFloat(), shimmerOverlay.height.toFloat()).apply {
@@ -300,6 +295,11 @@ class AddGoalDialog : DialogFragment() {
         originalTextColor: Int,
         onClick: () -> Unit
     ) {
+        // Add throbbing animation for primary button (Create button)
+        if (isPrimary) {
+            addThrobbingAnimation(cardView)
+        }
+        
         // DEBUG: Log initial sizes
         cardView.post {
             android.util.Log.d("AddGoalDialog", "Button initial width: ${cardView.width}, height: ${cardView.height}")
@@ -452,5 +452,60 @@ class AddGoalDialog : DialogFragment() {
         }
 
         handler.post(fadeRunnable)
+    }
+
+    private fun addThrobbingAnimation(cardView: CardView) {
+        // Similar to the working animation in MainActivity/AddSmokerDialog
+        val colors = intArrayOf(
+            Color.parseColor("#33FFFFFF"),
+            Color.parseColor("#3398FB98"),
+            Color.parseColor("#33FFFFFF")
+        )
+
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var animationProgress = 0f
+        var increasing = true
+
+        val animationRunnable = object : Runnable {
+            override fun run() {
+                // Update progress
+                if (increasing) {
+                    animationProgress += 0.02f
+                    if (animationProgress >= 1f) {
+                        animationProgress = 1f
+                        increasing = false
+                    }
+                } else {
+                    animationProgress -= 0.02f
+                    if (animationProgress <= 0f) {
+                        animationProgress = 0f
+                        increasing = true
+                    }
+                }
+
+                // Calculate color based on progress
+                val color = if (animationProgress <= 0.5f) {
+                    blendColors(colors[0], colors[1], animationProgress * 2)
+                } else {
+                    blendColors(colors[1], colors[2], (animationProgress - 0.5f) * 2)
+                }
+
+                cardView.setCardBackgroundColor(color)
+
+                // Continue animation
+                handler.postDelayed(this, 50) // Update every 50ms for smooth animation
+            }
+        }
+
+        handler.post(animationRunnable)
+    }
+
+    private fun blendColors(from: Int, to: Int, ratio: Float): Int {
+        val inverseRatio = 1f - ratio
+        val a = (Color.alpha(from) * inverseRatio + Color.alpha(to) * ratio).toInt()
+        val r = (Color.red(from) * inverseRatio + Color.red(to) * ratio).toInt()
+        val g = (Color.green(from) * inverseRatio + Color.green(to) * ratio).toInt()
+        val b = (Color.blue(from) * inverseRatio + Color.blue(to) * ratio).toInt()
+        return Color.argb(a, r, g, b)
     }
 }

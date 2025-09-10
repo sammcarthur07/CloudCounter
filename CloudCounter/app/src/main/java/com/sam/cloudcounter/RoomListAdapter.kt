@@ -84,11 +84,15 @@ class RoomListAdapter(
 
     private fun styleCardForActivity(holder: ViewHolder, isActive: Boolean) {
         if (isActive) {
-            // Show neon border for active rooms
-            holder.neonBorder.visibility = View.VISIBLE
+            // Hide neon border - we'll use throbbing animation instead
+            holder.neonBorder.visibility = View.GONE
+            holder.neonBorder.clearAnimation()
 
-            // Animate the neon border with rotation
-            startNeonAnimation(holder.neonBorder)
+            // Set solid grey background first (same as inactive cards)
+            holder.cardRoom.setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
+            
+            // Add throbbing animation overlay on top of the grey background
+            addThrobbingAnimationForActiveRoom(holder.cardRoom)
 
             // Increase elevation for "popping out" effect
             holder.cardRoom.cardElevation = 8.dpToPx(holder.itemView.context).toFloat()
@@ -103,6 +107,7 @@ class RoomListAdapter(
         } else {
             holder.neonBorder.visibility = View.GONE
             holder.neonBorder.clearAnimation()
+            holder.cardRoom.setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
             holder.cardRoom.cardElevation = 4.dpToPx(holder.itemView.context).toFloat()
             holder.shimmerOverlay.visibility = View.GONE
             holder.textLastActive.setTextColor(
@@ -127,6 +132,109 @@ class RoomListAdapter(
         shimmer.duration = 3000
         shimmer.repeatCount = ObjectAnimator.INFINITE
         shimmer.start()
+    }
+
+    private fun addThrobbingAnimation(cardView: CardView) {
+        // Similar to the working animation in MainActivity/AddSmokerDialog
+        // Increased opacity by 40% (from 33 to 73 in hex, which is ~45% opacity)
+        val colors = intArrayOf(
+            android.graphics.Color.parseColor("#73FFFFFF"),
+            android.graphics.Color.parseColor("#7398FB98"),
+            android.graphics.Color.parseColor("#73FFFFFF")
+        )
+
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var animationProgress = 0f
+        var increasing = true
+
+        val animationRunnable = object : Runnable {
+            override fun run() {
+                // Update progress
+                if (increasing) {
+                    animationProgress += 0.02f
+                    if (animationProgress >= 1f) {
+                        animationProgress = 1f
+                        increasing = false
+                    }
+                } else {
+                    animationProgress -= 0.02f
+                    if (animationProgress <= 0f) {
+                        animationProgress = 0f
+                        increasing = true
+                    }
+                }
+
+                // Calculate color based on progress
+                val color = if (animationProgress <= 0.5f) {
+                    blendColors(colors[0], colors[1], animationProgress * 2)
+                } else {
+                    blendColors(colors[1], colors[2], (animationProgress - 0.5f) * 2)
+                }
+
+                cardView.setCardBackgroundColor(color)
+
+                // Continue animation
+                handler.postDelayed(this, 50) // Update every 50ms for smooth animation
+            }
+        }
+
+        handler.post(animationRunnable)
+    }
+
+    private fun addThrobbingAnimationForActiveRoom(cardView: CardView) {
+        // Special throbbing for active rooms: grey base with green to black overlay
+        val baseGrey = android.graphics.Color.parseColor("#424242")
+        val colors = intArrayOf(
+            baseGrey,  // Start with grey
+            android.graphics.Color.parseColor("#5A8F5A"),  // Blend to greenish-grey
+            baseGrey   // Back to grey
+        )
+
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var animationProgress = 0f
+        var increasing = true
+
+        val animationRunnable = object : Runnable {
+            override fun run() {
+                // Update progress
+                if (increasing) {
+                    animationProgress += 0.02f
+                    if (animationProgress >= 1f) {
+                        animationProgress = 1f
+                        increasing = false
+                    }
+                } else {
+                    animationProgress -= 0.02f
+                    if (animationProgress <= 0f) {
+                        animationProgress = 0f
+                        increasing = true
+                    }
+                }
+
+                // Calculate color based on progress
+                val color = if (animationProgress <= 0.5f) {
+                    blendColors(colors[0], colors[1], animationProgress * 2)
+                } else {
+                    blendColors(colors[1], colors[2], (animationProgress - 0.5f) * 2)
+                }
+
+                cardView.setCardBackgroundColor(color)
+
+                // Continue animation
+                handler.postDelayed(this, 50) // Update every 50ms for smooth animation
+            }
+        }
+
+        handler.post(animationRunnable)
+    }
+
+    private fun blendColors(from: Int, to: Int, ratio: Float): Int {
+        val inverseRatio = 1f - ratio
+        val a = (android.graphics.Color.alpha(from) * inverseRatio + android.graphics.Color.alpha(to) * ratio).toInt()
+        val r = (android.graphics.Color.red(from) * inverseRatio + android.graphics.Color.red(to) * ratio).toInt()
+        val g = (android.graphics.Color.green(from) * inverseRatio + android.graphics.Color.green(to) * ratio).toInt()
+        val b = (android.graphics.Color.blue(from) * inverseRatio + android.graphics.Color.blue(to) * ratio).toInt()
+        return android.graphics.Color.argb(a, r, g, b)
     }
 
     private fun addGlowEffect(card: CardView) {

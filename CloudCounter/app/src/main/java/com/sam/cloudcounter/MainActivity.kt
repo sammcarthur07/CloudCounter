@@ -3913,6 +3913,11 @@ class MainActivity : AppCompatActivity() {
         // Create smooth gradual fade animation for green color
         val cardView = view as? androidx.cardview.widget.CardView ?: return
 
+        // Ensure the card has at least minimal elevation for proper background rendering
+        if (cardView.cardElevation == 0f) {
+            cardView.cardElevation = 1f
+        }
+
         // Smooth color transition using Handler for compatibility
         val colors = intArrayOf(
             Color.parseColor("#33FFFFFF"),

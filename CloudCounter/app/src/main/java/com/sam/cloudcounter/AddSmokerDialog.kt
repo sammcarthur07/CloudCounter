@@ -472,6 +472,11 @@ class AddSmokerDialog(
         var animationProgress = 0f
         var increasing = true
 
+        // Ensure the card has at least minimal elevation for proper background rendering
+        if (cardView.cardElevation == 0f) {
+            cardView.cardElevation = 1f
+        }
+
         val animationRunnable = object : Runnable {
             override fun run() {
                 // Update progress

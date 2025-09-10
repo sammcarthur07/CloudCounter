@@ -1,0 +1,769 @@
+Starting a Gradle Daemon, 1 busy and 22 stopped Daemons could not be reused, use --status for details
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kaptGenerateStubsDebugKotlin UP-TO-DATE
+> Task :app:kaptDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin
+Unable to clear jar cache after compilation, maybe daemon is already down: java.rmi.ConnectException: Connection refused to host: 127.0.0.1; nested exception is: 
+	java.net.ConnectException: Connection refused
+e: Daemon compilation failed: Connection to the Kotlin daemon has been unexpectedly lost. This might be caused by the daemon being killed by another process or the operating system, or by JVM crash.
+org.jetbrains.kotlin.gradle.tasks.DaemonCrashedException: Connection to the Kotlin daemon has been unexpectedly lost. This might be caused by the daemon being killed by another process or the operating system, or by JVM crash.
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:250)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:175)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:135)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:73)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.rmi.UnmarshalException: Error unmarshaling return header; nested exception is: 
+	java.io.EOFException
+	at java.rmi/sun.rmi.transport.StreamRemoteCall.executeCall(StreamRemoteCall.java:255)
+	at java.rmi/sun.rmi.server.UnicastRef.invoke(UnicastRef.java:165)
+	at java.rmi/java.rmi.server.RemoteObjectInvocationHandler.invokeRemoteMethod(RemoteObjectInvocationHandler.java:215)
+	at java.rmi/java.rmi.server.RemoteObjectInvocationHandler.invoke(RemoteObjectInvocationHandler.java:160)
+	at jdk.proxy4/jdk.proxy4.$Proxy154.compile(Unknown Source)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.incrementalCompilationWithDaemon(GradleKotlinCompilerWork.kt:342)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:239)
+	... 37 more
+Caused by: java.io.EOFException
+	at java.base/java.io.DataInputStream.readUnsignedByte(DataInputStream.java:290)
+	at java.base/java.io.DataInputStream.readByte(DataInputStream.java:268)
+	at java.rmi/sun.rmi.transport.StreamRemoteCall.executeCall(StreamRemoteCall.java:241)
+	... 43 more
+
+Failed to compile with Kotlin daemon: org.jetbrains.kotlin.gradle.tasks.DaemonCrashedException: Connection to the Kotlin daemon has been unexpectedly lost. This might be caused by the daemon being killed by another process or the operating system, or by JVM crash.
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:250)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:175)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:135)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:73)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:263)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.rmi.UnmarshalException: Error unmarshaling return header; nested exception is: 
+	java.io.EOFException
+	at java.rmi/sun.rmi.transport.StreamRemoteCall.executeCall(StreamRemoteCall.java:255)
+	at java.rmi/sun.rmi.server.UnicastRef.invoke(UnicastRef.java:165)
+	at java.rmi/java.rmi.server.RemoteObjectInvocationHandler.invokeRemoteMethod(RemoteObjectInvocationHandler.java:215)
+	at java.rmi/java.rmi.server.RemoteObjectInvocationHandler.invoke(RemoteObjectInvocationHandler.java:160)
+	at jdk.proxy4/jdk.proxy4.$Proxy154.compile(Unknown Source)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.incrementalCompilationWithDaemon(GradleKotlinCompilerWork.kt:342)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:239)
+	... 37 more
+Caused by: java.io.EOFException
+	at java.base/java.io.DataInputStream.readUnsignedByte(DataInputStream.java:290)
+	at java.base/java.io.DataInputStream.readByte(DataInputStream.java:268)
+	at java.rmi/sun.rmi.transport.StreamRemoteCall.executeCall(StreamRemoteCall.java:241)
+	... 43 more
+Using fallback strategy: Compile without Kotlin daemon
+Try ./gradlew --stop if this issue persists.
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:555:40: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:774:54: warning: 'getFromLocation(Double, Double, Int): (Mutable)List<Address!>?' is deprecated. Deprecated in Java
+exception:                             val addresses = geocoder.getFromLocation(it.latitude, it.longitude, 1)
+exception:                                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:804:42: warning: parameter 'latitude' is never used
+exception:     private fun isCurrently420AtLocation(latitude: Double, longitude: Double): Boolean {
+exception:                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:1083:80: warning: 'versionCode: Int' is deprecated. Deprecated in Java
+exception:                     "appVersion" to "${packageInfo.versionName} (${packageInfo.versionCode})",
+exception:                                                                                ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:1092:50: warning: 'getFromLocation(Double, Double, Int): (Mutable)List<Address!>?' is deprecated. Deprecated in Java
+exception:                         val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+exception:                                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutFragment.kt:1339:13: warning: variable 'codeStats' is never used
+exception:         val codeStats = calculateCodeStats()
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/AboutOrInboxFragment.kt:63:15: warning: 'setUserVisibleHint(Boolean): Unit' is deprecated. Deprecated in Java
+exception:         super.setUserVisibleHint(isVisibleToUser)
+exception:               ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:34:27: warning: 'getSerializableExtra(String!): Serializable?' is deprecated. Deprecated in Java
+exception:         val type = intent.getSerializableExtra(NotificationHelper.EXTRA_TYPE) as? ActivityType
+exception:                           ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:46:38: warning: variable 'usedSmokerId' initializer is redundant
+exception:             var usedSmokerId: Long = app.defaultSmokerId
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:47:46: warning: variable 'usedCloudSmokerId' initializer is redundant
+exception:             var usedCloudSmokerId: String? = null
+exception:                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:150:25: warning: name shadowed: prefs
+exception:                     val prefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:151:25: warning: name shadowed: sessionActive
+exception:                     val sessionActive = prefs.getBoolean("sessionActive", false)
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:229:25: warning: name shadowed: prefs
+exception:                     val prefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:230:25: warning: name shadowed: sessionActive
+exception:                     val sessionActive = prefs.getBoolean("sessionActive", false)
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityNotificationReceiver.kt:575:9: warning: parameter 'context' is never used
+exception:         context: Context,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityRepository.kt:326:44: warning: parameter 'currentUserId' is never used
+exception:     suspend fun getLocalSmokersForRoomSync(currentUserId: String): List<Smoker> = withContext(Dispatchers.IO) {
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/ActivityRepository.kt:350:32: warning: variable 'smokerExists' initializer is redundant
+exception:             var smokerExists = false
+exception:                                ^
+exception: app/src/main/java/com/sam/cloudcounter/AddGoalDialog.kt:116:13: warning: variable 'radioCurrentSession' is never used
+exception:         val radioCurrentSession = view.findViewById<RadioButton>(R.id.radioCurrentSession)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/AddGoalDialog.kt:117:13: warning: variable 'radioTimeBased' is never used
+exception:         val radioTimeBased = view.findViewById<RadioButton>(R.id.radioTimeBased)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/AddGoalDialog.kt:327:35: warning: variable 'originalParentWidth' initializer is redundant
+exception:         var originalParentWidth = 0
+exception:                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:71:44: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:76:22: warning: unnecessary safe call on a non-null receiver of type View
+exception:             decorView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+exception:                      ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:697:44: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:702:22: warning: unnecessary safe call on a non-null receiver of type View
+exception:             decorView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+exception:                      ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:987:13: warning: variable 'userId' is never used
+exception:         val userId = authManager.getCurrentUserId()
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:1203:75: warning: parameter 'title' is never used
+exception:     private fun showSearchResults(results: List<CloudSmokerSearchResult>, title: String) {
+exception:                                                                           ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:1706:44: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:1711:22: warning: unnecessary safe call on a non-null receiver of type View
+exception:             decorView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+exception:                      ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:1940:44: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/AddSmokerDialog.kt:1945:22: warning: unnecessary safe call on a non-null receiver of type View
+exception:             decorView?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+exception:                      ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:48:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:58:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:66:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:72:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:126:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:182:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:222:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:291:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:332:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:347:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:371:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:389:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AppDatabase.kt:400:34: warning: the corresponding parameter in the supertype 'Migration' is named 'db'. This may cause problems when calling this function with named arguments.
+exception:             override fun migrate(database: SupportSQLiteDatabase) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/AutoAddManager.kt:56:17: warning: variable 'hasActiveTimers' is assigned but never accessed
+exception:             var hasActiveTimers = false
+exception:                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:365:13: warning: variable 'indicatorDot' is never used
+exception:         val indicatorDot = View(requireContext()).apply {
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:601:36: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:         binding.logsBackgroundImage?.apply {
+exception:                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:635:40: warning: parameter 'message' is never used, could be renamed to _
+exception:                 onMessageLongClick = { message ->
+exception:                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:893:36: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:         binding.logsBackgroundImage?.apply {
+exception:                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1072:44: warning: 'SOFT_INPUT_ADJUST_RESIZE: Int' is deprecated. Deprecated in Java
+exception:                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1077:35: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutMessageInput?.let { inputLayout ->
+exception:                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1094:31: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutLogInput?.let { logInputLayout ->
+exception:                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1167:35: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutMessageInput?.let { inputLayout ->
+exception:                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1171:31: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutLogInput?.let { logInputLayout ->
+exception:                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1176:33: warning: unnecessary safe call on a non-null receiver of type RecyclerView
+exception:         binding.recyclerMessages?.let { recycler ->
+exception:                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1180:36: warning: unnecessary safe call on a non-null receiver of type RecyclerView
+exception:         binding.recyclerLogMessages?.let { recycler ->
+exception:                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1186:35: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutMessageInput?.translationY = 0f
+exception:                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1187:31: warning: unnecessary safe call on a non-null receiver of type LinearLayout
+exception:         binding.layoutLogInput?.translationY = 0f
+exception:                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1188:33: warning: unnecessary safe call on a non-null receiver of type RecyclerView
+exception:         binding.recyclerMessages?.translationY = 0f
+exception:                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1189:36: warning: unnecessary safe call on a non-null receiver of type RecyclerView
+exception:         binding.recyclerLogMessages?.translationY = 0f
+exception:                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1257:40: warning: parameter 'roomId' is never used, could be renamed to _
+exception:                 currentChatRoom?.let { roomId ->
+exception:                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1732:42: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:         binding.mainMenuOverlayBackground?.visibility = View.VISIBLE
+exception:                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1828:29: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:                 overlayImage?.setImageResource(R.drawable.overlay_sesh_type_menu)
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1829:29: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:                 overlayImage?.visibility = View.VISIBLE
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1832:29: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:                 overlayImage?.setImageResource(R.drawable.overlay_public_type_menu)
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1833:29: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:                 overlayImage?.visibility = View.VISIBLE
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1836:29: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:                 overlayImage?.visibility = View.GONE
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1897:46: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:         binding.chatTypeMenuOverlayBackground?.visibility = View.GONE
+exception:                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1963:46: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:         binding.chatTypeMenuOverlayBackground?.visibility = View.GONE
+exception:                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:1973:47: warning: unnecessary safe call on a non-null receiver of type ImageView
+exception:             binding.videoChatOverlayBackground?.visibility = View.VISIBLE
+exception:                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:2001:9: warning: 'requestPermissions(Array<(out) String!>, Int): Unit' is deprecated. Deprecated in Java
+exception:         requestPermissions(
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:2608:17: warning: variable 'roomId' is never used
+exception:             val roomId = currentChatRoom ?: return@launch
+exception:                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:2751:36: warning: parameter 'roomId' is never used, could be renamed to _
+exception:             currentChatRoom?.let { roomId ->
+exception:                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatFragment.kt:3132:15: warning: 'onRequestPermissionsResult(Int, Array<(out) String!>, IntArray): Unit' is deprecated. Deprecated in Java
+exception:         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+exception:               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatMessageAdapter.kt:229:95: warning: 'primary_text_light: Int' is deprecated. Deprecated in Java
+exception:             textMessage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.primary_text_light))
+exception:                                                                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatMessageAdapter.kt:400:90: warning: 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+exception:                 val vibrator = itemView.context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+exception:                                                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatReplyReceiver.kt:32:13: warning: variable 'isSeshChat' is never used
+exception:         val isSeshChat = intent.getBooleanExtra("is_sesh_chat", false)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatReplyReceiver.kt:33:13: warning: variable 'replyToName' is never used
+exception:         val replyToName = intent.getStringExtra("sender_name") ?: ""
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatSyncService.kt:125:63: warning: unchecked cast: Any? to Map<String, String>
+exception:                             reactions = (doc.get("reactions") as? Map<String, String>) ?: emptyMap()
+exception:                                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/ChatSyncService.kt:274:59: warning: unchecked cast: Any? to Map<String, String>
+exception:                         reactions = (doc.get("reactions") as? Map<String, String>) ?: emptyMap()
+exception:                                                           ^
+exception: app/src/main/java/com/sam/cloudcounter/City420RotationManager.kt:175:42: warning: 'getFromLocation(Double, Double, Int): (Mutable)List<Address!>?' is deprecated. Deprecated in Java
+exception:                 val addresses = geocoder.getFromLocation(it.latitude, it.longitude, 1)
+exception:                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/CloudSessionDialogEffects.kt:265:34: warning: parameter 'dialogView' is never used
+exception:     private fun startPulsingDots(dialogView: View) {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/CloudSyncService.kt:338:68: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                     updateMap["passwordHash"] = smoker.passwordHash!!
+exception:                                                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/ConfettiHelper.kt:341:31: warning: parameter 'view' is never used
+exception:     fun showExplosionConfetti(view: View) {
+exception:                               ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:169:26: warning: 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+exception:         window.decorView.systemUiVisibility = (
+exception:                          ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:170:18: warning: 'SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java
+exception:             View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+exception:                  ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:171:21: warning: 'SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java
+exception:             or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:172:21: warning: 'SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java
+exception:             or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:173:21: warning: 'SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java
+exception:             or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:174:21: warning: 'SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
+exception:             or View.SYSTEM_UI_FLAG_FULLSCREEN
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:175:21: warning: 'SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java
+exception:             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:571:37: warning: 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+exception:         vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
+exception:                                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:803:13: warning: 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+exception:             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:994:59: warning: 'capitalize(): String' is deprecated. Use replaceFirstChar instead.
+exception:             recentStatsText.text = "${currentActivityType.capitalize()}"
+exception:                                                           ^
+exception: app/src/main/java/com/sam/cloudcounter/GiantCounterActivity.kt:1298:21: warning: variable 'statsList' is never used
+exception:                 val statsList = perSmokerMap.values.toList()
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/GoalAdapter.kt:250:24: warning: expression under 'when' is never equal to null
+exception:                 "ALL", null, "" -> {
+exception:                        ^
+exception: app/src/main/java/com/sam/cloudcounter/GoalFragment.kt:222:13: warning: variable 'layoutManager' is never used
+exception:         val layoutManager = binding.recyclerViewGoals.layoutManager
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/GoalService.kt:210:20: warning: expression under 'when' is never equal to null
+exception:             "ALL", null, "" -> listOf(smokerName)
+exception:                    ^
+exception: app/src/main/java/com/sam/cloudcounter/GoalService.kt:319:20: warning: expression under 'when' is never equal to null
+exception:             "ALL", null, "" -> return continueGoalCheck(goal, sessionShareCode, currentSessionId, isSessionActive)
+exception:                    ^
+exception: app/src/main/java/com/sam/cloudcounter/GraphFragment.kt:168:70: warning: parameter 'group' is never used, could be renamed to _
+exception:         binding.chipGroupChartType.setOnCheckedStateChangeListener { group, checkedIds ->
+exception:                                                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/GraphFragment.kt:503:13: warning: variable 'entryCount' is never used
+exception:         val entryCount = when (data) {
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/HistoryAdapter.kt:151:72: warning: 'capitalize(): String' is deprecated. Use replaceFirstChar instead.
+exception:                             "$smokerName - ${log.type.name.lowercase().capitalize()}"
+exception:                                                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/HistoryAdapter.kt:228:79: warning: elvis operator (?:) always returns the left operand of non-nullable type Smoker?
+exception:                             sendActivityDeletedBroadcast(context, log, smoker ?: Smoker(name = "Unknown"))
+exception:                                                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/InboxFragment.kt:113:43: warning: 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
+exception:                 val position = viewHolder.adapterPosition
+exception:                                           ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:605:33: warning: parameter 'shareCode' is never used, could be renamed to _
+exception:         currentShareCode?.let { shareCode ->
+exception:                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:1038:37: warning: parameter 'v' is never used, could be renamed to _
+exception:         button.setOnTouchListener { v, event ->
+exception:                                     ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:1076:65: warning: no cast needed
+exception:                             lastSelectedActivityButton = button as Button
+exception:                                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:1144:57: warning: 'capitalize(): String' is deprecated. Use replaceFirstChar instead.
+exception:             text = "Add ${activityType.name.lowercase().capitalize()} Activities"
+exception:                                                         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2134:49: warning: 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+exception:         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+exception:                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2327:13: warning: 'startActivityForResult(Intent, Int): Unit' is deprecated. Deprecated in Java
+exception:             startActivityForResult(intent, GIANT_COUNTER_REQUEST_CODE)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2328:13: warning: 'overridePendingTransition(Int, Int): Unit' is deprecated. Deprecated in Java
+exception:             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2554:81: warning: parameter 'position' is never used
+exception:     private fun verifyPasswordAndSelectSmoker(smoker: Smoker, password: String, position: Int) {
+exception:                                                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2719:28: warning: unnecessary safe call on a non-null receiver of type TabLayout.Tab?
+exception:                     if (tab?.position == 0) {
+exception:                            ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:2973:25: warning: variable 'smokerId' is never used
+exception:                     val smokerId = intent.getLongExtra("smokerId", -1)
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:3326:34: warning: parameter 'animation' is never used, could be renamed to _
+exception:             .setUpdateListener { animation ->
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:4991:17: warning: variable 'summaryId' is never used
+exception:             val summaryId = if (editingSummaryId != null) {
+exception:                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:5060:47: warning: parameter 'adapter' is never used, could be renamed to _
+exception:                         .firstOrNull()?.let { adapter ->
+exception:                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:5096:47: warning: parameter 'adapter' is never used, could be renamed to _
+exception:                         .firstOrNull()?.let { adapter ->
+exception:                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:5326:33: warning: condition 'activeRoomName != null' is always 'true'
+exception:                             if (activeRoomName != null) {
+exception:                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:6832:46: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                         smokerUid = smokerUid!!,
+exception:                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7074:39: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:             selectedSmoker.cloudUserId!!
+exception:                                       ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7223:9: warning: parameter 'selectedPosition' is never used
+exception:         selectedPosition: Int,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7386:38: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                 smokerUid = smokerUid!!,
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7499:38: warning: variable 'conesSinceLastBowl' initializer is redundant
+exception:             var conesSinceLastBowl = 0
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7764:9: warning: parameter 'selectedPosition' is never used
+exception:         selectedPosition: Int,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:7946:38: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                 smokerUid = smokerUid!!,
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8229:13: warning: variable 'insertedId' is never used
+exception:         val insertedId = withContext(Dispatchers.IO) {
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8279:9: warning: parameter 'capturedPosition' is never used
+exception:         capturedPosition: Int,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8421:38: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                 smokerUid = smokerUid!!,
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8727:51: warning: elvis operator (?:) always returns the left operand of non-nullable type Double
+exception:         val gramsPerBowl = stashData.gramsPerBowl ?: return null
+exception:                                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8730:73: warning: elvis operator (?:) always returns the left operand of non-nullable type Double
+exception:             ActivityType.CONE -> gramsPerBowl / (stashData.conesPerBowl ?: 6.0)
+exception:                                                                         ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:8736:52: warning: elvis operator (?:) always returns the left operand of non-nullable type Double
+exception:         val cost = grams * (stashData.pricePerGram ?: 10.0)
+exception:                                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:10278:35: warning: parameter 'fragment' is never used, could be renamed to _
+exception:             .firstOrNull()?.let { fragment ->
+exception:                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:10320:43: warning: parameter 'syncError' is never used, could be renamed to _
+exception:                             onFailure = { syncError ->
+exception:                                           ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:10510:38: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                 smokerUid = smokerUid!!,
+exception:                                      ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:10892:47: warning: parameter 'type' is never used
+exception:     private fun promptStartSessionForActivity(type: ActivityType) {
+exception:                                               ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:11410:62: warning: unnecessary safe call on a non-null receiver of type String?
+exception:                             val isValid = smoker.passwordHash?.let {
+exception:                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:11564:42: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                     smokerUid = smokerUid!!,
+exception:                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/MainActivity.kt:12618:55: warning: parameter 'smoker' is never used
+exception:     private fun showThemedDeleteConfirmationForSmoker(smoker: Smoker, onResult: (Boolean) -> Unit) {
+exception:                                                       ^
+exception: app/src/main/java/com/sam/cloudcounter/NotificationHelper.kt:154:9: warning: parameter 'roomName' is never used
+exception:         roomName: String
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/NotificationHelper.kt:564:21: warning: variable 'now' is never used
+exception:                 val now = System.currentTimeMillis()
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/NotificationHelper.kt:651:18: warning: 'setNotificationSilent(): NotificationCompat.Builder' is deprecated. Deprecated in Java
+exception:                 .setNotificationSilent()
+exception:                  ^
+exception: app/src/main/java/com/sam/cloudcounter/NotificationHelper.kt:854:80: warning: 'priority: Int' is deprecated. Deprecated in Java
+exception:             Log.d("NotificationHelper", "Notification priority: ${notification.priority}, flags: ${notification.flags}")
+exception:                                                                                ^
+exception: app/src/main/java/com/sam/cloudcounter/PasswordUtils.kt:52:34: warning: parameter 'password' is never used
+exception:     fun validatePasswordStrength(password: String): PasswordValidation {
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/ProgressEffectsHelper.kt:77:65: warning: unnecessary safe call on a non-null receiver of type IntArray
+exception:                         val finalX = location[0] - (rootLocation?.get(0) ?: 0) + tipX
+exception:                                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ProgressEffectsHelper.kt:77:74: warning: elvis operator (?:) always returns the left operand of non-nullable type Int
+exception:                         val finalX = location[0] - (rootLocation?.get(0) ?: 0) + tipX
+exception:                                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/ProgressEffectsHelper.kt:78:65: warning: unnecessary safe call on a non-null receiver of type IntArray
+exception:                         val finalY = location[1] - (rootLocation?.get(1) ?: 0) + tipY
+exception:                                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/ProgressEffectsHelper.kt:78:74: warning: elvis operator (?:) always returns the left operand of non-nullable type Int
+exception:                         val finalY = location[1] - (rootLocation?.get(1) ?: 0) + tipY
+exception:                                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/ProgressEffectsHelper.kt:192:13: warning: variable 'curveStrength' is never used
+exception:         val curveStrength = Random.nextFloat() * 0.8f + 0.2f
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:155:9: warning: parameter 'reportedUserId' is never used
+exception:         reportedUserId: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:156:9: warning: parameter 'reportedUserName' is never used
+exception:         reportedUserName: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:157:9: warning: parameter 'reporterUserId' is never used
+exception:         reporterUserId: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:158:9: warning: parameter 'reporterUserName' is never used
+exception:         reporterUserName: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:159:9: warning: parameter 'roomId' is never used
+exception:         roomId: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:160:9: warning: parameter 'messageId' is never used
+exception:         messageId: String? = null,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/ReportHelper.kt:161:9: warning: parameter 'messageContent' is never used
+exception:         messageContent: String? = null,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SeshFragment.kt:374:29: warning: the value 'true' assigned to 'var nameAdded: Boolean defined in com.sam.cloudcounter.SeshFragment.createSmokerStatsRowsFixed' is never used
+exception:             if (!nameAdded) nameAdded = true
+exception:                             ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionStatsViewModel.kt:369:9: warning: parameter 'lastConeSmokerName' is never used
+exception:         lastConeSmokerName: String? = null,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionStatsViewModel.kt:370:9: warning: parameter 'conesSinceLastBowl' is never used
+exception:         conesSinceLastBowl: Int = 0
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:583:78: warning: destructured parameter 'smokerId' is never used
+exception:         val perSmokerStats = activities.groupBy { it.smokerId }.mapValues { (smokerId, userActivities) ->
+exception:                                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:785:9: warning: parameter 'updatedActivities' is never used
+exception:         updatedActivities: List<SessionActivity>,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:884:78: warning: destructured parameter 'smokerId' is never used
+exception:         val perSmokerStats = activities.groupBy { it.smokerId }.mapValues { (smokerId, userActivities) ->
+exception:                                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:1220:9: warning: parameter 'currentUserId' is never used
+exception:         currentUserId: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:1483:48: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                         localSmoker.cloudUserId!!
+exception:                                                ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:1534:9: warning: parameter 'shareCode' is never used
+exception:         shareCode: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:1535:9: warning: parameter 'addedByUserId' is never used
+exception:         addedByUserId: String,
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SessionSyncService.kt:1549:9: warning: parameter 'removedByUserId' is never used
+exception:         removedByUserId: String
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/SmokerManager.kt:236:25: warning: parameter 'v' is never used
+exception:     fun handleLongPress(v: View, event: android.view.MotionEvent, spinner: Spinner, adapter: SmokerAdapter): Boolean {
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/SmokerManager.kt:270:49: warning: name shadowed: spinnerView
+exception:                                             val spinnerView = spinner.selectedView
+exception:                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/SmokerManager.kt:271:49: warning: name shadowed: textView
+exception:                                             val textView = spinnerView?.findViewById<TextView>(R.id.textName)
+exception:                                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/SmokerManager.kt:423:57: warning: 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+exception:         val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+exception:                                                         ^
+exception: app/src/main/java/com/sam/cloudcounter/SmokerManager.kt:434:13: warning: variable 'smokerId' is never used
+exception:         val smokerId = if (smoker.isCloudSmoker) smoker.cloudUserId else "local_${smoker.smokerId}"
+exception:             ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:121:40: warning: enum argument can be null in Java, but exhaustive when contains no null branch
+exception:             val expectedRadioId = when(source) {
+exception:                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:229:77: warning: parameter 'checkedIds' is never used, could be renamed to _
+exception:         binding.chipGroupDataScope.setOnCheckedStateChangeListener { group, checkedIds ->
+exception:                                                                             ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:335:66: warning: parameter 'source' is never used, could be renamed to _
+exception:         stashViewModel.stashSource.observe(viewLifecycleOwner) { source ->
+exception:                                                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:386:21: warning: 'when' is exhaustive so 'else' is redundant here
+exception:                     else -> "Distribution:"
+exception:                     ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:471:44: warning: parameter 'scope' is never used
+exception:     private fun updateCostRatiosVisibility(scope: StashStatsCalculator.DataScope) {
+exception:                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:476:74: warning: elvis operator (?:) always returns the left operand of non-nullable type Long
+exception:         val currentSessionStart = sessionStatsViewModel.sessionStartTime ?: 0L
+exception:                                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:488:78: warning: unnecessary non-null assertion (!!) on a non-null receiver of type String
+exception:                         (it.payerStashOwnerId != null && it.payerStashOwnerId!!.startsWith("other_"))
+exception:                                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1017:34: warning: variable 'grams' initializer is redundant
+exception:             var grams: Double? = null
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1018:39: warning: variable 'totalPrice' initializer is redundant
+exception:             var totalPrice: Double? = null
+exception:                                       ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1472:56: warning: no cast needed
+exception:                 val deductCones = (checkboxDeductCones as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1473:58: warning: no cast needed
+exception:                 val deductJoints = (checkboxDeductJoints as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1474:56: warning: no cast needed
+exception:                 val deductBowls = (checkboxDeductBowls as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                        ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1533:60: warning: no cast needed
+exception:                     val deductCones = (checkboxDeductCones as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1534:62: warning: no cast needed
+exception:                     val deductJoints = (checkboxDeductJoints as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:1535:60: warning: no cast needed
+exception:                     val deductBowls = (checkboxDeductBowls as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked
+exception:                                                            ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:2421:34: warning: variable 'grams' initializer is redundant
+exception:             var grams: Double? = null
+exception:                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/StashFragment.kt:2422:33: warning: variable 'cost' initializer is redundant
+exception:             var cost: Double? = null
+exception:                                 ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:404:9: warning: parameter 'currentUserId' is never used
+exception:         currentUserId: String?
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:624:25: warning: variable 'projectedTotalGrams' is never used
+exception:                     val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next hour
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:706:25: warning: variable 'projectedTotalGrams' is never used
+exception:                     val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next 12h
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:788:25: warning: variable 'projectedTotalGrams' is never used
+exception:                     val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next year
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:870:25: warning: variable 'projectedTotalGrams' is never used
+exception:                     val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next week
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashStatsCalculator.kt:952:25: warning: variable 'projectedTotalGrams' is never used
+exception:                     val projectedTotalGrams = actualStats.totalGrams * 2.0 // Expect 1 more in next month
+exception:                         ^
+exception: app/src/main/java/com/sam/cloudcounter/StashViewModel.kt:607:58: warning: unnecessary safe call on a non-null receiver of type String?
+exception:                         if (activityLog.payerStashOwnerId?.startsWith("other_") == true) {
+exception:                                                          ^
+exception: app/src/main/java/com/sam/cloudcounter/StatsFragment.kt:79:71: warning: parameter 'group' is never used, could be renamed to _
+exception:         binding.chipGroupTimePeriod.setOnCheckedStateChangeListener { group, checked ->
+exception:                                                                       ^
+exception: app/src/main/java/com/sam/cloudcounter/StatsFragment.kt:191:66: warning: 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+exception:         val vibrator = requireContext().getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+exception:                                                                  ^
+exception: app/src/main/java/com/sam/cloudcounter/StatsViewModel.kt:182:9: warning: parameter 'endTime' is never used
+exception:         endTime: Long?
+exception:         ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:134:39: warning: unnecessary safe call on a non-null receiver of type Map<String, Map<String, Any>>
+exception:                 roomData.sharedSmokers?.forEach { (smokerId, smokerData) ->
+exception:                                       ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:198:51: warning: unnecessary safe call on a non-null receiver of type Map<String, Map<String, Any>>
+exception:                             roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
+exception:                                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:204:51: warning: unnecessary safe call on a non-null receiver of type Map<String, Map<String, Any>>
+exception:                             roomData.sharedSmokers?.entries?.firstOrNull { entry ->
+exception:                                                   ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:258:52: warning: elvis operator (?:) always returns the left operand of non-nullable type List<String>
+exception:         val pausedSmokers = roomData.pausedSmokers ?: emptyList()
+exception:                                                    ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:259:53: warning: elvis operator (?:) always returns the left operand of non-nullable type List<String>
+exception:         val awaySmokers = roomData.awayParticipants ?: emptyList()
+exception:                                                     ^
+exception: app/src/main/java/com/sam/cloudcounter/TurnNotificationManager.kt:281:48: warning: unnecessary safe call on a non-null receiver of type Map<String, Map<String, Any>>
+exception:         val smokerData = roomData.sharedSmokers?.get(userSmokerId) as? Map<*, *>
+exception:                                                ^
+exception: app/src/main/java/com/sam/cloudcounter/VideoSignalingService.kt:187:61: warning: parameter 'senderName' is never used
+exception:     suspend fun sendOffer(roomId: String, senderId: String, senderName: String, receiverId: String, sdp: String): Result<Unit> {
+exception:                                                             ^
+exception: app/src/main/java/com/sam/cloudcounter/VideoSignalingService.kt:191:62: warning: parameter 'senderName' is never used
+exception:     suspend fun sendAnswer(roomId: String, senderId: String, senderName: String, receiverId: String, sdp: String): Result<Unit> {
+exception:                                                              ^
+exception: app/src/main/java/com/sam/cloudcounter/WebRTCManager.kt:119:9: warning: parameter 'isOffer' is never used
+exception:         isOffer: Boolean,
+exception:         ^
+
+[Incubating] Problems report is available at: file:///home/sam/AndroidStudioProjects/CloudCounter/CloudCounter/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 5m 46s
+20 actionable tasks: 2 executed, 18 up-to-date

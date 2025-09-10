@@ -532,6 +532,11 @@ class ChatFragment : Fragment() {
     private fun addThrobbingAnimation(view: View) {
         val cardView = view as? CardView ?: return
 
+        // Ensure the card has at least minimal elevation for proper background rendering
+        if (cardView.cardElevation == 0f) {
+            cardView.cardElevation = 1f
+        }
+
         val colors = intArrayOf(
             Color.parseColor("#33FFFFFF"),
             Color.parseColor("#3398FB98"),
