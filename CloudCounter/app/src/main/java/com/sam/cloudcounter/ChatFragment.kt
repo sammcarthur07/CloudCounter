@@ -512,7 +512,7 @@ class ChatFragment : Fragment() {
         Log.d(TAG, "📱 Starting card selection fade-out animation")
 
         val fadeOut = android.animation.ObjectAnimator.ofFloat(mainCard, "alpha", 1f, 0f)
-        fadeOut.duration = 300L  // Faster than fade-in
+        fadeOut.duration = 150L  // Faster than fade-in (reduced by 50%)
         fadeOut.interpolator = android.view.animation.AccelerateInterpolator()
 
         fadeOut.addListener(object : android.animation.AnimatorListenerAdapter() {

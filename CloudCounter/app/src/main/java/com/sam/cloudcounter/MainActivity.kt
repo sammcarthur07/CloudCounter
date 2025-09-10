@@ -3297,8 +3297,8 @@ class MainActivity : AppCompatActivity() {
 
         dialog.show()
 
-        // GUARANTEED 2-SECOND FADE USING HANDLER
-        performManualFadeIn(dialogView, 2000L)
+        // GUARANTEED 1-SECOND FADE USING HANDLER (reduced by 50%)
+        performManualFadeIn(dialogView, 1000L)
     }
 
     /**
@@ -4189,9 +4189,9 @@ class MainActivity : AppCompatActivity() {
 
         Log.d(TAG, "🏠 Starting card selection fade-out animation")
 
-        // Fade out animation with 2-second duration
+        // Fade out animation with 0.4 second duration for quick transition
         val fadeOut = ObjectAnimator.ofFloat(mainCard, "alpha", 1f, 0f)
-        fadeOut.duration = 2000L  // Changed from 300ms to 2000ms (2 seconds)
+        fadeOut.duration = 400L  // Quick fade-out (0.4 seconds)
         fadeOut.interpolator = android.view.animation.AccelerateInterpolator()
 
         fadeOut.addListener(object : AnimatorListenerAdapter() {
@@ -4199,10 +4199,10 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "🏠 Card selection fade-out completed")
                 dialog.dismiss()
 
-                // Small delay before showing the next dialog to ensure smooth transition
+                // Very small delay before showing the next dialog to ensure smooth transition
                 Handler(Looper.getMainLooper()).postDelayed({
                     onComplete()
-                }, 200)  // Small gap between fade-out and fade-in
+                }, 100)  // Small gap between fade-out and fade-in (total transition = 500ms)
             }
         })
 
@@ -6738,7 +6738,7 @@ class MainActivity : AppCompatActivity() {
 
         rootContainer.alpha = 0f
         dialog.show()
-        performManualFadeIn(rootContainer, 500L)
+        performManualFadeIn(rootContainer, 250L)
     }
 
     private fun showDeleteAllDialog(onResult: (Boolean) -> Unit) {
@@ -6904,7 +6904,7 @@ class MainActivity : AppCompatActivity() {
 
         rootContainer.alpha = 0f
         dialog.show()
-        performManualFadeIn(rootContainer, 500L)
+        performManualFadeIn(rootContainer, 250L)
     }
     
     private fun clearSeshStatsForSmoker(smoker: Smoker) {
@@ -9766,7 +9766,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
 
         // Apply fade-in animation with 2-second duration
-        performManualFadeIn(dialogView, 2000L)  // Already 2000L, keeping it consistent
+        performManualFadeIn(dialogView, 1000L)  // Reduced by 50% from 2000L
     }
 
 
@@ -11155,7 +11155,7 @@ class MainActivity : AppCompatActivity() {
 
         dialogView.alpha = 0f
         dialog.show()
-        performManualFadeIn(dialogView, 2000L)
+        performManualFadeIn(dialogView, 1000L)
     }
 
     private fun createThemedNoActiveSessionDialogForType(dialog: Dialog, activityType: ActivityType): View {
@@ -11836,7 +11836,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
     }
 
     // Data class for offline activities
@@ -12396,7 +12396,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
 
         // Apply fade-in animation with 2-second duration
-        performManualFadeIn(dialogView, 2000L)
+        performManualFadeIn(dialogView, 1000L)
     }
 
     private fun createThemedOfflineDialog(dialog: Dialog): View {
@@ -12579,7 +12579,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
 
         // Apply fade-in animation with 2-second duration
-        performManualFadeIn(dialogView, 2000L)
+        performManualFadeIn(dialogView, 1000L)
     }
 
 

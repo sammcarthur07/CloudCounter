@@ -812,7 +812,7 @@ class StashFragment : Fragment() {
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
     }
 
     private fun createAddStashContent(isMyStash: Boolean): android.widget.LinearLayout {
@@ -1621,7 +1621,7 @@ class StashFragment : Fragment() {
         Log.d(TAG, "🎯 showSetRatioDialog: Dialog shown")
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
     }
 
     private fun createStashCheckbox(text: String, defaultChecked: Boolean): android.view.View {
@@ -2206,7 +2206,7 @@ class StashFragment : Fragment() {
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
     }
 
     private fun createRemoveStashContent(isMyStash: Boolean): android.widget.LinearLayout {

@@ -42,8 +42,8 @@ class AddGoalDialog : DialogFragment() {
         view.alpha = 0f
 
         dialog.setOnShowListener {
-            // Use the same 2-second fade-in animation as cloud session dialog
-            performManualFadeIn(view, 2000L)
+            // Use the same 1-second fade-in animation as cloud session dialog (reduced by 50%)
+            performManualFadeIn(view, 1000L)
         }
 
         return dialog
@@ -411,8 +411,8 @@ class AddGoalDialog : DialogFragment() {
     private fun animateAndDismiss(dialog: Dialog) {
         val view = dialog.window?.decorView?.findViewById<View>(android.R.id.content)
 
-        // Use the same 2-second fade-out animation as cloud session dialog
-        performManualFadeOut(view, 2000L) {
+        // Use the same 1-second fade-out animation as cloud session dialog (reduced by 50%)
+        performManualFadeOut(view, 1000L) {
             dialog.dismiss()
         }
     }

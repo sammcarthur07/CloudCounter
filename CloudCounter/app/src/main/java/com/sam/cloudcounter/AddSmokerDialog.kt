@@ -99,7 +99,7 @@ class AddSmokerDialog(
 
 
         // Apply fade-in animation with 2-second duration
-        performManualFadeIn(dialogView, 2000L)
+        performManualFadeIn(dialogView, 1000L)
     }
 
     private fun createThemedAddSmokerDialog(dialog: Dialog): android.view.View {
@@ -407,7 +407,7 @@ class AddSmokerDialog(
         Log.d(TAG, "📱 Starting card selection fade-out animation")
 
         val fadeOut = android.animation.ObjectAnimator.ofFloat(mainCard, "alpha", 1f, 0f)
-        fadeOut.duration = 300L  // Faster than fade-in
+        fadeOut.duration = 150L  // Faster than fade-in
         fadeOut.interpolator = android.view.animation.AccelerateInterpolator()
 
         fadeOut.addListener(object : android.animation.AnimatorListenerAdapter() {
@@ -746,7 +746,7 @@ class AddSmokerDialog(
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
 
         // Request focus and show keyboard after a short delay to ensure dialog is ready
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -1350,7 +1350,7 @@ class AddSmokerDialog(
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 500L) // Faster fade-in for results
+        performManualFadeIn(rootContainer, 250L) // Faster fade-in for results
     }
 
     private fun createThemedDialogButton(text: String, isPrimary: Boolean, onClick: () -> Unit): android.view.View {
@@ -1755,7 +1755,7 @@ class AddSmokerDialog(
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
 
         // Request focus and show keyboard after a short delay
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -1989,7 +1989,7 @@ class AddSmokerDialog(
         dialog.show()
 
         // Apply fade-in animation
-        performManualFadeIn(rootContainer, 2000L)
+        performManualFadeIn(rootContainer, 1000L)
 
         // Request focus and show keyboard after a short delay
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
