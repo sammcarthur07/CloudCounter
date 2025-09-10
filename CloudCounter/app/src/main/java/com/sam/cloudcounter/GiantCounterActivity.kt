@@ -1741,50 +1741,11 @@ class GiantCounterActivity : AppCompatActivity() {
                     val holdDuration = System.currentTimeMillis() - nameHoldStartTime
                     Log.d(TAG, "$LOG_PREFIX 👆 Name touch up, duration: ${holdDuration}ms, shouldShowDropdown: $shouldShowDropdown")
                     
-                    // If short tap, cycle font/color or show smoker selection
+                    // If short tap, always show smoker selection popup
                     if (event.action == MotionEvent.ACTION_UP && shouldShowDropdown && holdDuration < 1500) {
-                        // Single tap behavior depends on lock states
-                        when {
-                            randomFontsEnabled && colorChangingEnabled -> {
-                                // Both unlocked - cycle both
-                                Log.d(TAG, "$LOG_PREFIX 🎨🔤 Tap: cycling both font and color (both unlocked)")
-                                val nextFont = cycleToNextFont()
-                                val nextColor = NEON_COLORS.random()
-                                smokerNameText.typeface = nextFont
-                                smokerNameText.setTextColor(nextColor)
-                                recentStatsText.typeface = nextFont
-                                recentStatsText.setTextColor(nextColor)
-                                smokerFontTypeface = nextFont
-                                smokerFontColor = nextColor
-                                saveDisplayState()
-                                vibrateFeedback(30)
-                            }
-                            randomFontsEnabled && !colorChangingEnabled -> {
-                                // Only font unlocked - cycle font
-                                Log.d(TAG, "$LOG_PREFIX 🔤 Tap: cycling font only (color locked)")
-                                val nextFont = cycleToNextFont()
-                                smokerNameText.typeface = nextFont
-                                recentStatsText.typeface = nextFont
-                                smokerFontTypeface = nextFont
-                                saveDisplayState()
-                                vibrateFeedback(30)
-                            }
-                            !randomFontsEnabled && colorChangingEnabled -> {
-                                // Only color unlocked - cycle color
-                                Log.d(TAG, "$LOG_PREFIX 🎨 Tap: cycling color only (font locked)")
-                                val nextColor = NEON_COLORS.random()
-                                smokerNameText.setTextColor(nextColor)
-                                recentStatsText.setTextColor(nextColor)
-                                smokerFontColor = nextColor
-                                saveDisplayState()
-                                vibrateFeedback(30)
-                            }
-                            else -> {
-                                // Both locked - show smoker selection
-                                Log.d(TAG, "$LOG_PREFIX 🔒 Tap: showing smoker selection (both locked)")
-                                showSmokerSelection()
-                            }
-                        }
+                        // Always show smoker selection on tap
+                        Log.d(TAG, "$LOG_PREFIX 👥 Tap: showing smoker selection")
+                        showSmokerSelection()
                     }
                     
                     nameHoldStartTime = 0L
