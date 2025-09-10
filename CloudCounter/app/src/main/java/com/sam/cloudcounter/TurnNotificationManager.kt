@@ -93,7 +93,7 @@ class TurnNotificationManager(
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Check if notifications are enabled in app preferences
-                val appPrefs = context.getSharedPreferences("app_preferences", Context.MODE_PRIVATE)
+                val appPrefs = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
                 val notificationsEnabled = appPrefs.getBoolean("notifications_enabled", true)
                 
                 if (!notificationsEnabled) {
