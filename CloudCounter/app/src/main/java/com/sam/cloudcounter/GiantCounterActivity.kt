@@ -104,6 +104,10 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var timerRunnable: Runnable
     
+    // Timer sound helper
+    private lateinit var timerSoundHelper: TimerSoundHelper
+    private var lastMiddleTimerValue: Long = 0L // Track when timer crosses zero
+    
     // Undo/Rewind functionality
     private var rewindOffset = 0L
     private val REWIND_AMOUNT_MS = 10000L  // 10 seconds per rewind
@@ -168,6 +172,9 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize timer sound helper
+        timerSoundHelper = TimerSoundHelper(this)
         
         // Make full screen
         window.decorView.systemUiVisibility = (
@@ -1448,6 +1455,18 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
             val remainingMs = gapBetweenLast - timeSinceLast
             val remainingSec = remainingMs / 1000
             
+            // Check if timer crossed zero (was positive, now negative or zero)
+            val wasMiddleTimerPositive = lastMiddleTimerValue > 0
+            val isCurrentlyPositive = remainingSec > 0
+            
+            if (wasMiddleTimerPositive && !isCurrentlyPositive) {
+                Log.d(TAG, "$LOG_PREFIX 🔔 Middle timer hit zero - playing sound")
+                timerSoundHelper.playTimerSound()
+            }
+            
+            // Update last middle timer value
+            lastMiddleTimerValue = remainingSec
+            
             val gapFormatted = if (remainingSec >= 0) {
                 formatInterval(remainingSec)
             } else {
@@ -1458,6 +1477,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
             Log.d(TAG, "$LOG_PREFIX 🕐 Middle timer: gap=${gapBetweenLast}ms, remaining=${remainingSec}s")
         } else {
             textLastGapCountdown.text = "0s"
+            lastMiddleTimerValue = 0L
             Log.d(TAG, "$LOG_PREFIX 🕐 Middle timer: Not enough activities (${activitiesTimestamps.size})")
         }
         
@@ -1694,6 +1714,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(timerRunnable)
+        timerSoundHelper.cleanup()
     }
     
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
