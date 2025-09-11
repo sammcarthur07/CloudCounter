@@ -8,10 +8,14 @@ data class PerSmokerStats(
     val avgGapMs: Long = 0L,
     val longestGapMs: Long = 0L,
     val shortestGapMs: Long = 0L,
+    val lastGapMs: Long = 0L,  // Last gap between cone activities
     val avgJointGapMs: Long = 0L,
     val longestJointGapMs: Long = 0L,
     val shortestJointGapMs: Long = 0L,
+    val lastJointGapMs: Long = 0L,  // Last gap between joint activities
     val avgBowlGapMs: Long = 0L,
     val longestBowlGapMs: Long = 0L,
-    val shortestBowlGapMs: Long = 0L
+    val shortestBowlGapMs: Long = 0L,
+    val lastBowlGapMs: Long = 0L,  // Last gap between bowl activities
+    val lastActivityTime: Long = 0L  // Timestamp of last activity (any type)
 )

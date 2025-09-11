@@ -2,6 +2,8 @@ package com.sam.cloudcounter
 
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.style.StyleSpan
@@ -23,6 +25,9 @@ class SeshFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var sessionStatsVM: SessionStatsViewModel
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var updateTimerRunnable: Runnable
+    private var currentPerSmokerStats: List<PerSmokerStats> = emptyList()
 
     // Add callback for resume button
     var onResumeSesh: (() -> Unit)? = null
@@ -275,6 +280,9 @@ class SeshFragment : Fragment() {
         // Observe per-smoker stats and create table layout
         sessionStatsVM.perSmokerStats.observe(viewLifecycleOwner) { statsList ->
             Log.d("SeshFragment", "Received per-smoker stats update: ${statsList.size} smokers")
+            
+            // Store the current stats for timer updates
+            currentPerSmokerStats = statsList
 
             binding.perSmokerStatsContainer.removeAllViews()
 
@@ -288,10 +296,15 @@ class SeshFragment : Fragment() {
                 Log.d("SeshFragment", "No stats available, showing placeholder")
             } else {
                 // Create table rows for each smoker - FIXED to show name on same row as first activity
-                statsList.forEach { stat ->
-                    createSmokerStatsRowsFixed(stat)
-                }
+                updatePerSmokerTable(statsList)
             }
+        }
+    }
+    
+    private fun updatePerSmokerTable(statsList: List<PerSmokerStats>) {
+        binding.perSmokerStatsContainer.removeAllViews()
+        statsList.forEach { stat ->
+            createSmokerStatsRowsFixed(stat)
         }
 
         // Add a debug button (you can remove this later)
@@ -305,9 +318,9 @@ class SeshFragment : Fragment() {
         // Clear existing header container
         binding.statsTableHeader.removeAllViews()
 
-        // Create headers with proper labels
-        val headers = listOf("Smoker", "Activity", "Last", "Avg", "Shortest", "Longest")
-        val weights = floatArrayOf(1.8f, 1.5f, 1.0f, 1.0f, 1.3f, 1.3f)
+        // Create headers with proper labels - Added "Time" column
+        val headers = listOf("Smoker", "Activity", "Time", "Last", "Avg", "Shortest", "Longest")
+        val weights = floatArrayOf(1.8f, 1.3f, 1.0f, 1.0f, 1.0f, 1.2f, 1.2f)
 
         headers.forEachIndexed { index, header ->
             val headerText = TextView(requireContext()).apply {
@@ -329,13 +342,28 @@ class SeshFragment : Fragment() {
         // Track if we've added the smoker name yet
         var nameAdded = false
 
+        // Calculate time since last activity (for any type)
+        val timeSinceLastActivity = if (stat.lastActivityTime > 0) {
+            val currentTime = System.currentTimeMillis()
+            val elapsed = (currentTime - stat.lastActivityTime) / 1000  // Convert to seconds
+            formatTime(elapsed * 1000)  // formatTime expects milliseconds
+        } else {
+            "-"
+        }
+        
+        Log.d("SeshFragment", "📊 LAST GAP DEBUG: ${stat.smokerName}")
+        Log.d("SeshFragment", "📊   Cones: lastGap=${stat.lastGapMs}, avg=${stat.avgGapMs}")
+        Log.d("SeshFragment", "📊   Joints: lastGap=${stat.lastJointGapMs}, avg=${stat.avgJointGapMs}")
+        Log.d("SeshFragment", "📊   Bowls: lastGap=${stat.lastBowlGapMs}, avg=${stat.avgBowlGapMs}")
+        Log.d("SeshFragment", "📊   Time since last: $timeSinceLastActivity")
+
         if (stat.totalCones > 0) {
-            val lastGap = if (stat.totalCones > 1) formatTime(stat.avgGapMs) else "-"
             activities.add(Triple(
                 stat.smokerName,  // Smoker name
                 "${stat.totalCones} Cones",  // Activity
                 listOf(
-                    lastGap,  // Last
+                    timeSinceLastActivity,  // Time since last activity
+                    if (stat.totalCones > 1 && stat.lastGapMs > 0) formatTime(stat.lastGapMs) else "-",  // Last gap
                     if (stat.totalCones > 1) formatTime(stat.avgGapMs) else "-",  // Avg
                     if (stat.totalCones > 1) formatTime(stat.shortestGapMs) else "-",  // Shortest
                     if (stat.totalCones > 1) formatTime(stat.longestGapMs) else "-"  // Longest
@@ -345,12 +373,12 @@ class SeshFragment : Fragment() {
         }
 
         if (stat.totalJoints > 0) {
-            val lastGap = if (stat.totalJoints > 1) formatTime(stat.avgJointGapMs) else "-"
             activities.add(Triple(
                 if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalJoints} Joints",
                 listOf(
-                    lastGap,
+                    if (!nameAdded) timeSinceLastActivity else "",  // Show time only on first row
+                    if (stat.totalJoints > 1 && stat.lastJointGapMs > 0) formatTime(stat.lastJointGapMs) else "-",  // Last gap
                     if (stat.totalJoints > 1) formatTime(stat.avgJointGapMs) else "-",
                     if (stat.totalJoints > 1) formatTime(stat.shortestJointGapMs) else "-",
                     if (stat.totalJoints > 1) formatTime(stat.longestJointGapMs) else "-"
@@ -360,12 +388,12 @@ class SeshFragment : Fragment() {
         }
 
         if (stat.totalBowls > 0) {
-            val lastGap = if (stat.totalBowls > 1) formatTime(stat.avgBowlGapMs) else "-"
             activities.add(Triple(
                 if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalBowls} Bowls",
                 listOf(
-                    lastGap,
+                    if (!nameAdded) timeSinceLastActivity else "",  // Show time only on first row
+                    if (stat.totalBowls > 1 && stat.lastBowlGapMs > 0) formatTime(stat.lastBowlGapMs) else "-",  // Last gap
                     if (stat.totalBowls > 1) formatTime(stat.avgBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.shortestBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.longestBowlGapMs) else "-"
@@ -469,9 +497,40 @@ class SeshFragment : Fragment() {
 
 
 
+    override fun onResume() {
+        super.onResume()
+        startTimeUpdateTimer()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        stopTimeUpdateTimer()
+    }
+    
     override fun onDestroyView() {
         super.onDestroyView()
+        stopTimeUpdateTimer()
         _binding = null
+    }
+    
+    private fun startTimeUpdateTimer() {
+        updateTimerRunnable = object : Runnable {
+            override fun run() {
+                // Update the time column for all per-smoker stats
+                if (currentPerSmokerStats.isNotEmpty() && _binding != null) {
+                    updatePerSmokerTable(currentPerSmokerStats)
+                }
+                // Schedule next update in 1 second
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(updateTimerRunnable)
+    }
+    
+    private fun stopTimeUpdateTimer() {
+        if (::updateTimerRunnable.isInitialized) {
+            handler.removeCallbacks(updateTimerRunnable)
+        }
     }
 
 

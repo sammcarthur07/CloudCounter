@@ -188,6 +188,13 @@ class SessionStatsViewModel : ViewModel() {
         _elapsedTimeSec.postValue((now - sessionStart) / 1000)
 
         val perSmokerList = roomStats.perSmokerStats.values.map { serverData ->
+            // Debug logging for Last gap values
+            Log.d(TAG, "📊 PER-SMOKER DEBUG: ${serverData.smokerName}")
+            Log.d(TAG, "📊   Cones: total=${serverData.totalCones}, avg=${serverData.avgGapMs}ms, last=${serverData.lastGapMs ?: "null"}ms")
+            Log.d(TAG, "📊   Joints: total=${serverData.totalJoints}, avg=${serverData.avgJointGapMs}ms, last=${serverData.lastJointGapMs ?: "null"}ms")
+            Log.d(TAG, "📊   Bowls: total=${serverData.totalBowls}, avg=${serverData.avgBowlGapMs}ms, last=${serverData.lastBowlGapMs ?: "null"}ms")
+            Log.d(TAG, "📊   Last activity time: ${serverData.lastActivityTime ?: "null"}ms")
+            
             PerSmokerStats(
                 smokerName = serverData.smokerName,
                 totalCones = serverData.totalCones,
@@ -196,12 +203,16 @@ class SessionStatsViewModel : ViewModel() {
                 avgGapMs = serverData.avgGapMs,
                 longestGapMs = serverData.longestGapMs,
                 shortestGapMs = serverData.shortestGapMs,
+                lastGapMs = serverData.lastGapMs ?: serverData.avgGapMs,  // Fallback to avg if no last gap
                 avgJointGapMs = serverData.avgJointGapMs,
                 longestJointGapMs = serverData.longestJointGapMs,
                 shortestJointGapMs = serverData.shortestJointGapMs,
+                lastJointGapMs = serverData.lastJointGapMs ?: serverData.avgJointGapMs,  // Fallback to avg
                 avgBowlGapMs = serverData.avgBowlGapMs,
                 longestBowlGapMs = serverData.longestBowlGapMs,
-                shortestBowlGapMs = serverData.shortestBowlGapMs
+                shortestBowlGapMs = serverData.shortestBowlGapMs,
+                lastBowlGapMs = serverData.lastBowlGapMs ?: serverData.avgBowlGapMs,  // Fallback to avg
+                lastActivityTime = serverData.lastActivityTime ?: 0L
             )
         }.let { list ->
             // Sort by displayOrder if provided, otherwise keep original order
