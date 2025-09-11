@@ -188,13 +188,15 @@ class SessionStatsViewModel : ViewModel() {
         _elapsedTimeSec.postValue((now - sessionStart) / 1000)
 
         val perSmokerList = roomStats.perSmokerStats.values.map { serverData ->
-            // Debug logging for Last gap values
+            // Debug logging for stats values
             Log.d(TAG, "📊 PER-SMOKER DEBUG: ${serverData.smokerName}")
-            Log.d(TAG, "📊   Cones: total=${serverData.totalCones}, avg=${serverData.avgGapMs}ms, last=${serverData.lastGapMs ?: "null"}ms")
-            Log.d(TAG, "📊   Joints: total=${serverData.totalJoints}, avg=${serverData.avgJointGapMs}ms, last=${serverData.lastJointGapMs ?: "null"}ms")
-            Log.d(TAG, "📊   Bowls: total=${serverData.totalBowls}, avg=${serverData.avgBowlGapMs}ms, last=${serverData.lastBowlGapMs ?: "null"}ms")
-            Log.d(TAG, "📊   Last activity time: ${serverData.lastActivityTime ?: "null"}ms")
+            Log.d(TAG, "📊   Cones: total=${serverData.totalCones}, avg=${serverData.avgGapMs}ms")
+            Log.d(TAG, "📊   Joints: total=${serverData.totalJoints}, avg=${serverData.avgJointGapMs}ms")
+            Log.d(TAG, "📊   Bowls: total=${serverData.totalBowls}, avg=${serverData.avgBowlGapMs}ms")
+            Log.d(TAG, "📊   Last activity time: ${serverData.lastActivityTime}ms")
             
+            // For now, use average as last gap (will be calculated properly in MainActivity)
+            // TODO: Calculate actual last gaps from activity history
             PerSmokerStats(
                 smokerName = serverData.smokerName,
                 totalCones = serverData.totalCones,
@@ -203,16 +205,19 @@ class SessionStatsViewModel : ViewModel() {
                 avgGapMs = serverData.avgGapMs,
                 longestGapMs = serverData.longestGapMs,
                 shortestGapMs = serverData.shortestGapMs,
-                lastGapMs = serverData.lastGapMs ?: serverData.avgGapMs,  // Fallback to avg if no last gap
+                lastGapMs = serverData.avgGapMs,  // TODO: Calculate from activity history
+                lastConeTime = 0L,  // TODO: Get from last cone activity
                 avgJointGapMs = serverData.avgJointGapMs,
                 longestJointGapMs = serverData.longestJointGapMs,
                 shortestJointGapMs = serverData.shortestJointGapMs,
-                lastJointGapMs = serverData.lastJointGapMs ?: serverData.avgJointGapMs,  // Fallback to avg
+                lastJointGapMs = serverData.avgJointGapMs,  // TODO: Calculate from activity history
+                lastJointTime = 0L,  // TODO: Get from last joint activity
                 avgBowlGapMs = serverData.avgBowlGapMs,
                 longestBowlGapMs = serverData.longestBowlGapMs,
                 shortestBowlGapMs = serverData.shortestBowlGapMs,
-                lastBowlGapMs = serverData.lastBowlGapMs ?: serverData.avgBowlGapMs,  // Fallback to avg
-                lastActivityTime = serverData.lastActivityTime ?: 0L
+                lastBowlGapMs = serverData.avgBowlGapMs,  // TODO: Calculate from activity history
+                lastBowlTime = 0L,  // TODO: Get from last bowl activity
+                lastActivityTime = serverData.lastActivityTime
             )
         }.let { list ->
             // Sort by displayOrder if provided, otherwise keep original order

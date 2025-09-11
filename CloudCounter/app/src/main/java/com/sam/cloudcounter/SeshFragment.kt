@@ -342,28 +342,36 @@ class SeshFragment : Fragment() {
         // Track if we've added the smoker name yet
         var nameAdded = false
 
-        // Calculate time since last activity (for any type)
-        val timeSinceLastActivity = if (stat.lastActivityTime > 0) {
-            val currentTime = System.currentTimeMillis()
-            val elapsed = (currentTime - stat.lastActivityTime) / 1000  // Convert to seconds
-            formatTime(elapsed * 1000)  // formatTime expects milliseconds
-        } else {
-            "-"
-        }
+        // Calculate time since last activity for each type
+        val currentTime = System.currentTimeMillis()
+        
+        val timeSinceLastCone = if (stat.lastConeTime > 0) {
+            val elapsed = (currentTime - stat.lastConeTime) / 1000
+            formatTime(elapsed * 1000)
+        } else "-"
+        
+        val timeSinceLastJoint = if (stat.lastJointTime > 0) {
+            val elapsed = (currentTime - stat.lastJointTime) / 1000
+            formatTime(elapsed * 1000)
+        } else "-"
+        
+        val timeSinceLastBowl = if (stat.lastBowlTime > 0) {
+            val elapsed = (currentTime - stat.lastBowlTime) / 1000
+            formatTime(elapsed * 1000)
+        } else "-"
         
         Log.d("SeshFragment", "📊 LAST GAP DEBUG: ${stat.smokerName}")
-        Log.d("SeshFragment", "📊   Cones: lastGap=${stat.lastGapMs}, avg=${stat.avgGapMs}")
-        Log.d("SeshFragment", "📊   Joints: lastGap=${stat.lastJointGapMs}, avg=${stat.avgJointGapMs}")
-        Log.d("SeshFragment", "📊   Bowls: lastGap=${stat.lastBowlGapMs}, avg=${stat.avgBowlGapMs}")
-        Log.d("SeshFragment", "📊   Time since last: $timeSinceLastActivity")
+        Log.d("SeshFragment", "📊   Cones: lastGap=${stat.lastGapMs}, avg=${stat.avgGapMs}, timeSince=$timeSinceLastCone")
+        Log.d("SeshFragment", "📊   Joints: lastGap=${stat.lastJointGapMs}, avg=${stat.avgJointGapMs}, timeSince=$timeSinceLastJoint")
+        Log.d("SeshFragment", "📊   Bowls: lastGap=${stat.lastBowlGapMs}, avg=${stat.avgBowlGapMs}, timeSince=$timeSinceLastBowl")
 
         if (stat.totalCones > 0) {
             activities.add(Triple(
                 stat.smokerName,  // Smoker name
                 "${stat.totalCones} Cones",  // Activity
                 listOf(
-                    timeSinceLastActivity,  // Time since last activity
-                    if (stat.totalCones > 1 && stat.lastGapMs > 0) formatTime(stat.lastGapMs) else "-",  // Last gap
+                    timeSinceLastCone,  // Time since last cone
+                    if (stat.totalCones > 1 && stat.lastGapMs != stat.avgGapMs) formatTime(stat.lastGapMs) else "-",  // Last gap
                     if (stat.totalCones > 1) formatTime(stat.avgGapMs) else "-",  // Avg
                     if (stat.totalCones > 1) formatTime(stat.shortestGapMs) else "-",  // Shortest
                     if (stat.totalCones > 1) formatTime(stat.longestGapMs) else "-"  // Longest
@@ -377,8 +385,8 @@ class SeshFragment : Fragment() {
                 if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalJoints} Joints",
                 listOf(
-                    if (!nameAdded) timeSinceLastActivity else "",  // Show time only on first row
-                    if (stat.totalJoints > 1 && stat.lastJointGapMs > 0) formatTime(stat.lastJointGapMs) else "-",  // Last gap
+                    timeSinceLastJoint,  // Time since last joint
+                    if (stat.totalJoints > 1 && stat.lastJointGapMs != stat.avgJointGapMs) formatTime(stat.lastJointGapMs) else "-",  // Last gap
                     if (stat.totalJoints > 1) formatTime(stat.avgJointGapMs) else "-",
                     if (stat.totalJoints > 1) formatTime(stat.shortestJointGapMs) else "-",
                     if (stat.totalJoints > 1) formatTime(stat.longestJointGapMs) else "-"
@@ -392,8 +400,8 @@ class SeshFragment : Fragment() {
                 if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
                 "${stat.totalBowls} Bowls",
                 listOf(
-                    if (!nameAdded) timeSinceLastActivity else "",  // Show time only on first row
-                    if (stat.totalBowls > 1 && stat.lastBowlGapMs > 0) formatTime(stat.lastBowlGapMs) else "-",  // Last gap
+                    timeSinceLastBowl,  // Time since last bowl
+                    if (stat.totalBowls > 1 && stat.lastBowlGapMs != stat.avgBowlGapMs) formatTime(stat.lastBowlGapMs) else "-",  // Last gap
                     if (stat.totalBowls > 1) formatTime(stat.avgBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.shortestBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.longestBowlGapMs) else "-"
