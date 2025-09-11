@@ -1664,13 +1664,35 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 currentSmoker = newSmoker
                 smokerNameText.text = currentSmoker
                 
-                // Update font and color for the new smoker
-                lifecycleScope.launch {
-                    val smokerData = withContext(Dispatchers.IO) {
-                        repository.getSmokerByName(newSmoker)
-                    }
-                    smokerData?.let { smoker ->
-                        applySmokerFontAndColor(smoker)
+                // Update font and color for the new smoker if not locked
+                if (!isFontAndColorLocked) {
+                    lifecycleScope.launch {
+                        val smokerData = withContext(Dispatchers.IO) {
+                            repository.getSmokerByName(newSmoker)
+                        }
+                        smokerData?.let { smoker ->
+                            // Update font
+                            smoker.fontIndex?.let { fontIndex ->
+                                if (fontIndex in 0 until fontList.size) {
+                                    val font = ResourcesCompat.getFont(this@GiantCounterActivity, fontList[fontIndex])
+                                    smokerNameText.typeface = font
+                                    recentStatsText.typeface = font
+                                    smokerFontTypeface = font
+                                }
+                            }
+                            
+                            // Update color
+                            smoker.textColor?.let { colorString ->
+                                try {
+                                    val color = Color.parseColor(colorString)
+                                    smokerNameText.setTextColor(color)
+                                    recentStatsText.setTextColor(color)
+                                    smokerFontColor = color
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "$LOG_PREFIX Error parsing color: $colorString", e)
+                                }
+                            }
+                        }
                     }
                 }
             }
