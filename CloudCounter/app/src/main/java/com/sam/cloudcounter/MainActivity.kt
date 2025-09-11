@@ -6146,24 +6146,65 @@ class MainActivity : AppCompatActivity() {
 
                 // Apply the stats with gaps using applyLocalStats instead of applyRoomStats
                 val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
+                
+                // Calculate per-smoker last gaps and times from activities
+                val perSmokerStatsWithGaps = roomStats.perSmokerStats.values.map { serverData ->
+                    // Get activities for this specific smoker
+                    val smokerActivities = roomActivities.filter { it.smokerName == serverData.smokerName }
+                        .sortedBy { it.timestamp }
+                    
+                    val coneActivities = smokerActivities.filter { it.type == "CONE" }
+                    val jointActivities = smokerActivities.filter { it.type == "JOINT" }
+                    val bowlActivities = smokerActivities.filter { it.type == "BOWL" }
+                    
+                    // Calculate last gaps for each activity type
+                    val lastConeGap = if (coneActivities.size >= 2) {
+                        val last = coneActivities.takeLast(2)
+                        last[1].timestamp - last[0].timestamp
+                    } else 0L
+                    
+                    val lastJointGap = if (jointActivities.size >= 2) {
+                        val last = jointActivities.takeLast(2)
+                        last[1].timestamp - last[0].timestamp
+                    } else 0L
+                    
+                    val lastBowlGap = if (bowlActivities.size >= 2) {
+                        val last = bowlActivities.takeLast(2)
+                        last[1].timestamp - last[0].timestamp
+                    } else 0L
+                    
+                    // Get last activity times
+                    val lastConeTime = coneActivities.lastOrNull()?.timestamp ?: 0L
+                    val lastJointTime = jointActivities.lastOrNull()?.timestamp ?: 0L
+                    val lastBowlTime = bowlActivities.lastOrNull()?.timestamp ?: 0L
+                    val lastActivityTime = smokerActivities.lastOrNull()?.timestamp ?: 0L
+                    
+                    PerSmokerStats(
+                        smokerName = serverData.smokerName,
+                        totalCones = serverData.totalCones,
+                        totalJoints = serverData.totalJoints,
+                        totalBowls = serverData.totalBowls,
+                        avgGapMs = serverData.avgGapMs,
+                        longestGapMs = serverData.longestGapMs,
+                        shortestGapMs = serverData.shortestGapMs,
+                        lastGapMs = lastConeGap,
+                        lastConeTime = lastConeTime,
+                        avgJointGapMs = serverData.avgJointGapMs,
+                        longestJointGapMs = serverData.longestJointGapMs,
+                        shortestJointGapMs = serverData.shortestJointGapMs,
+                        lastJointGapMs = lastJointGap,
+                        lastJointTime = lastJointTime,
+                        avgBowlGapMs = serverData.avgBowlGapMs,
+                        longestBowlGapMs = serverData.longestBowlGapMs,
+                        shortestBowlGapMs = serverData.shortestBowlGapMs,
+                        lastBowlGapMs = lastBowlGap,
+                        lastBowlTime = lastBowlTime,
+                        lastActivityTime = lastActivityTime
+                    )
+                }
+                
                 sessionStatsVM.applyLocalStats(
-                    roomStats.perSmokerStats.values.map { serverData ->
-                        PerSmokerStats(
-                            smokerName = serverData.smokerName,
-                            totalCones = serverData.totalCones,
-                            totalJoints = serverData.totalJoints,
-                            totalBowls = serverData.totalBowls,
-                            avgGapMs = serverData.avgGapMs,
-                            longestGapMs = serverData.longestGapMs,
-                            shortestGapMs = serverData.shortestGapMs,
-                            avgJointGapMs = serverData.avgJointGapMs,
-                            longestJointGapMs = serverData.longestJointGapMs,
-                            shortestJointGapMs = serverData.shortestJointGapMs,
-                            avgBowlGapMs = serverData.avgBowlGapMs,
-                            longestBowlGapMs = serverData.longestBowlGapMs,
-                            shortestBowlGapMs = serverData.shortestBowlGapMs
-                        )
-                    },
+                    perSmokerStatsWithGaps,
                     groupStats,
                     updatedRoom.startTime,
                     roomStats.lastConeSmokerName,
