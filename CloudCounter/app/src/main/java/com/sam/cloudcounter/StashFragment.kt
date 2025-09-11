@@ -113,6 +113,8 @@ class StashFragment : Fragment() {
 
         // Sync radio button with ViewModel on view creation
         syncRadioWithViewModel()
+        // Update Sort Smokers button visibility based on current stash source
+        updateSortSmokersButtonVisibility(stashViewModel.stashSource.value ?: StashSource.MY_STASH)
 
         // Also observe stash source changes to ensure radio stays in sync
         stashViewModel.stashSource.observe(viewLifecycleOwner) { source ->
@@ -225,6 +227,7 @@ class StashFragment : Fragment() {
         binding.btnAddStash.setOnClickListener { showAddStashDialog() }
         binding.btnRemoveStash.setOnClickListener { showRemoveStashDialog() }
         binding.btnSetRatio.setOnClickListener { showSetRatioDialog() }
+        binding.btnSortSmokers.setOnClickListener { showSortSmokersDialog() }
 
         binding.chipGroupDataScope.setOnCheckedStateChangeListener { group, checkedIds ->
             Log.d("STASH_UI", "Data scope chip changed")
@@ -256,6 +259,7 @@ class StashFragment : Fragment() {
                 else -> StashSource.MY_STASH
             }
             stashViewModel.updateStashSource(source)
+            updateSortSmokersButtonVisibility(source)
         }
     }
 
@@ -334,6 +338,7 @@ class StashFragment : Fragment() {
 
         stashViewModel.stashSource.observe(viewLifecycleOwner) { source ->
             binding.layoutTheirStashCounter.visibility = View.VISIBLE
+            updateSortSmokersButtonVisibility(source)
             lifecycleScope.launch {
                 calculateTheirStashConsumption()
             }
@@ -777,8 +782,7 @@ class StashFragment : Fragment() {
             marginStart = 8.dpToPx()
         }
 
-        // Add throbbing to Add button
-        addThrobbingAnimation(addButton as androidx.cardview.widget.CardView)
+        // Note: Throbbing animation removed since buttons are no longer CardViews
 
         buttonContainer.addView(cancelButton)
         buttonContainer.addView(addButton)
@@ -1568,8 +1572,7 @@ class StashFragment : Fragment() {
             marginStart = 4.dpToPx()
         }
 
-        // Add throbbing to Save button
-        addThrobbingAnimation(saveButton as androidx.cardview.widget.CardView)
+        // Note: Throbbing animation removed since buttons are no longer CardViews
 
         buttonContainer.addView(clearConeButton)
         buttonContainer.addView(cancelButton)
@@ -1685,109 +1688,6 @@ class StashFragment : Fragment() {
         return checkboxCard
     }
 
-    private fun createThemedStashButton(text: String, isPrimary: Boolean, onClick: () -> Unit): android.view.View {
-        val buttonCard = androidx.cardview.widget.CardView(requireContext()).apply {
-            radius = 20.dpToPx().toFloat()
-            cardElevation = if (isPrimary) 4.dpToPx().toFloat() else 0f
-            setCardBackgroundColor(
-                if (isPrimary) android.graphics.Color.parseColor("#98FB98")
-                else android.graphics.Color.parseColor("#424242") // Changed from #33FFFFFF to dark grey
-            )
-
-            isClickable = true
-            isFocusable = true
-        }
-
-        // Create frame for image background
-        val frameLayout = android.widget.FrameLayout(requireContext()).apply {
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-
-        // Image view for pressed state (initially hidden)
-        val imageView = android.widget.ImageView(requireContext()).apply {
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            setImageResource(R.drawable.button_pressed_background)
-            visibility = android.view.View.GONE
-        }
-
-        val buttonText = android.widget.TextView(requireContext()).apply {
-            this.text = text
-            textSize = 14f
-            setTextColor(
-                if (isPrimary) android.graphics.Color.parseColor("#424242")
-                else android.graphics.Color.WHITE
-            )
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            gravity = android.view.Gravity.CENTER
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-
-        frameLayout.addView(imageView)
-        frameLayout.addView(buttonText)
-        buttonCard.addView(frameLayout)
-
-        // Store original colors
-        val originalBackgroundColor = if (isPrimary)
-            android.graphics.Color.parseColor("#98FB98")
-        else
-            android.graphics.Color.parseColor("#424242") // Changed from #33FFFFFF
-        val originalTextColor = if (isPrimary)
-            android.graphics.Color.parseColor("#424242")
-        else
-            android.graphics.Color.WHITE
-
-        // Handle touch events
-        buttonCard.setOnTouchListener { v, event ->
-            when (event.action) {
-                android.view.MotionEvent.ACTION_DOWN -> {
-                    // Show image, hide solid color
-                    buttonCard.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
-                    imageView.visibility = android.view.View.VISIBLE
-
-                    // Change text color to white for visibility on image
-                    buttonText.setTextColor(android.graphics.Color.WHITE)
-                    buttonText.setShadowLayer(4f, 2f, 2f, android.graphics.Color.BLACK)
-                    true
-                }
-                android.view.MotionEvent.ACTION_UP,
-                android.view.MotionEvent.ACTION_CANCEL -> {
-                    // Hide image, restore solid color
-                    imageView.visibility = android.view.View.GONE
-
-                    // Don't restore background color if button has throbbing animation
-                    if (buttonCard.tag != "throbbing") {
-                        buttonCard.setCardBackgroundColor(originalBackgroundColor)
-                    }
-
-                    // Restore original text color
-                    buttonText.setTextColor(originalTextColor)
-                    buttonText.setShadowLayer(0f, 0f, 0f, android.graphics.Color.TRANSPARENT)
-
-                    if (event.action == android.view.MotionEvent.ACTION_UP) {
-                        v.performClick()
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
-
-        buttonCard.setOnClickListener {
-            onClick()
-        }
-
-        return buttonCard
-    }
 
     private fun animateCardSelection(dialog: Dialog, durationMs: Long, onComplete: () -> Unit) {
         val contentView = dialog.window?.decorView?.findViewById<android.view.View>(android.R.id.content)
@@ -1841,6 +1741,80 @@ class StashFragment : Fragment() {
 
         // Start the animation
         handler.post(fadeRunnable)
+    }
+
+    private fun performManualFadeOut(view: android.view.View, durationMs: Long, onComplete: () -> Unit) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val startTime = System.currentTimeMillis()
+        val endTime = startTime + durationMs
+
+        val frameDelayMs = 16L // ~60 FPS
+
+        val fadeRunnable = object : Runnable {
+            override fun run() {
+                val currentTime = System.currentTimeMillis()
+                val elapsed = currentTime - startTime
+                val progress = kotlin.math.min(elapsed.toFloat() / durationMs.toFloat(), 1f)
+
+                // Apply easing (accelerate interpolation for fade out)
+                val easedProgress = progress * progress
+
+                view.alpha = 1f - easedProgress
+
+                if (currentTime < endTime) {
+                    // Continue animation
+                    handler.postDelayed(this, frameDelayMs)
+                } else {
+                    // Animation complete - ensure final state and call completion
+                    view.alpha = 0f
+                    onComplete()
+                }
+            }
+        }
+
+        // Start the animation
+        handler.post(fadeRunnable)
+    }
+
+    private fun createThemedStashButton(text: String, isPrimary: Boolean, onClick: () -> Unit): android.widget.Button {
+        return android.widget.Button(requireContext()).apply {
+            this.text = text
+            textSize = 12f
+            minWidth = 0
+            minimumWidth = 0
+            minHeight = 32.dpToPx()
+            minimumHeight = 32.dpToPx()
+            setPadding(12.dpToPx(), 0, 12.dpToPx(), 0)
+            
+            // Create outlined button style similar to the other buttons
+            val drawable = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 4.dpToPx().toFloat()
+                
+                if (isPrimary) {
+                    // Save button - green styling like +stash button
+                    setStroke(1.dpToPx(), android.graphics.Color.parseColor("#98FB98"))
+                    setColor(android.graphics.Color.parseColor("#3398FB98"))
+                } else {
+                    // Cancel button - white outline, transparent background
+                    setStroke(1.dpToPx(), android.graphics.Color.WHITE)
+                    setColor(android.graphics.Color.TRANSPARENT)
+                }
+            }
+            
+            background = drawable
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener { onClick() }
+            
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                marginStart = 4.dpToPx()
+                marginEnd = 4.dpToPx()
+            }
+        }
     }
 
     private fun addThrobbingAnimation(view: android.view.View) {
@@ -2171,8 +2145,7 @@ class StashFragment : Fragment() {
             marginStart = 8.dpToPx()
         }
 
-        // Add throbbing to Remove button
-        addThrobbingAnimation(removeButton as androidx.cardview.widget.CardView)
+        // Note: Throbbing animation removed since buttons are no longer CardViews
 
         buttonContainer.addView(cancelButton)
         buttonContainer.addView(removeButton)
@@ -2593,5 +2566,231 @@ class StashFragment : Fragment() {
             StashSource.EACH_TO_OWN -> R.id.radioEachToOwnAttribution
         }
         binding.radioGroupAttribution.check(radioId)
+    }
+
+    private fun updateSortSmokersButtonVisibility(source: StashSource) {
+        // Show button only when "Each to their own" is selected AND there are >1 smokers
+        val shouldShow = source == StashSource.EACH_TO_OWN
+        if (shouldShow) {
+            // Check smoker count asynchronously
+            lifecycleScope.launch {
+                val repository = (requireActivity().application as CloudCounterApplication).repository
+                val smokers = repository.getAllSmokersList()
+                val hasMultipleSmokers = smokers.size > 1
+                binding.btnSortSmokers.visibility = if (hasMultipleSmokers) View.VISIBLE else View.GONE
+            }
+        } else {
+            binding.btnSortSmokers.visibility = View.GONE
+        }
+    }
+
+    private fun showSortSmokersDialog() {
+        lifecycleScope.launch {
+            val repository = (requireActivity().application as CloudCounterApplication).repository
+            val allSmokers = repository.getAllSmokersList()
+            
+            if (allSmokers.size <= 1) {
+                Toast.makeText(requireContext(), "Need at least 2 smokers to sort", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val dialog = Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+            
+            // Root container - full screen
+            val rootContainer = android.widget.FrameLayout(requireContext()).apply {
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            }
+
+            // Create a vertical LinearLayout to hold spacer and card
+            val contentWrapper = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+
+            // Top spacer
+            val topSpacer = android.view.View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    120.dpToPx()
+                )
+            }
+            contentWrapper.addView(topSpacer)
+
+            // Main card
+            val mainCard = androidx.cardview.widget.CardView(requireContext()).apply {
+                radius = 20.dpToPx().toFloat()
+                cardElevation = 12.dpToPx().toFloat()
+                setCardBackgroundColor(android.graphics.Color.parseColor("#E64A4A4A"))
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(16.dpToPx(), 0, 16.dpToPx(), 24.dpToPx())
+                }
+            }
+
+            // Main content container
+            val mainContentContainer = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                layoutParams = android.view.ViewGroup.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+
+            // Scrollable content
+            val scrollView = android.widget.ScrollView(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+                isVerticalScrollBarEnabled = true
+                scrollBarStyle = android.view.View.SCROLLBARS_INSIDE_OVERLAY
+            }
+
+            val contentLayout = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(24.dpToPx(), 24.dpToPx(), 24.dpToPx(), 16.dpToPx())
+            }
+
+            // Title
+            val titleText = android.widget.TextView(requireContext()).apply {
+                text = "SORT SMOKERS"
+                textSize = 22f
+                setTextColor(android.graphics.Color.parseColor("#98FB98"))
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                gravity = android.view.Gravity.CENTER
+                letterSpacing = 0.15f
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 16.dpToPx()
+                }
+            }
+            contentLayout.addView(titleText)
+
+            // Instructions
+            val instructionsText = android.widget.TextView(requireContext()).apply {
+                text = "Select which smokers should use 'My Stash' vs 'Their Stash' when 'Each to their own' is selected.\n\n✓ Checked = My Stash\n✗ Unchecked = Their Stash"
+                textSize = 14f
+                setTextColor(android.graphics.Color.parseColor("#CCCCCC"))
+                gravity = android.view.Gravity.CENTER
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 24.dpToPx()
+                }
+            }
+            contentLayout.addView(instructionsText)
+
+            // Create checkboxes for each smoker
+            val smokerCheckboxes = mutableListOf<Pair<Smoker, android.widget.CheckBox>>()
+            
+            allSmokers.forEach { smoker ->
+                val checkboxCard = androidx.cardview.widget.CardView(requireContext()).apply {
+                    radius = 12.dpToPx().toFloat()
+                    cardElevation = 0f
+                    setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        bottomMargin = 8.dpToPx()
+                    }
+                }
+
+                val checkboxLayout = android.widget.LinearLayout(requireContext()).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+                    isClickable = true
+                    isFocusable = true
+                }
+
+                val checkbox = android.widget.CheckBox(requireContext()).apply {
+                    isChecked = true // Default to "My Stash" for all smokers
+                    buttonTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#98FB98"))
+                    isClickable = false
+                    isFocusable = false
+                }
+
+                val smokerText = android.widget.TextView(requireContext()).apply {
+                    text = "${smoker.name} ${if (smoker.isCloudSmoker) "(Cloud)" else "(Local)"}"
+                    textSize = 14f
+                    setTextColor(android.graphics.Color.WHITE)
+                    layoutParams = android.widget.LinearLayout.LayoutParams(
+                        0,
+                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                    ).apply {
+                        marginStart = 8.dpToPx()
+                    }
+                }
+
+                checkboxLayout.addView(checkbox)
+                checkboxLayout.addView(smokerText)
+                checkboxCard.addView(checkboxLayout)
+                contentLayout.addView(checkboxCard)
+
+                // Make entire layout clickable to toggle checkbox
+                checkboxLayout.setOnClickListener {
+                    checkbox.isChecked = !checkbox.isChecked
+                }
+
+                smokerCheckboxes.add(Pair(smoker, checkbox))
+            }
+
+            scrollView.addView(contentLayout)
+            mainContentContainer.addView(scrollView)
+
+            // Bottom buttons
+            val buttonContainer = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setPadding(24.dpToPx(), 16.dpToPx(), 24.dpToPx(), 24.dpToPx())
+            }
+
+            // Cancel button
+            val cancelButton = createThemedStashButton("Cancel", false) {
+                performManualFadeOut(rootContainer, 300L) {
+                    dialog.dismiss()
+                }
+            }
+
+            // Save button  
+            val saveButton = createThemedStashButton("Save", true) {
+                // TODO: Implement saving the smoker categorization
+                performManualFadeOut(rootContainer, 300L) {
+                    dialog.dismiss()
+                }
+            }
+
+            buttonContainer.addView(cancelButton)
+            buttonContainer.addView(saveButton)
+            mainContentContainer.addView(buttonContainer)
+
+            mainCard.addView(mainContentContainer)
+            contentWrapper.addView(mainCard)
+            rootContainer.addView(contentWrapper)
+
+            dialog.setContentView(rootContainer)
+            dialog.setCancelable(true)
+            dialog.show()
+
+            // Apply fade-in animation similar to ratio dialog
+            performManualFadeIn(rootContainer, 1000L)
+        }
     }
 }

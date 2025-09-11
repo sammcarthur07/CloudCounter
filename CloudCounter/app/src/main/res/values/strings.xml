@@ -78,7 +78,8 @@
     <string name="stash_ratio_button">ratio</string>
     <string name="stash_source_my">My stash</string>
     <string name="stash_source_their">Their stash</string>
-    <string name="stash_source_each">Each to own</string>
+    <string name="stash_source_each">Each to their own</string>
+    <string name="stash_sort_smokers_button">Sort Smokers</string>
 
     <!-- Stash Stats -->
     <string name="stash_filter_individual">Individual</string>

@@ -135,6 +135,22 @@
                         android:backgroundTint="@color/button_background_tint_ratio"
                         android:layout_marginStart="4dp"
                         android:minWidth="0dp"/>
+
+                    <Button
+                        android:id="@+id/btnSortSmokers"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="32dp"
+                        android:layout_weight="1"
+                        android:text="@string/stash_sort_smokers_button"
+                        android:textSize="12sp"
+                        android:textColor="@color/button_text_color_sort_smokers"
+                        app:strokeColor="@color/neon_candy"
+                        app:strokeWidth="1dp"
+                        android:backgroundTint="@color/button_background_tint_sort_smokers"
+                        android:layout_marginStart="4dp"
+                        android:minWidth="0dp"
+                        android:visibility="gone"/>
                 </LinearLayout>
 
                 <!-- Attribution Radio Group (for adding activity) -->
@@ -175,7 +191,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Each to own"
+                        android:text="Each to their own"
                         android:textSize="12sp"/>
                 </RadioGroup>
 

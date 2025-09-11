@@ -29,4 +29,9 @@
     <color name="light_neon_green">#C8FFC8</color>
     <color name="neon_red">#FF6B6B</color>
     <color name="neon_candy">#FF91A4</color>
+    <color name="sort_smokers_blue">#5591a4</color>
+    
+    <!-- Button color states for sort smokers button -->
+    <color name="button_text_color_sort_smokers">#FFFFFF</color>
+    <color name="button_background_tint_sort_smokers">#33ff91a4</color>
 </resources>
