@@ -2051,6 +2051,18 @@ class MainActivity : AppCompatActivity() {
 
         setupSpinnerLongPress(spinner)
 
+        // Create reorder dialog
+        val reorderDialog = SmokerReorderDialog(
+            context = this,
+            repository = repo,
+            smokerManager = smokerManager,
+            lifecycleScope = lifecycleScope,
+            onOrderChanged = {
+                // Refresh the list after reordering
+                Log.d(TAG, "🔄 Smoker order changed, refreshing list")
+            }
+        )
+        
         smokerAdapterNew = SmokerAdapter(
             context = this,
             layoutInflater = layoutInflater,
@@ -2063,6 +2075,11 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     handleSmokerSelection(smoker)
                 }
+            },
+            onReorderClick = {
+                // Show reorder dialog with current smokers
+                val currentSmokers = smokerAdapterNew.getAllSmokers()
+                reorderDialog.show(currentSmokers)
             }
         )
 
@@ -5637,7 +5654,8 @@ class MainActivity : AppCompatActivity() {
 
                             withContext(Dispatchers.Main) {
                                 val roomStats = room.safeCurrentStats()
-                                sessionStatsVM.applyRoomStats(roomStats, room.startTime)
+                                val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
+                                sessionStatsVM.applyRoomStats(roomStats, room.startTime, smokerDisplayOrder)
                                 Log.d(TAG, "🔄 Applied initial room stats on resume")
                             }
 
@@ -5732,7 +5750,8 @@ class MainActivity : AppCompatActivity() {
                                     // Apply room stats immediately - THIS IS THE KEY!
                                     withContext(Dispatchers.Main) {
                                         val roomStats = room.safeCurrentStats()
-                                        sessionStatsVM.applyRoomStats(roomStats, room.startTime)
+                                        val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
+                                        sessionStatsVM.applyRoomStats(roomStats, room.startTime, smokerDisplayOrder)
                                         Log.d(TAG, "🔄 Applied room stats after app restart")
                                     }
 
@@ -6070,6 +6089,7 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 // Apply the stats with gaps using applyLocalStats instead of applyRoomStats
+                val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
                 sessionStatsVM.applyLocalStats(
                     roomStats.perSmokerStats.values.map { serverData ->
                         PerSmokerStats(
@@ -6091,7 +6111,8 @@ class MainActivity : AppCompatActivity() {
                     groupStats,
                     updatedRoom.startTime,
                     roomStats.lastConeSmokerName,
-                    roomStats.conesSinceLastBowl
+                    roomStats.conesSinceLastBowl,
+                    smokerDisplayOrder
                 )
 
                 // Handle auto-add state changes
@@ -6766,10 +6787,14 @@ class MainActivity : AppCompatActivity() {
                     
                     // Update the session stats view model
                     withContext(Dispatchers.Main) {
+                        val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
                         sessionStatsVM.applyLocalStats(
                             perSmoker = perSmokerList,
                             groupStats = groupStats,
-                            sessionStart = sessionStart
+                            sessionStart = sessionStart,
+                            lastConeSmokerName = null,
+                            conesSinceLastBowl = 0,
+                            smokerDisplayOrder = smokerDisplayOrder
                         )
                         
                         // Also trigger additional refreshes
@@ -8287,12 +8312,14 @@ class MainActivity : AppCompatActivity() {
                 }
                 Log.d(TAG, "🔍📤 Group: C=${groupStats.totalCones}, J=${groupStats.totalJoints}, B=${groupStats.totalBowls}, R=${groupStats.totalRounds}")
 
+                val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
                 sessionStatsVM.applyLocalStats(
                     perSmokerList,
                     groupStats,
                     sessionStart,
                     lastConeSmokerName,
-                    conesSinceLastBowl
+                    conesSinceLastBowl,
+                    smokerDisplayOrder
                 )
                 Log.d(TAG, "🔍 ✅ Local stats applied to ViewModel")
             }
@@ -9530,7 +9557,8 @@ class MainActivity : AppCompatActivity() {
                                 withContext(Dispatchers.Main) {
                                     handleRoomUpdate(roomData)
                                     onRoomUpdated(roomData)
-                                    sessionStatsVM.applyRoomStats(roomData.safeCurrentStats(), roomData.startTime)
+                                    val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
+                                    sessionStatsVM.applyRoomStats(roomData.safeCurrentStats(), roomData.startTime, smokerDisplayOrder)
                                 }
                             }
                         } else {
@@ -12659,6 +12687,13 @@ class MainActivity : AppCompatActivity() {
                 // Resume smoker
                 sessionSyncService.resumeSmoker(shareCode, smokerId).fold(
                     onSuccess = {
+                        // Update local paused list
+                        pausedSmokerIds.remove(smokerId)
+                        smokerManager.pausedSmokerIds.remove(smokerId)
+                        
+                        // Refresh the adapter to update icons
+                        smokerAdapterNew.refreshOrganizedList(smokers, currentShareCode, pausedSmokerIds, awaySmokers)
+                        
                         // Set the resumed smoker as the current selected smoker
                         val sections = organizeSmokers()
                         val organizedSmokers = sections.flatMap { it.smokers }
@@ -12678,6 +12713,13 @@ class MainActivity : AppCompatActivity() {
                 // Pause smoker
                 sessionSyncService.pauseSmoker(shareCode, smokerId).fold(
                     onSuccess = {
+                        // Update local paused list
+                        pausedSmokerIds.add(smokerId)
+                        smokerManager.pausedSmokerIds.add(smokerId)
+                        
+                        // Refresh the adapter to update icons
+                        smokerAdapterNew.refreshOrganizedList(smokers, currentShareCode, pausedSmokerIds, awaySmokers)
+                        
                         val currentSelection = binding.spinnerSmoker.selectedItem
                         if (currentSelection == smoker) {
                             moveToNextActiveSmoker()

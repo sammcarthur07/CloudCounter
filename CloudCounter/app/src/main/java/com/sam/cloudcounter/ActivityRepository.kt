@@ -12,7 +12,7 @@ import kotlinx.coroutines.runBlocking
  */
 class ActivityRepository(
     private val activityLogDao: ActivityLogDao,
-    private val smokerDao: SmokerDao,
+    val smokerDao: SmokerDao,
     private val summaryDao: SessionSummaryDao,
     private val stashDao: StashDao
 ) {
@@ -295,6 +295,10 @@ class ActivityRepository(
 
     suspend fun getAllSmokersByName(name: String): List<Smoker> {
         return smokerDao.getAllSmokersByName(name)
+    }
+    
+    suspend fun updateSmokerDisplayOrder(smokerId: Long, order: Int) {
+        smokerDao.updateDisplayOrder(smokerId, order)
     }
 
     // REGION: Cloud sync statistics

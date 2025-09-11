@@ -176,7 +176,7 @@ class SessionStatsViewModel : ViewModel() {
         Log.d(TAG, "🧹 CLEAR_ALL_STATS: All stats cleared")
     }
 
-    fun applyRoomStats(roomStats: SessionStats, sessionStart: Long) {
+    fun applyRoomStats(roomStats: SessionStats, sessionStart: Long, smokerDisplayOrder: Map<String, Int>? = null) {
         Log.d(TAG, "📊 APPLY_ROOM_STATS: Applying stats - cones=${roomStats.totalCones}, joints=${roomStats.totalJoints}, bowls=${roomStats.totalBowls}")
         Log.d(TAG, "📊 APPLY_ROOM_STATS: Mode=${if (isAutoMode) "AUTO" else "STICKY"}, sessionStart=$sessionStart")
         Log.d(TAG, "📊 APPLY_ROOM_STATS: Previous isActive=${_isSessionActive.value}")
@@ -203,6 +203,13 @@ class SessionStatsViewModel : ViewModel() {
                 longestBowlGapMs = serverData.longestBowlGapMs,
                 shortestBowlGapMs = serverData.shortestBowlGapMs
             )
+        }.let { list ->
+            // Sort by displayOrder if provided, otherwise keep original order
+            if (smokerDisplayOrder != null) {
+                list.sortedBy { smokerDisplayOrder[it.smokerName] ?: Int.MAX_VALUE }
+            } else {
+                list
+            }
         }
         _perSmokerStats.postValue(perSmokerList)
 
@@ -412,7 +419,8 @@ class SessionStatsViewModel : ViewModel() {
         groupStats: GroupStats,
         sessionStart: Long,
         lastConeSmokerName: String? = null,
-        conesSinceLastBowl: Int = 0
+        conesSinceLastBowl: Int = 0,
+        smokerDisplayOrder: Map<String, Int>? = null
     ) {
         // If we're in continue mode, adjust the incoming stats with carried-over values
         val adjustedGroupStats = if (isInContinueBowlMode && carriedOverCones > 0) {
@@ -498,7 +506,13 @@ class SessionStatsViewModel : ViewModel() {
             perSmoker
         }
         
-        _perSmokerStats.value = adjustedPerSmoker
+        // Sort by displayOrder if provided, otherwise keep original order
+        val sortedPerSmoker = if (smokerDisplayOrder != null) {
+            adjustedPerSmoker.sortedBy { smokerDisplayOrder[it.smokerName] ?: Int.MAX_VALUE }
+        } else {
+            adjustedPerSmoker
+        }
+        _perSmokerStats.value = sortedPerSmoker
         // FIX: Use the adjusted groupStats
         _groupStats.value = adjustedGroupStats
         Log.d(TAG, "📦🔴 DEBUG: After setting _groupStats.value:")

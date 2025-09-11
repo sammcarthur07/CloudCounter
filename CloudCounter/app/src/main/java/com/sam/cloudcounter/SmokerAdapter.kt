@@ -16,10 +16,12 @@ class SmokerAdapter(
     private val smokerManager: SmokerManager,
     private val onAddSmokerClick: () -> Unit,
     private val onDeleteAllClick: () -> Unit,
-    private val onSmokerSelected: (Smoker?) -> Unit
+    private val onSmokerSelected: (Smoker?) -> Unit,
+    private val onReorderClick: (() -> Unit)? = null
 ) : ArrayAdapter<Smoker?>(context, R.layout.custom_spinner_item, mutableListOf()) {
 
     private var organizedSmokers: List<Smoker> = emptyList()
+    private var allSmokers: List<Smoker> = emptyList()
     private val fontList = listOf(
         R.font.bitcount_prop_double,
         R.font.exile,
@@ -37,10 +39,13 @@ class SmokerAdapter(
     )
 
     fun refreshOrganizedList(smokers: List<Smoker>, currentShareCode: String?, pausedSmokerIds: List<String>, awaySmokers: List<String>) {
+        allSmokers = smokers
         organizedSmokers = organizeSmokers(smokers, currentShareCode, pausedSmokerIds, awaySmokers)
             .flatMap { it.smokers }
         notifyDataSetChanged()
     }
+    
+    fun getAllSmokers(): List<Smoker> = allSmokers
 
     override fun getCount(): Int {
         return organizedSmokers.size + 1
@@ -147,15 +152,24 @@ class SmokerAdapter(
     }
 
     private fun createAddSmokerDropdownView(parent: ViewGroup): View {
-        val view = layoutInflater.inflate(R.layout.spinner_dropdown_add_item, parent, false)
+        // Use the new layout if reorder callback is provided
+        val layoutRes = if (onReorderClick != null) {
+            R.layout.spinner_dropdown_add_item_with_reorder
+        } else {
+            R.layout.spinner_dropdown_add_item
+        }
+        
+        val view = layoutInflater.inflate(layoutRes, parent, false)
         val addButton = view.findViewById<Button>(R.id.btnAddSmokerDropdown)
         val deleteAllBtn = view.findViewById<Button>(R.id.btnDeleteAllDropdown)
+        val reorderBtn = view.findViewById<Button>(R.id.btnReorderDropdown)
         val shimmerText = view.findViewById<TextView>(R.id.textAddSmokerShimmer)
 
         if (organizedSmokers.isEmpty()) {
             shimmerText.visibility = View.VISIBLE
             addButton.visibility = View.GONE
             deleteAllBtn.visibility = View.GONE
+            reorderBtn?.visibility = View.GONE
 
             shimmerText.post {
                 (shimmerText.tag as? ShimmerTextAnimation)?.stopShimmer()
@@ -166,6 +180,7 @@ class SmokerAdapter(
             shimmerText.visibility = View.GONE
             addButton.visibility = View.VISIBLE
             deleteAllBtn.visibility = View.VISIBLE
+            reorderBtn?.visibility = View.VISIBLE
         }
 
         setupDropdownButton(addButton, Color.WHITE, ContextCompat.getColor(context, R.color.my_dark_grey_background)) {
@@ -177,6 +192,14 @@ class SmokerAdapter(
         setupDropdownButton(deleteAllBtn, ContextCompat.getColor(context, R.color.neon_orange), ContextCompat.getColor(context, R.color.my_dark_grey_background)) {
             dismissSpinnerDropDown()
             onDeleteAllClick()
+        }
+        
+        // Setup reorder button if it exists
+        reorderBtn?.let { btn ->
+            setupDropdownButton(btn, ContextCompat.getColor(context, R.color.neon_green), ContextCompat.getColor(context, R.color.my_dark_grey_background)) {
+                dismissSpinnerDropDown()
+                onReorderClick?.invoke()
+            }
         }
 
         return view

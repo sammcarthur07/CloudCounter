@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 22, // Changed from 20 to 21
+    version = 23, // Changed from 22 to 23
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -405,6 +405,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 22 to 23 - Adding displayOrder to smokers")
+                
+                // Add displayOrder column to smokers table
+                database.execSQL("ALTER TABLE smokers ADD COLUMN displayOrder INTEGER NOT NULL DEFAULT 0")
+                
+                // Initialize displayOrder based on existing alphabetical order
+                database.execSQL("""
+                    UPDATE smokers 
+                    SET displayOrder = (
+                        SELECT COUNT(*) 
+                        FROM smokers s2 
+                        WHERE s2.name < smokers.name OR (s2.name = smokers.name AND s2.smokerId < smokers.smokerId)
+                    )
+                """)
+                
+                Log.d("Migration", "Migration from 22 to 23 completed successfully")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -426,7 +447,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_18_19,
                         MIGRATION_19_20,
                         MIGRATION_20_21,
-                        MIGRATION_21_TO_22// Added new migration
+                        MIGRATION_21_TO_22,
+                        MIGRATION_22_23 // Added displayOrder migration
                     )
                     .fallbackToDestructiveMigration()
                     .build()

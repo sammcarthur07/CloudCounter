@@ -25,6 +25,7 @@
     <color name="neon_purple">#BF7EFF</color>
     <color name="neon_orange">#FFA366</color>
     <color name="neon_yellow">#FFFF66</color>
+    <color name="neon_green">#98FB98</color>
     <color name="light_neon_green">#C8FFC8</color>
     <color name="neon_red">#FF6B6B</color>
 </resources>

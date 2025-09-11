@@ -20,6 +20,9 @@ data class Smoker(
     val uid: String = UUID.randomUUID().toString(),
 
     val name: String,
+    
+    // Display order for custom sorting (lower values appear first)
+    val displayOrder: Int = 0,
 
     // Cloud sync fields
     val isCloudSmoker: Boolean = false,

@@ -7,10 +7,10 @@ import androidx.room.*
 @Dao
 interface SmokerDao {
 
-    @Query("SELECT * FROM smokers ORDER BY name ASC")
+    @Query("SELECT * FROM smokers ORDER BY displayOrder ASC, name ASC")
     fun getAllSmokers(): LiveData<List<Smoker>>
 
-    @Query("SELECT * FROM smokers ORDER BY name ASC")
+    @Query("SELECT * FROM smokers ORDER BY displayOrder ASC, name ASC")
     suspend fun getAllSmokersList(): List<Smoker>
 
     @Query("SELECT * FROM smokers WHERE smokerId = :id")
@@ -63,6 +63,12 @@ interface SmokerDao {
 
     @Query("SELECT * FROM smokers WHERE cloudUserId = :cloudId LIMIT 1")
     fun getSmokerByCloudIdSync(cloudId: String): Smoker?
+
+    @Query("UPDATE smokers SET displayOrder = :order WHERE smokerId = :smokerId")
+    suspend fun updateDisplayOrder(smokerId: Long, order: Int)
+    
+    @Query("SELECT MAX(displayOrder) FROM smokers")
+    suspend fun getMaxDisplayOrder(): Int?
 
     @Transaction
     suspend fun upsert(smoker: Smoker) {

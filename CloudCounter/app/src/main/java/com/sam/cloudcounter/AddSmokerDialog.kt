@@ -784,7 +784,11 @@ class AddSmokerDialog(
                     )
             } else {
                 Log.d(TAG, "Not in a room. Adding local-only smoker '$name'.")
-                val smoker = Smoker(name = name)
+                // Get max display order for new smoker
+                val maxOrder = withContext(Dispatchers.IO) {
+                    repository.smokerDao.getMaxDisplayOrder() ?: -1
+                }
+                val smoker = Smoker(name = name, displayOrder = maxOrder + 1)
                 onSmokerAdded(smoker)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Added local smoker: $name", Toast.LENGTH_SHORT).show()
@@ -964,6 +968,10 @@ class AddSmokerDialog(
                 android.util.Log.d("WELCOME_DEBUG", "📝 Updated existing smoker")
             } else {
                 // Create new local entry
+                // Get max display order for new smoker
+                val maxOrder = withContext(Dispatchers.IO) {
+                    repository.smokerDao.getMaxDisplayOrder() ?: -1
+                }
                 val newSmoker = Smoker(
                     name = name,
                     isCloudSmoker = true,
@@ -972,7 +980,8 @@ class AddSmokerDialog(
                     passwordHash = cloudProfile.passwordHash,
                     isPasswordVerified = true,
                     isOwner = true,
-                    lastSyncTime = System.currentTimeMillis()
+                    lastSyncTime = System.currentTimeMillis(),
+                    displayOrder = maxOrder + 1
                 )
                 val id = withContext(Dispatchers.IO) {
                     repository.insertSmoker(newSmoker)
@@ -1097,6 +1106,11 @@ class AddSmokerDialog(
                     passwordHash = passwordHash
                 ).getOrThrow()
 
+                // Get max display order for new smoker
+                val maxOrder = withContext(Dispatchers.IO) {
+                    repository.smokerDao.getMaxDisplayOrder() ?: -1
+                }
+                
                 val newSmoker = Smoker(
                     name = name,
                     isCloudSmoker = true,
@@ -1106,7 +1120,8 @@ class AddSmokerDialog(
                     isPasswordVerified = true,
                     isOwner = true,
                     needsSync = false,
-                    lastSyncTime = System.currentTimeMillis()
+                    lastSyncTime = System.currentTimeMillis(),
+                    displayOrder = maxOrder + 1
                 )
 
                 val newSmokerId = withContext(Dispatchers.IO) {
@@ -1512,29 +1527,37 @@ class AddSmokerDialog(
     }
 
     private fun addCloudSmokerToLocal(item: CloudSmokerSearchResult, password: String?) {
-        val hash = password?.let { PasswordUtils.hashPassword(it) }
-        val smoker = Smoker(
-            name = item.name,
-            isCloudSmoker = true,
-            cloudUserId = item.userId,
-            shareCode = item.shareCode,
-            lastSyncTime = 0L,
-            needsSync = false,
-            passwordHash = hash,
-            isPasswordVerified = true,
-            isOwner = false
-        )
-        onSmokerAdded(smoker)
+        lifecycleScope.launch {
+            // Get max display order for new smoker
+            val maxOrder = withContext(Dispatchers.IO) {
+                repository.smokerDao.getMaxDisplayOrder() ?: -1
+            }
+            
+            val hash = password?.let { PasswordUtils.hashPassword(it) }
+            val smoker = Smoker(
+                name = item.name,
+                isCloudSmoker = true,
+                cloudUserId = item.userId,
+                shareCode = item.shareCode,
+                lastSyncTime = 0L,
+                needsSync = false,
+                passwordHash = hash,
+                isPasswordVerified = true,
+                isOwner = false,
+                displayOrder = maxOrder + 1
+            )
+            onSmokerAdded(smoker)
 
-        val shareCode = getCurrentShareCode()
-        val message = if (shareCode != null && item.userId.isNotEmpty()) {
-            "${item.name} has been invited to the session"
-        } else if (item.hasPassword) {
-            "Added password-protected ${item.name}"
-        } else {
-            "Added ${item.name}"
+            val shareCode = getCurrentShareCode()
+            val message = if (shareCode != null && item.userId.isNotEmpty()) {
+                "${item.name} has been invited to the session"
+            } else if (item.hasPassword) {
+                "Added password-protected ${item.name}"
+            } else {
+                "Added ${item.name}"
+            }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     private fun showSearchByNameDialog() {
