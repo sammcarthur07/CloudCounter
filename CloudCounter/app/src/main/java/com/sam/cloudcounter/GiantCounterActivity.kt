@@ -1628,24 +1628,50 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: skipToNextSmoker() called")
         Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker in skipToNextSmoker: $currentSmoker")
         
-        try {
-            // Broadcast the skip event to MainActivity to handle the rotation
-            val intent = Intent("com.sam.cloudcounter.SKIP_SMOKER")
-            intent.putExtra("request_skip", true)
-            intent.putExtra("current_smoker", currentSmoker)
-            
-            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Sending broadcast with action: ${intent.action}")
-            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Broadcast extras - request_skip: true, current_smoker: $currentSmoker")
-            
-            sendBroadcast(intent)
-            
-            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Broadcast sent successfully")
-            
-            // MainActivity will handle the rotation and update SharedPreferences
-            // Then GiantCounterActivity will pick it up from the listener
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Error sending broadcast", e)
+        lifecycleScope.launch {
+            try {
+                // Get all smokers from database ordered by displayOrder
+                val allSmokers = withContext(Dispatchers.IO) {
+                    val dao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                    dao.getAllSmokersList()
+                }
+                
+                Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Found ${allSmokers.size} smokers in database")
+                
+                if (allSmokers.isNotEmpty()) {
+                    // Find current smoker index
+                    val currentIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
+                    Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker index: $currentIndex")
+                    
+                    // Calculate next index (wrap around to 0 if at end)
+                    val nextIndex = if (currentIndex >= 0) {
+                        (currentIndex + 1) % allSmokers.size
+                    } else {
+                        0 // If current smoker not found, start at beginning
+                    }
+                    
+                    val nextSmoker = allSmokers[nextIndex]
+                    Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Next smoker: ${nextSmoker.name} at index $nextIndex")
+                    
+                    // Update SharedPreferences directly
+                    val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                    prefs.edit().putString("selected_smoker", nextSmoker.name).apply()
+                    Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Updated SharedPreferences with: ${nextSmoker.name}")
+                    
+                    // The onSharedPreferenceChanged listener will handle updating the UI
+                    
+                    // Also send broadcast for MainActivity (in case it's listening)
+                    val intent = Intent("com.sam.cloudcounter.SKIP_SMOKER")
+                    intent.putExtra("request_skip", true)
+                    intent.putExtra("new_smoker", nextSmoker.name)
+                    sendBroadcast(intent)
+                    Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Broadcast sent for MainActivity")
+                } else {
+                    Log.e(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: No smokers found in database")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Error in skipToNextSmoker", e)
+            }
         }
     }
     
