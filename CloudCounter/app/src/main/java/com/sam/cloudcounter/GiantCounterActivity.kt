@@ -1664,36 +1664,34 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 currentSmoker = newSmoker
                 smokerNameText.text = currentSmoker
                 
-                // Update font and color for the new smoker if not locked
-                if (!isFontAndColorLocked) {
-                    lifecycleScope.launch {
-                        val smokerData = withContext(Dispatchers.IO) {
-                            repository.getSmokerByName(newSmoker)
-                        }
-                        smokerData?.let { smoker ->
-                            // Update font
-                            smoker.fontIndex?.let { fontIndex ->
-                                if (fontIndex in 0 until fontList.size) {
-                                    val font = ResourcesCompat.getFont(this@GiantCounterActivity, fontList[fontIndex])
-                                    smokerNameText.typeface = font
-                                    recentStatsText.typeface = font
-                                    smokerFontTypeface = font
-                                }
-                            }
-                            
-                            // Update color
-                            smoker.textColor?.let { colorString ->
-                                try {
-                                    val color = Color.parseColor(colorString)
-                                    smokerNameText.setTextColor(color)
-                                    recentStatsText.setTextColor(color)
-                                    smokerFontColor = color
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "$LOG_PREFIX Error parsing color: $colorString", e)
-                                }
-                            }
-                        }
-                    }
+                // Update font and color based on lock settings
+                if (randomFontsEnabled) {
+                    // Generate new random font if fonts are unlocked
+                    val randomIndex = (Math.random() * fontList.size).toInt()
+                    val randomFont = ResourcesCompat.getFont(this, fontList[randomIndex])
+                    smokerNameText.typeface = randomFont
+                    recentStatsText.typeface = randomFont
+                    smokerFontTypeface = randomFont
+                    Log.d(TAG, "$LOG_PREFIX 🔤 Applied random font for new smoker")
+                } else if (globalLockedFont != null) {
+                    // Use locked font
+                    smokerNameText.typeface = globalLockedFont
+                    recentStatsText.typeface = globalLockedFont
+                    smokerFontTypeface = globalLockedFont
+                }
+                
+                if (colorChangingEnabled) {
+                    // Generate new random color if colors are unlocked
+                    val randomColor = NEON_COLORS.random()
+                    smokerNameText.setTextColor(randomColor)
+                    recentStatsText.setTextColor(randomColor)
+                    smokerFontColor = randomColor
+                    Log.d(TAG, "$LOG_PREFIX 🎨 Applied random color for new smoker")
+                } else if (globalLockedColor != null && globalLockedColor != -1) {
+                    // Use locked color
+                    smokerNameText.setTextColor(globalLockedColor!!)
+                    recentStatsText.setTextColor(globalLockedColor!!)
+                    smokerFontColor = globalLockedColor!!
                 }
             }
         }
