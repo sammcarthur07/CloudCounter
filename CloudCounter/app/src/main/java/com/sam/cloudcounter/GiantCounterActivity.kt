@@ -3,7 +3,9 @@ package com.sam.cloudcounter
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -70,6 +72,7 @@ class GiantCounterActivity : AppCompatActivity() {
     private lateinit var textRoundsLeft: TextView
     private lateinit var btnUndo: TextView
     private lateinit var btnRewind: TextView
+    private lateinit var btnSkip: TextView
     private lateinit var topButtonsContainer: LinearLayout
     
     // Data
@@ -226,7 +229,7 @@ class GiantCounterActivity : AppCompatActivity() {
             ).apply {
                 marginEnd = 8.dpToPx()
             }
-            text = "⟲ Rewind"
+            text = "Rewind"
             textSize = 12f
             setTextColor(ContextCompat.getColor(this@GiantCounterActivity, R.color.design_default_color_secondary))
             gravity = Gravity.CENTER
@@ -242,13 +245,38 @@ class GiantCounterActivity : AppCompatActivity() {
         }
         topButtonsContainer.addView(btnRewind)
         
+        // Skip button
+        btnSkip = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                32.dpToPx()
+            ).apply {
+                marginEnd = 8.dpToPx()
+            }
+            text = "Skip"
+            textSize = 12f
+            setTextColor(Color.parseColor("#FF91A4"))  // Neon candy color
+            gravity = Gravity.CENTER
+            setPadding(16.dpToPx(), 4.dpToPx(), 16.dpToPx(), 4.dpToPx())
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 16.dpToPx().toFloat()
+                setStroke(1.dpToPx(), Color.parseColor("#FF91A4"))
+                setColor(Color.TRANSPARENT)
+            }
+            isClickable = true
+            isFocusable = true
+            visibility = View.VISIBLE
+        }
+        topButtonsContainer.addView(btnSkip)
+        
         // Undo button
         btnUndo = TextView(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 32.dpToPx()
             )
-            text = "↶ Undo"
+            text = "Undo"
             textSize = 12f
             setTextColor(Color.parseColor("#FFA500"))  // Orange color for undo
             gravity = Gravity.CENTER
@@ -819,6 +847,11 @@ class GiantCounterActivity : AppCompatActivity() {
         // Rewind button
         btnRewind.setOnClickListener {
             rewindTime()
+        }
+        
+        // Skip button
+        btnSkip.setOnClickListener {
+            skipToNextSmoker()
         }
         
         // Round buttons
@@ -1585,6 +1618,20 @@ class GiantCounterActivity : AppCompatActivity() {
         // Save the rewind offset
         val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
         prefs.edit().putLong("rewindOffset", rewindOffset).apply()
+    }
+    
+    private fun skipToNextSmoker() {
+        Log.d(TAG, "$LOG_PREFIX ⏭️ Skipping to next smoker")
+        
+        // Broadcast the skip event to MainActivity to handle the rotation
+        val intent = Intent("com.sam.cloudcounter.SKIP_SMOKER")
+        intent.putExtra("request_skip", true)
+        sendBroadcast(intent)
+        
+        // MainActivity will handle the rotation and update SharedPreferences
+        // Then GiantCounterActivity will pick it up from the listener
+        
+        Log.d(TAG, "$LOG_PREFIX ⏭️ Skip request sent to MainActivity")
     }
     
     override fun onPause() {

@@ -302,7 +302,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:text="⟲ Rewind"
+            android:text="Rewind"
             android:textSize="12sp"
             android:textColor="@color/design_default_color_secondary"
             app:strokeColor="@color/design_default_color_secondary"
@@ -314,12 +314,29 @@
             android:contentDescription="Rewind 10 seconds" />
 
         <Button
+            android:id="@+id/btnSkip"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="32dp"
+            android:text="Skip"
+            android:textSize="12sp"
+            android:textColor="@color/neon_candy"
+            app:strokeColor="@color/neon_candy"
+            app:strokeWidth="1dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone"
+            android:minWidth="0dp"
+            android:contentDescription="Skip to next smoker" />
+
+        <Button
             android:id="@+id/btnUndoLastActivity"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:text="↶ Undo"
+            android:text="Undo"
             android:textSize="12sp"
             android:textColor="@color/button_text_color_undo"
             app:strokeColor="@color/button_stroke_color_undo"

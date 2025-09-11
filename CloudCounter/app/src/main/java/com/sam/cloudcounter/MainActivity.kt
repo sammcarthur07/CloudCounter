@@ -239,6 +239,7 @@ class MainActivity : AppCompatActivity() {
     private var smokers: List<Smoker> = emptyList()
 
     private lateinit var rewindReceiver: BroadcastReceiver
+    private lateinit var skipReceiver: BroadcastReceiver
 
     private lateinit var smokerUpdateReceiver: BroadcastReceiver
     private lateinit var undoReceiver: BroadcastReceiver
@@ -1935,6 +1936,7 @@ class MainActivity : AppCompatActivity() {
         triggerInitialNotifications()
         setupSessionControls()
         setupRewindButton()
+        setupSkipButton()
         updateUIForSessionState()
 
         // Setup broadcast receiver for smoker updates
@@ -2269,6 +2271,14 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering rewind receiver: ${e.message}")
+        }
+        
+        try {
+            if (::skipReceiver.isInitialized) {
+                unregisterReceiver(skipReceiver)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error unregistering skip receiver: ${e.message}")
         }
 
         try {
@@ -3249,6 +3259,36 @@ class MainActivity : AppCompatActivity() {
             registerReceiver(rewindReceiver, rewindFilter)
         }
         Log.d(TAG, "⏪📡 Rewind broadcast receiver registered")
+        
+        // Register skip receiver
+        skipReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "com.sam.cloudcounter.SKIP_SMOKER") {
+                    val requestSkip = intent.getBooleanExtra("request_skip", false)
+                    if (requestSkip) {
+                        Log.d(TAG, "⏭️📡 Received skip request from GiantCounterActivity")
+                        
+                        // Skip to the next smoker
+                        moveToNextActiveSmoker()
+                        
+                        // Update SharedPreferences with the new smoker
+                        val currentSmoker = binding.spinnerSmoker.selectedItem as? Smoker
+                        currentSmoker?.let {
+                            val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                            prefs.edit().putString("selected_smoker", it.name).apply()
+                            Log.d(TAG, "⏭️📡 Skipped to smoker: ${it.name}")
+                        }
+                    }
+                }
+            }
+        }
+        val skipFilter = IntentFilter("com.sam.cloudcounter.SKIP_SMOKER")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(skipReceiver, skipFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(skipReceiver, skipFilter)
+        }
+        Log.d(TAG, "⏭️📡 Skip broadcast receiver registered")
 
         // Register undo receiver
         val undoFilter = IntentFilter("com.sam.cloudcounter.ACTIVITY_UNDONE")
@@ -5207,6 +5247,7 @@ class MainActivity : AppCompatActivity() {
             binding.btnEndSesh.visibility = View.VISIBLE
             binding.btnStartSesh.visibility = View.GONE
             binding.btnRewind.visibility = View.VISIBLE
+            binding.btnSkip.visibility = View.VISIBLE
             binding.btnToggleTimers.visibility = View.VISIBLE
 
             // Show auto-add controls during session (if timers are visible)
@@ -5238,6 +5279,7 @@ class MainActivity : AppCompatActivity() {
             binding.btnStartSesh.setTextColor(ContextCompat.getColor(this, R.color.my_dark_grey_background))
 
             binding.btnRewind.visibility = View.GONE
+            binding.btnSkip.visibility = View.GONE
 
             // Show Advanced button when not in session
             binding.btnToggleTimers.visibility = View.VISIBLE
@@ -9964,6 +10006,24 @@ class MainActivity : AppCompatActivity() {
             // Force immediate timer update
             handler.removeCallbacks(timerRunnable)
             handler.post(timerRunnable)
+        }
+    }
+    
+    private fun setupSkipButton() {
+        binding.btnSkip.setOnClickListener {
+            Log.d(TAG, "⏭️ Skip button clicked")
+            
+            // Skip to the next smoker
+            moveToNextActiveSmoker()
+            
+            // Show feedback
+            val currentSmoker = binding.spinnerSmoker.selectedItem as? Smoker
+            currentSmoker?.let {
+                Toast.makeText(this, "Skipped to ${it.name}", Toast.LENGTH_SHORT).show()
+            }
+            
+            // ADD CONFETTI HERE
+            confettiHelper.showMiniConfettiFromButton(binding.btnSkip)
         }
     }
 
