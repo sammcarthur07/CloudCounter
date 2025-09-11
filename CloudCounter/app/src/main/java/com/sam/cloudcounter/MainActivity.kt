@@ -3263,10 +3263,19 @@ class MainActivity : AppCompatActivity() {
         // Register skip receiver
         skipReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                Log.d(TAG, "🎯 SKIP DEBUG: BroadcastReceiver onReceive called")
+                Log.d(TAG, "🎯 SKIP DEBUG: Intent action: ${intent?.action}")
+                Log.d(TAG, "🎯 SKIP DEBUG: Intent extras: ${intent?.extras}")
+                
                 if (intent?.action == "com.sam.cloudcounter.SKIP_SMOKER") {
+                    Log.d(TAG, "🎯 SKIP DEBUG: Correct action received")
                     val requestSkip = intent.getBooleanExtra("request_skip", false)
+                    val fromSmoker = intent.getStringExtra("current_smoker")
+                    Log.d(TAG, "🎯 SKIP DEBUG: request_skip = $requestSkip, from_smoker = $fromSmoker")
+                    
                     if (requestSkip) {
-                        Log.d(TAG, "⏭️📡 Received skip request from GiantCounterActivity")
+                        Log.d(TAG, "🎯 SKIP DEBUG: Processing skip request from GiantCounterActivity")
+                        Log.d(TAG, "🎯 SKIP DEBUG: Current spinner selection before skip: ${(binding.spinnerSmoker.selectedItem as? Smoker)?.name}")
                         
                         // Skip to the next smoker
                         moveToNextActiveSmoker()
@@ -3274,11 +3283,16 @@ class MainActivity : AppCompatActivity() {
                         // Update SharedPreferences with the new smoker
                         val currentSmoker = binding.spinnerSmoker.selectedItem as? Smoker
                         currentSmoker?.let {
+                            Log.d(TAG, "🎯 SKIP DEBUG: New smoker after skip: ${it.name}")
                             val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
                             prefs.edit().putString("selected_smoker", it.name).apply()
-                            Log.d(TAG, "⏭️📡 Skipped to smoker: ${it.name}")
+                            Log.d(TAG, "🎯 SKIP DEBUG: Updated SharedPreferences with: ${it.name}")
+                        } ?: run {
+                            Log.e(TAG, "🎯 SKIP DEBUG: ERROR - currentSmoker is null after moveToNextActiveSmoker")
                         }
                     }
+                } else {
+                    Log.d(TAG, "🎯 SKIP DEBUG: Received broadcast with different action: ${intent?.action}")
                 }
             }
         }

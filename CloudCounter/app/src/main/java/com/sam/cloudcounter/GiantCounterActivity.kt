@@ -852,6 +852,9 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         
         // Skip button
         btnSkip.setOnClickListener {
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Skip button clicked in GiantCounterActivity")
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker before skip: $currentSmoker")
+            vibrateFeedback(30)
             skipToNextSmoker()
         }
         
@@ -1622,17 +1625,28 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     }
     
     private fun skipToNextSmoker() {
-        Log.d(TAG, "$LOG_PREFIX ⏭️ Skipping to next smoker")
+        Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: skipToNextSmoker() called")
+        Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker in skipToNextSmoker: $currentSmoker")
         
-        // Broadcast the skip event to MainActivity to handle the rotation
-        val intent = Intent("com.sam.cloudcounter.SKIP_SMOKER")
-        intent.putExtra("request_skip", true)
-        sendBroadcast(intent)
-        
-        // MainActivity will handle the rotation and update SharedPreferences
-        // Then GiantCounterActivity will pick it up from the listener
-        
-        Log.d(TAG, "$LOG_PREFIX ⏭️ Skip request sent to MainActivity")
+        try {
+            // Broadcast the skip event to MainActivity to handle the rotation
+            val intent = Intent("com.sam.cloudcounter.SKIP_SMOKER")
+            intent.putExtra("request_skip", true)
+            intent.putExtra("current_smoker", currentSmoker)
+            
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Sending broadcast with action: ${intent.action}")
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Broadcast extras - request_skip: true, current_smoker: $currentSmoker")
+            
+            sendBroadcast(intent)
+            
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Broadcast sent successfully")
+            
+            // MainActivity will handle the rotation and update SharedPreferences
+            // Then GiantCounterActivity will pick it up from the listener
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Error sending broadcast", e)
+        }
     }
     
     override fun onResume() {
@@ -1657,10 +1671,13 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     }
     
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: onSharedPreferenceChanged called with key: $key")
         if (key == "selected_smoker") {
             val newSmoker = sharedPreferences?.getString("selected_smoker", currentSmoker) ?: currentSmoker
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: New smoker value from SharedPreferences: $newSmoker")
+            Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker value: $currentSmoker")
             if (newSmoker != currentSmoker) {
-                Log.d(TAG, "$LOG_PREFIX 🔄 Smoker changed from $currentSmoker to $newSmoker")
+                Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Smoker changed from $currentSmoker to $newSmoker")
                 currentSmoker = newSmoker
                 smokerNameText.text = currentSmoker
                 
