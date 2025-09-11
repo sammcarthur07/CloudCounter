@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -45,7 +46,7 @@ import android.widget.ArrayAdapter
 import androidx.core.content.res.ResourcesCompat
 
 
-class GiantCounterActivity : AppCompatActivity() {
+class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     companion object {
         private const val TAG = "GiantCounter"
         private const val LOG_PREFIX = "🎯 GIANT: "
@@ -1634,15 +1635,46 @@ class GiantCounterActivity : AppCompatActivity() {
         Log.d(TAG, "$LOG_PREFIX ⏭️ Skip request sent to MainActivity")
     }
     
+    override fun onResume() {
+        super.onResume()
+        // Register SharedPreferences listener
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.registerOnSharedPreferenceChangeListener(this)
+    }
+    
     override fun onPause() {
         super.onPause()
         // Save current display state for MainActivity to pick up
         saveDisplayState()
+        // Unregister SharedPreferences listener
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.unregisterOnSharedPreferenceChangeListener(this)
     }
     
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(timerRunnable)
+    }
+    
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        if (key == "selected_smoker") {
+            val newSmoker = sharedPreferences?.getString("selected_smoker", currentSmoker) ?: currentSmoker
+            if (newSmoker != currentSmoker) {
+                Log.d(TAG, "$LOG_PREFIX 🔄 Smoker changed from $currentSmoker to $newSmoker")
+                currentSmoker = newSmoker
+                smokerNameText.text = currentSmoker
+                
+                // Update font and color for the new smoker
+                lifecycleScope.launch {
+                    val smokerData = withContext(Dispatchers.IO) {
+                        repository.getSmokerByName(newSmoker)
+                    }
+                    smokerData?.let { smoker ->
+                        applySmokerFontAndColor(smoker)
+                    }
+                }
+            }
+        }
     }
     
     private fun saveDisplayState() {
