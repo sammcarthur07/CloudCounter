@@ -2560,11 +2560,36 @@ class MainActivity : AppCompatActivity() {
         updateLayoutPosition(isLayoutAtBottom)
         
         binding.btnLayoutRotation.setOnClickListener {
+            // Check if chat tab is currently selected
+            val currentTabPosition = binding.tabLayout.selectedTabPosition
+            if (currentTabPosition == 5) {
+                // Chat tab is active - prevent switching to bottom
+                Toast.makeText(this, "Can't switch controls position while in chat", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
             isLayoutAtBottom = !isLayoutAtBottom
-            prefs.edit().putBoolean("layout_at_bottom", isLayoutAtBottom).apply()
+            Log.d("KEYBOARD_FIX", "🔄 Layout rotation clicked. New position: ${if (isLayoutAtBottom) "BOTTOM" else "TOP"}")
+            
+            // Use commit() instead of apply() for immediate synchronous save
+            val saved = prefs.edit().putBoolean("layout_at_bottom", isLayoutAtBottom).commit()
+            Log.d("KEYBOARD_FIX", "🔄 Preference saved successfully: $saved")
+            
+            // Verify the save
+            val verifyPref = prefs.getBoolean("layout_at_bottom", false)
+            Log.d("KEYBOARD_FIX", "🔄 Verified preference value: $verifyPref")
             
             updateLayoutPosition(isLayoutAtBottom)
             animateLayoutRotation()
+            
+            // Notify ChatFragment about the layout change AFTER a delay to ensure visual layout is complete
+            Handler(Looper.getMainLooper()).postDelayed({
+                val chatFragment = supportFragmentManager.fragments.find { it is ChatFragment } as? ChatFragment
+                chatFragment?.let {
+                    Log.d("KEYBOARD_FIX", "🔄 Notifying ChatFragment of layout change (delayed)")
+                    it.onLayoutPositionChanged()
+                } ?: Log.e("KEYBOARD_FIX", "🔄 ChatFragment not found to notify!")
+            }, 300) // 300ms delay to allow animation and layout to complete
             
             val message = if (isLayoutAtBottom) "Controls moved to bottom" else "Controls moved to top"
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
@@ -3096,18 +3121,40 @@ class MainActivity : AppCompatActivity() {
                     previousTabPosition = tab.position
 
                     if (tab.position == 5) {
-                        val chatFragment = supportFragmentManager.findFragmentByTag("f5") as? ChatFragment
-                        if (chatFragment != null) {
-                            Log.d("MainActivity", "Found ChatFragment, calling onTabSelected")
-                            chatFragment.onTabSelected()
-                        } else {
-                            Log.d("MainActivity", "ChatFragment not found with tag")
-                            val viewPagerFragment = supportFragmentManager.findFragmentById(binding.viewPager.id)
-                            if (viewPagerFragment != null) {
-                                val childFragments = viewPagerFragment.childFragmentManager.fragments
-                                childFragments.filterIsInstance<ChatFragment>().firstOrNull()?.let {
-                                    Log.d("MainActivity", "Found ChatFragment via child fragments")
+                        // Auto-switch button section to top when chat tab is selected and it's at bottom
+                        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+                        if (isLayoutAtBottom) {
+                            Log.d("MainActivity", "Chat tab selected with bottom layout - auto-switching to top")
+                            prefs.edit().putBoolean("layout_at_bottom", false).commit()
+                            updateLayoutPosition(false)
+                            animateLayoutRotation()
+                            
+                            // Show toast to inform user
+                            Toast.makeText(this@MainActivity, "Controls moved to top for chat", Toast.LENGTH_SHORT).show()
+                            
+                            // Notify ChatFragment after layout change
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                val chatFragment = supportFragmentManager.fragments.find { it is ChatFragment } as? ChatFragment
+                                chatFragment?.let {
+                                    it.onLayoutPositionChanged()
                                     it.onTabSelected()
+                                }
+                            }, 300)
+                        } else {
+                            // Normal chat tab selection when already at top
+                            val chatFragment = supportFragmentManager.findFragmentByTag("f5") as? ChatFragment
+                            if (chatFragment != null) {
+                                Log.d("MainActivity", "Found ChatFragment, calling onTabSelected")
+                                chatFragment.onTabSelected()
+                            } else {
+                                Log.d("MainActivity", "ChatFragment not found with tag")
+                                val viewPagerFragment = supportFragmentManager.findFragmentById(binding.viewPager.id)
+                                if (viewPagerFragment != null) {
+                                    val childFragments = viewPagerFragment.childFragmentManager.fragments
+                                    childFragments.filterIsInstance<ChatFragment>().firstOrNull()?.let {
+                                        Log.d("MainActivity", "Found ChatFragment via child fragments")
+                                        it.onTabSelected()
+                                    }
                                 }
                             }
                         }
@@ -11457,7 +11504,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonContainer.layoutParams = params
+        
+        // Notify ChatFragment about expansion state change if layout is at bottom
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        if (isLayoutAtBottom) {
+            val chatFragment = supportFragmentManager.fragments.find { it is ChatFragment } as? ChatFragment
+            chatFragment?.let {
+                Log.d("KEYBOARD_FIX", "🔘 Notifying ChatFragment of expansion state change (expanded: $timersVisible)")
+                it.onExpansionStateChanged(timersVisible)
+            }
+        }
+        
         Log.d(TAG, "🔘 === TOGGLE TIMERS COMPLETE ===")
+    }
+    
+    // Public method to check if button section is expanded
+    fun isButtonSectionExpanded(): Boolean {
+        return timersVisible
     }
     
     private fun refreshCloudSmokerName(smoker: Smoker) {

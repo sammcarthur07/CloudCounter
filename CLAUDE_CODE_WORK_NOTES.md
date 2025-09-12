@@ -67,3 +67,25 @@
 - Verified multi-add works correctly with all time modes
 - Confirmed vibration works on long press
 - Stats display updates properly with all activity types
+
+## Important Rules for Claude Code Assistant:
+
+### CRITICAL: NO BUILDING OR TESTING
+- **NEVER run any Android build commands** (gradlew, assembleDebug, etc.)
+- **NEVER try to build, compile, or install APKs** 
+- **NEVER run quick-build.sh or any build scripts**
+- **User handles ALL building and testing through Android Studio**
+- **User will test all code changes manually**
+
+### What Claude Should Do:
+- Make code changes and edits only
+- Explain what was changed and why
+- Provide implementation details
+- Answer questions about the code
+
+### What Claude Should NEVER Do:
+- Run ./gradlew commands
+- Try to build APKs
+- Install or test apps on devices  
+- Run any build or test scripts
+- Attempt compilation or execution

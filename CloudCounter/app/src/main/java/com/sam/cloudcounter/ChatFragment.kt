@@ -116,6 +116,8 @@ class ChatFragment : Fragment() {
 
     private var keyboardListenerRegistered = false
     private var keyboardLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+    private var lastKeyboardHeight = -1 // Track last keyboard height to prevent excessive recalculations
+    private var lastButtonSectionY = -1f // Track last button section position
 
     private var currentNavState = NavigationState.MAIN_MENU
 
@@ -1059,60 +1061,135 @@ class ChatFragment : Fragment() {
             }
         }
     }
-    
+
     private fun adjustInputPaddingForLayoutPosition() {
-        // Get the shared preference to check if layout is at bottom
-        val prefs = requireContext().getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
+        Log.d("KEYBOARD_FIX", "📏 === ADJUST INPUT PADDING START ===")
+        Log.d("KEYBOARD_FIX", "📏 Method called from: ${Thread.currentThread().stackTrace[3]}")
+
+        val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
         val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
-        
+
+        val allPrefs = prefs.all
+        Log.d("KEYBOARD_FIX", "📏 All preferences in 'sesh': $allPrefs")
+        Log.d("KEYBOARD_FIX", "📏 layout_at_bottom value: $isLayoutAtBottom")
+
+        val mainActivity = requireActivity() as? MainActivity
+        val buttonSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
+        buttonSection?.let {
+            val location = IntArray(2)
+            it.getLocationOnScreen(location)
+            val screenHeight = resources.displayMetrics.heightPixels
+            val isVisuallyAtBottom = location[1] > screenHeight / 2
+            Log.d("KEYBOARD_FIX", "📏 Button section Y position: ${location[1]} (screen height: $screenHeight)")
+            Log.d("KEYBOARD_FIX", "📏 Is visually at bottom: $isVisuallyAtBottom")
+        }
+
         if (isLayoutAtBottom) {
-            // When section is at bottom, use ADJUST_NOTHING and handle manually
             requireActivity().window.setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING or
                         WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
             )
+            Log.d("KEYBOARD_FIX", "📏 Set soft input mode to ADJUST_NOTHING")
         } else {
-            // When section is at top, use ADJUST_RESIZE
             requireActivity().window.setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
                         WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
             )
+            Log.d("KEYBOARD_FIX", "📏 Set soft input mode to ADJUST_RESIZE")
         }
-        
+
         binding.layoutMessageInput?.let { inputLayout ->
+            // Reset translation first
+            inputLayout.translationY = 0f
+
             val paddingLeft = inputLayout.paddingLeft
             val paddingRight = inputLayout.paddingRight
             val paddingTop = inputLayout.paddingTop
-            
+            val oldPaddingBottom = inputLayout.paddingBottom
+
             if (isLayoutAtBottom) {
-                // When section is at bottom, minimal padding
-                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 2.dpToPx())
+                Log.d("KEYBOARD_FIX", "📏 Setting up message input for BOTTOM layout")
+                val newPaddingBottom = 2.dpToPx()
+                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, newPaddingBottom)
                 inputLayout.fitsSystemWindows = false
+                inputLayout.visibility = View.VISIBLE
+
+                Log.d("KEYBOARD_FIX", "📏 Message input set for bottom layout, padding: $oldPaddingBottom -> $newPaddingBottom")
             } else {
-                // When section is at top, add padding for navigation bar
-                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 48.dpToPx())
+                val newPaddingBottom = 48.dpToPx()
+                inputLayout.setPadding(paddingLeft, paddingTop, paddingRight, newPaddingBottom)
                 inputLayout.fitsSystemWindows = true
+                inputLayout.visibility = View.VISIBLE
+                Log.d("KEYBOARD_FIX", "📏 Message input reset for top layout, padding: $oldPaddingBottom -> $newPaddingBottom")
             }
         }
-        
-        // Also adjust for log input
+
+        Log.d("KEYBOARD_FIX", "📏 MESSAGE INPUT SECTION COMPLETED")
+
+        // Position input when button section is at bottom
+        if (isLayoutAtBottom) {
+            Log.d("KEYBOARD_FIX", "📏 POSITIONING INPUT FOR BOTTOM LAYOUT")
+
+            binding.layoutSignedIn?.visibility = View.VISIBLE
+            binding.layoutTextChat?.visibility = View.VISIBLE
+
+            // Post to ensure layout is measured
+            binding.layoutMessageInput?.post {
+                val mainActivity = requireActivity() as? MainActivity
+                val buttonSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
+
+                buttonSection?.let { section ->
+                    binding.layoutMessageInput?.let { inputLayout ->
+                        // Get button section position
+                        val location = IntArray(2)
+                        section.getLocationOnScreen(location)
+                        val buttonSectionY = location[1].toFloat()
+
+                        // Get input layout position WITHOUT translation
+                        val inputLocation = IntArray(2)
+                        inputLayout.getLocationOnScreen(inputLocation)
+                        // Subtract current translation to get original position
+                        val inputOriginalY = inputLocation[1].toFloat() - inputLayout.translationY
+
+                        // Calculate target position: 10dp above button section
+                        val targetY = buttonSectionY - inputLayout.height - 10.dpToPx()
+                        val neededTranslation = targetY - inputOriginalY
+
+                        Log.d("KEYBOARD_FIX", "📏 POSITIONING CALCULATION:")
+                        Log.d("KEYBOARD_FIX", "📏   Button section Y: $buttonSectionY px")
+                        Log.d("KEYBOARD_FIX", "📏   Input current Y: ${inputLocation[1].toFloat()} px")
+                        Log.d("KEYBOARD_FIX", "📏   Input height: ${inputLayout.height} px")
+                        Log.d("KEYBOARD_FIX", "📏   Target Y: $targetY px")
+                        Log.d("KEYBOARD_FIX", "📏   Translation needed: $neededTranslation px")
+
+                        inputLayout.translationY = neededTranslation
+
+                        val finalY = inputOriginalY + neededTranslation
+                        Log.d("KEYBOARD_FIX", "📏 ✅ INPUT POSITIONED AT: $finalY px")
+                    }
+                }
+            }
+        }
+
+        // Also adjust log input
         binding.layoutLogInput?.let { logInputLayout ->
+            logInputLayout.translationY = 0f
             val paddingLeft = logInputLayout.paddingLeft
             val paddingRight = logInputLayout.paddingRight
             val paddingTop = logInputLayout.paddingTop
-            
+
             if (isLayoutAtBottom) {
-                // Minimal padding when section is at bottom
-                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 2.dpToPx())
+                val newPaddingBottom = 2.dpToPx()
+                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, newPaddingBottom)
                 logInputLayout.fitsSystemWindows = false
             } else {
-                // Add padding for navigation bar when section is at top
-                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, 16.dpToPx())
+                val newPaddingBottom = 16.dpToPx()
+                logInputLayout.setPadding(paddingLeft, paddingTop, paddingRight, newPaddingBottom)
                 logInputLayout.fitsSystemWindows = true
             }
         }
     }
-    
+
     private fun getNavigationBarHeight(): Int {
         val resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
         return if (resourceId > 0) {
@@ -1121,77 +1198,322 @@ class ChatFragment : Fragment() {
             0
         }
     }
-    
+
     private fun setupKeyboardVisibilityDetection() {
-        val prefs = requireContext().getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
+        Log.d("KEYBOARD_FIX", "🎹 === KEYBOARD DETECTION SETUP START ===")
+        Log.d("KEYBOARD_FIX", "🎹 Called from: ${Thread.currentThread().stackTrace[3]}")
+
+        val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
         val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
         
+        // Log all preferences for debugging
+        val allPrefs = prefs.all
+        Log.d("KEYBOARD_FIX", "🎹 All preferences: $allPrefs")
+        Log.d("KEYBOARD_FIX", "🎹 layout_at_bottom: $isLayoutAtBottom")
+        Log.d("KEYBOARD_FIX", "🎹 Layout position: ${if (isLayoutAtBottom) "BOTTOM" else "TOP"}")
+
+        // Always clean up existing listener first
+        keyboardLayoutListener?.let { listener ->
+            view?.rootView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
+            Log.d("ChatFragment", "🎹 Cleaned up existing listener")
+        }
+        keyboardListenerRegistered = false
+
         // Only setup keyboard detection when section is at bottom
         if (!isLayoutAtBottom) {
-            // Clean up any existing listener
-            keyboardLayoutListener?.let { listener ->
-                view?.rootView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
-            }
-            keyboardListenerRegistered = false
+            Log.d("ChatFragment", "🎹 Section at TOP - using system keyboard handling")
             return
         }
-        
-        if (keyboardListenerRegistered) return
-        
-        val rootView = view?.rootView ?: return
+
+        Log.d("ChatFragment", "🎹 Section at BOTTOM - setting up manual keyboard handling")
+
+        val rootView = view?.rootView ?: run {
+            Log.d("ChatFragment", "🎹 ERROR: rootView is null!")
+            return
+        }
+
         keyboardLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
             val rect = Rect()
             rootView.getWindowVisibleDisplayFrame(rect)
             val screenHeight = rootView.height
             val keypadHeight = screenHeight - rect.bottom
-            
+
+            Log.d("ChatFragment", "🎹 === KEYBOARD STATE CHECK ===")
+            Log.d("ChatFragment", "🎹 Screen height: $screenHeight px")
+            Log.d("ChatFragment", "🎹 Rect bottom: ${rect.bottom} px")
+            Log.d("ChatFragment", "🎹 Rect top: ${rect.top} px")
+            Log.d("ChatFragment", "🎹 Keypad height: $keypadHeight px")
+            Log.d("ChatFragment", "🎹 Keypad height in dp: ${keypadHeight / resources.displayMetrics.density} dp")
+
             // Get the height of the bottom section
-            val topSection = requireActivity().findViewById<View>(R.id.topSectionContainer)
+            val mainActivity = requireActivity() as? MainActivity
+            val topSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
             val sectionHeight = topSection?.height ?: 0
+            val sectionY = topSection?.y ?: 0f
+
+            Log.d("ChatFragment", "🎹 Button section height: $sectionHeight px")
+            Log.d("ChatFragment", "🎹 Button section Y position: $sectionY px")
+
+            // Check current input position
+            binding.layoutMessageInput?.let { input ->
+                Log.d("ChatFragment", "🎹 Input current Y: ${input.y} px")
+                Log.d("ChatFragment", "🎹 Input current translationY: ${input.translationY} px")
+                Log.d("ChatFragment", "🎹 Input height: ${input.height} px")
+            }
+
+            // Add throttling: only recalculate if keyboard height or button section position changed significantly
+            val keyboardHeightChanged = Math.abs(keypadHeight - lastKeyboardHeight) > 10 // 10px threshold
+            val buttonSectionMoved = Math.abs(sectionY - lastButtonSectionY) > 20f // 20px threshold
             
-            // If keyboard is showing (height > 200dp typically indicates keyboard)
-            if (keypadHeight > 200.dpToPx()) {
-                // Keyboard is visible - position input just above it, compensating for section height
+            if (!keyboardHeightChanged && !buttonSectionMoved) {
+                // No significant change, skip recalculation
+                return@OnGlobalLayoutListener
+            }
+            
+            // Update last known values
+            lastKeyboardHeight = keypadHeight
+            lastButtonSectionY = sectionY
+            
+            // If keyboard is showing (height > 30dp - ultra sensitive for small keyboards)
+            val keyboardThreshold = 30.dpToPx() // Very low threshold - 30dp (~105px)
+            
+            Log.d("KEYBOARD_FIX", "🎹 THRESHOLD CALCULATION:")
+            Log.d("KEYBOARD_FIX", "🎹   30dp = $keyboardThreshold px")
+            Log.d("KEYBOARD_FIX", "🎹   Density = ${resources.displayMetrics.density}")
+            Log.d("KEYBOARD_FIX", "🎹   Keypad height = $keypadHeight px")
+            Log.d("KEYBOARD_FIX", "🎹   Comparison: $keypadHeight > $keyboardThreshold = ${keypadHeight > keyboardThreshold}")
+            Log.d("KEYBOARD_FIX", "🎹   Height changed: $keyboardHeightChanged, Button moved: $buttonSectionMoved")
+            
+            if (keypadHeight > keyboardThreshold) {
+                Log.d("KEYBOARD_FIX", "🎹 ✅ KEYBOARD VISIBLE (height: $keypadHeight > threshold: $keyboardThreshold)")
                 positionInputAboveKeyboard(keypadHeight, sectionHeight)
             } else {
-                // Keyboard is hidden - restore normal position
-                restoreInputPosition()
+                Log.d("KEYBOARD_FIX", "🎹 ❌ KEYBOARD HIDDEN (height: $keypadHeight <= threshold: $keyboardThreshold)")
+                
+                // FORCE keyboard positioning if height is close to our observed 168px
+                if (keypadHeight >= 160 && keypadHeight <= 180) {
+                    Log.d("KEYBOARD_FIX", "🎹 🚨 FORCE POSITIONING - detected likely keyboard at $keypadHeight px")
+                    positionInputAboveKeyboard(keypadHeight, sectionHeight)
+                } else {
+                    restoreInputPosition()
+                }
             }
+            Log.d("KEYBOARD_FIX", "🎹 === END KEYBOARD CHECK ===")
         }
-        
+
         rootView.viewTreeObserver.addOnGlobalLayoutListener(keyboardLayoutListener)
         keyboardListenerRegistered = true
+        Log.d("ChatFragment", "🎹 Keyboard listener registered successfully for BOTTOM layout")
+    }
+
+    fun onLayoutPositionChanged() {
+        Log.d("KEYBOARD_FIX", "📍 === LAYOUT POSITION CHANGED NOTIFICATION ===")
+        
+        // Force re-read the preference immediately
+        val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+        Log.d("KEYBOARD_FIX", "📍 New layout position from prefs: ${if (isLayoutAtBottom) "BOTTOM" else "TOP"}")
+        
+        // Clear any existing keyboard listeners
+        keyboardLayoutListener?.let { listener ->
+            view?.rootView?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
+            Log.d("KEYBOARD_FIX", "📍 Cleared existing keyboard listener")
+        }
+        keyboardLayoutListener = null
+        keyboardListenerRegistered = false
+
+        // Re-adjust padding immediately
+        adjustInputPaddingForLayoutPosition()
+
+        // Re-setup keyboard detection immediately (no delay needed since we used commit())
+        setupKeyboardVisibilityDetection()
+        
+        // Force a layout pass
+        view?.requestLayout()
+        Log.d("KEYBOARD_FIX", "📍 Layout position change handling complete")
     }
     
+    fun onExpansionStateChanged(isExpanded: Boolean) {
+        Log.d("KEYBOARD_FIX", "🔄 === EXPANSION STATE CHANGED ===")
+        Log.d("KEYBOARD_FIX", "🔄 Button section is now: ${if (isExpanded) "EXPANDED" else "COLLAPSED"}")
+        
+        // Reset tracking variables to force recalculation on state change
+        lastButtonSectionY = -1f
+        
+        // Check if keyboard is currently visible
+        val rootView = view?.rootView ?: return
+        val rect = Rect()
+        rootView.getWindowVisibleDisplayFrame(rect)
+        val screenHeight = rootView.height
+        val keypadHeight = screenHeight - rect.bottom
+        val keyboardThreshold = 30.dpToPx() // Very low threshold - 30dp (~105px)
+        
+        val isKeyboardVisible = keypadHeight > keyboardThreshold
+        Log.d("KEYBOARD_FIX", "🔄 Keyboard currently visible: $isKeyboardVisible (height: $keypadHeight)")
+        
+        // If keyboard is visible, recalculate the position with a delay to allow layout to settle
+        if (isKeyboardVisible) {
+            Log.d("KEYBOARD_FIX", "🔄 Recalculating input position for new expansion state (with delay)")
+            
+            // Add a small delay to allow the button section layout to complete
+            view?.post {
+                view?.postDelayed({
+                    Log.d("KEYBOARD_FIX", "🔄 Delayed position recalculation starting")
+                    val sectionHeight = getNavigationBarHeight()
+                    positionInputAboveKeyboard(keypadHeight, sectionHeight)
+                }, 50) // 50ms delay to allow layout to complete
+            }
+        }
+    }
+
     private fun positionInputAboveKeyboard(keyboardHeight: Int, sectionHeight: Int) {
-        // Calculate the actual translation needed
-        // The ViewPager's bottom is already elevated by sectionHeight
-        // So we only need to translate by (keyboardHeight - sectionHeight)
-        val actualTranslation = -(keyboardHeight - sectionHeight).toFloat()
-        
+        Log.d("KEYBOARD_FIX", "🔧 === POSITION INPUT ABOVE KEYBOARD ===")
+        Log.d("KEYBOARD_FIX", "🔧 keyboardHeight: $keyboardHeight px (${keyboardHeight / resources.displayMetrics.density} dp)")
+
+        val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+
+        Log.d("KEYBOARD_FIX", "🔧 layout_at_bottom from prefs: $isLayoutAtBottom")
+
+        if (!isLayoutAtBottom) {
+            Log.d("KEYBOARD_FIX", "🔧 TOP MODE - no translation needed")
+            return
+        }
+
+        // Simple approach: Position input field 60dp above button section
+        val mainActivity = requireActivity() as? MainActivity
+        val buttonSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
+
         binding.layoutMessageInput?.let { inputLayout ->
-            inputLayout.translationY = actualTranslation
+            if (buttonSection != null) {
+                // Get button section's current Y position
+                val location = IntArray(2)
+                buttonSection.getLocationOnScreen(location)
+                val buttonSectionY = location[1].toFloat()
+
+                // Get input's original position (without translation)
+                val inputLocation = IntArray(2)
+                inputLayout.getLocationOnScreen(inputLocation)
+                val inputCurrentY = inputLocation[1].toFloat()
+                val inputOriginalY = inputCurrentY - inputLayout.translationY
+
+                // Calculate target: 60dp above button section
+                val marginAboveButton = 60.dpToPx()
+                val targetY = buttonSectionY - marginAboveButton
+
+                // Calculate translation needed
+                val neededTranslation = targetY - inputOriginalY
+
+                Log.d("KEYBOARD_FIX", "🔧 SIMPLE POSITIONING:")
+                Log.d("KEYBOARD_FIX", "🔧   Button section Y: $buttonSectionY px")
+                Log.d("KEYBOARD_FIX", "🔧   Input original Y: $inputOriginalY px")
+                Log.d("KEYBOARD_FIX", "🔧   Target Y (60dp above button): $targetY px")
+                Log.d("KEYBOARD_FIX", "🔧   Translation needed: $neededTranslation px")
+
+                // Apply translation
+                inputLayout.translationY = neededTranslation
+                inputLayout.visibility = View.VISIBLE
+
+                val finalY = inputOriginalY + neededTranslation
+                Log.d("KEYBOARD_FIX", "🔧 ✅ INPUT POSITIONED AT: $finalY px")
+            }
         }
+
+        // Apply same translation to other elements
+        val inputTranslation = binding.layoutMessageInput?.translationY ?: 0f
+
+        binding.layoutLogInput?.let { it.translationY = inputTranslation }
+        binding.recyclerMessages?.let { it.translationY = inputTranslation }
+        binding.recyclerLogMessages?.let { it.translationY = inputTranslation }
+    }
+
+    // Add method to force positioning when layout changes
+    private fun forceInputPositioningForLayoutChange() {
+        Log.d("ChatFragment", "🔧 === FORCE INPUT POSITIONING FOR LAYOUT CHANGE ===")
         
-        binding.layoutLogInput?.let { logInputLayout ->
-            logInputLayout.translationY = actualTranslation
-        }
+        val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+        val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
         
-        // Also translate the RecyclerView to keep messages visible
-        binding.recyclerMessages?.let { recycler ->
-            recycler.translationY = actualTranslation
-        }
-        
-        binding.recyclerLogMessages?.let { recycler ->
-            recycler.translationY = actualTranslation
+        if (isLayoutAtBottom) {
+            Log.d("ChatFragment", "🔧 Layout at bottom - forcing immediate positioning")
+            
+            // Ensure parent layouts are visible immediately
+            binding.layoutSignedIn?.visibility = View.VISIBLE
+            binding.layoutTextChat?.visibility = View.VISIBLE
+            
+            // Force a layout pass to ensure views are measured
+            view?.post {
+                Log.d("ChatFragment", "🔧 Layout pass completed - triggering keyboard positioning")
+                
+                // Get button section info for positioning
+                val mainActivity = requireActivity() as? MainActivity
+                val buttonSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
+                val buttonSectionY = buttonSection?.y ?: 0f
+                
+                if (buttonSectionY > 0) {
+                    // Trigger positioning with fake keyboard height (we just need positioning)
+                    positionInputAboveKeyboard(200, 100)
+                } else {
+                    // If button section not ready, try again after a delay
+                    view?.postDelayed({
+                        Log.d("ChatFragment", "🔧 Retry positioning after button section ready")
+                        val retryButtonSectionY = buttonSection?.y ?: 0f
+                        if (retryButtonSectionY > 0) {
+                            positionInputAboveKeyboard(200, 100)
+                        }
+                    }, 100)
+                }
+            }
+        } else {
+            Log.d("ChatFragment", "🔧 Layout at top - resetting position")
+            restoreInputPosition()
         }
     }
-    
+
     private fun restoreInputPosition() {
-        binding.layoutMessageInput?.translationY = 0f
-        binding.layoutLogInput?.translationY = 0f
-        binding.recyclerMessages?.translationY = 0f
-        binding.recyclerLogMessages?.translationY = 0f
+        Log.d("KEYBOARD_FIX", "🔄 Restoring input position - resetting all translations to 0")
+
+        binding.layoutMessageInput?.let { inputLayout ->
+            inputLayout.visibility = View.VISIBLE
+
+            // When button section is at bottom, restore to position above button section
+            val prefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
+
+            if (isLayoutAtBottom) {
+                // Re-position above button section
+                val mainActivity = requireActivity() as? MainActivity
+                val buttonSection = mainActivity?.findViewById<View>(R.id.topSectionContainer)
+
+                buttonSection?.let { section ->
+                    val location = IntArray(2)
+                    section.getLocationOnScreen(location)
+                    val buttonSectionY = location[1].toFloat()
+
+                    // Get original position
+                    val originalY = (inputLayout.tag as? Float) ?: run {
+                        val inputLocation = IntArray(2)
+                        inputLayout.getLocationOnScreen(inputLocation)
+                        inputLocation[1].toFloat() - inputLayout.translationY
+                    }
+
+                    // Position above button section
+                    val targetY = buttonSectionY - inputLayout.height - 10.dpToPx()
+                    val neededTranslation = targetY - originalY
+
+                    inputLayout.translationY = neededTranslation
+
+                    Log.d("KEYBOARD_FIX", "🔄 Restored to above button section, translation: $neededTranslation")
+                }
+            } else {
+                // Top mode - no translation needed
+                inputLayout.translationY = 0f
+            }
+        }
+
+        binding.layoutLogInput?.translationY = binding.layoutMessageInput?.translationY ?: 0f
+        binding.recyclerMessages?.translationY = binding.layoutMessageInput?.translationY ?: 0f
+        binding.recyclerLogMessages?.translationY = binding.layoutMessageInput?.translationY ?: 0f
     }
 
 
@@ -3013,12 +3335,17 @@ class ChatFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume called - fragment resuming")
-        Log.d(TAG, "Current navigation state: $currentNavState")
-        Log.d(TAG, "Fragment visibility: isVisible=$isVisible, isResumed=$isResumed")
-        
+        Log.d("ChatFragment", "onResume called - fragment resuming")
+        Log.d("ChatFragment", "Current navigation state: $currentNavState")
+        Log.d("ChatFragment", "Fragment visibility: isVisible=$isVisible, isResumed=$isResumed")
+
         // Re-adjust input padding in case layout position changed while in another tab
         adjustInputPaddingForLayoutPosition()
+
+        // Re-setup keyboard detection in case it changed
+        Handler(Looper.getMainLooper()).postDelayed({
+            setupKeyboardVisibilityDetection()
+        }, 200)
 
         // Check if we're the currently selected tab
         val mainActivity = activity as? MainActivity
