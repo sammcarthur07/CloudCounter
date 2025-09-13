@@ -3451,8 +3451,8 @@ class MainActivity : AppCompatActivity() {
             sessionStartTime = if (sessionActive) sessionStart else null,
             customActivityId = activity.id,
             customActivityName = activity.name,
-            gramsAtLog = ratios?.jointGrams ?: 0.5, // Use joint ratios for custom activities
-            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0
+            gramsAtLog = 0.0, // Custom activities don't consume from stash
+            pricePerGramAtLog = 0.0 // No cost for custom activities
         )
         
         // Store in local database first
@@ -7389,11 +7389,26 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     smoker?.let {
+                        // Check if this is a custom activity
+                        val isCustom = activity.type.startsWith("CUSTOM_")
+                        val activityType = if (isCustom) {
+                            ActivityType.JOINT // Use JOINT as the type for custom activities
+                        } else {
+                            ActivityType.valueOf(activity.type)
+                        }
+                        val customId = if (isCustom) {
+                            activity.type.removePrefix("CUSTOM_")
+                        } else {
+                            null
+                        }
+                        
                         ActivityLog(
                             id = 0L, // Will be set by database if needed
                             smokerId = it.smokerId,
-                            type = ActivityType.valueOf(activity.type),
-                            timestamp = activity.timestamp
+                            type = activityType,
+                            timestamp = activity.timestamp,
+                            customActivityId = customId,
+                            customActivityName = activity.customActivityName
                             // REMOVED: sessionCount = 0
                         )
                     }
@@ -8397,7 +8412,14 @@ class MainActivity : AppCompatActivity() {
                     "local_${smoker.uid}"
                 }
 
-                val localActivityId = "${smokerUid}_${localActivity.type.name}_${localActivity.timestamp}"
+                // For custom activities, use CUSTOM_[id] format to match remote format
+                val activityTypeStr = if (!localActivity.customActivityId.isNullOrEmpty()) {
+                    "CUSTOM_${localActivity.customActivityId}"
+                } else {
+                    localActivity.type.name
+                }
+                
+                val localActivityId = "${smokerUid}_${activityTypeStr}_${localActivity.timestamp}"
 
                 if (!remoteActivityIds.contains(localActivityId)) {
                     // This activity exists locally but not in the room - delete it
@@ -8422,11 +8444,23 @@ class MainActivity : AppCompatActivity() {
                     continue
                 }
 
-                val activityType = try {
-                    ActivityType.valueOf(remote.type.uppercase())
-                } catch (e: IllegalArgumentException) {
-                    Log.w(TAG, "🔁 Unknown activity type: ${remote.type}")
-                    continue
+                // Check if this is a custom activity
+                val isCustom = remote.type.startsWith("CUSTOM_")
+                val activityType = if (isCustom) {
+                    ActivityType.JOINT // Use JOINT as the type for custom activities
+                } else {
+                    try {
+                        ActivityType.valueOf(remote.type.uppercase())
+                    } catch (e: IllegalArgumentException) {
+                        Log.w(TAG, "🔁 Unknown activity type: ${remote.type}")
+                        continue
+                    }
+                }
+                
+                val customId = if (isCustom) {
+                    remote.type.removePrefix("CUSTOM_")
+                } else {
+                    null
                 }
 
                 // Check if this exact log already exists locally
@@ -8442,7 +8476,9 @@ class MainActivity : AppCompatActivity() {
                     id = 0L,
                     smokerId = localSmoker.smokerId,
                     type = activityType,
-                    timestamp = remote.timestamp
+                    timestamp = remote.timestamp,
+                    customActivityId = customId,
+                    customActivityName = remote.customActivityName
                 )
 
                 repo.insert(newLog)

@@ -129,11 +129,15 @@ class HistoryAdapter(
         private val timestampFormatter = SimpleDateFormat("MMM dd, yyyy, hh:mm a", Locale.getDefault())
 
         fun bind(log: ActivityLog) {
-            // Set icon based on activity type
-            iconEmoji.text = when (log.type) {
-                ActivityType.CONE -> "🍦"
-                ActivityType.JOINT -> "🚀"
-                ActivityType.BOWL -> "🥣"
+            // Check if this is a custom activity
+            val isCustomActivity = !log.customActivityId.isNullOrEmpty()
+            
+            // Set icon based on activity type or custom activity
+            iconEmoji.text = when {
+                isCustomActivity -> "🌟"  // Special icon for custom activities
+                log.type == ActivityType.CONE -> "🍦"
+                log.type == ActivityType.JOINT -> "🚀"
+                log.type == ActivityType.BOWL -> "🥣"
                 else -> "🌿"
             }
 
@@ -143,8 +147,10 @@ class HistoryAdapter(
                 withContext(Dispatchers.Main) {
                     val smokerName = smoker?.name ?: "Unknown"
 
-                    // Display bowl quantity if it's more than 1
+                    // Display activity text based on type
                     val activityText = when {
+                        isCustomActivity && !log.customActivityName.isNullOrEmpty() ->
+                            "$smokerName - ${log.customActivityName}"
                         log.type == ActivityType.BOWL && log.bowlQuantity > 1 ->
                             "$smokerName - ${log.bowlQuantity} Bowls"
                         else ->
@@ -168,9 +174,16 @@ class HistoryAdapter(
                     val smoker = repository.getSmokerById(log.smokerId)
 
                     withContext(Dispatchers.Main) {
+                        // Determine activity name for dialog
+                        val activityName = if (!log.customActivityName.isNullOrEmpty()) {
+                            log.customActivityName
+                        } else {
+                            log.type.name.lowercase()
+                        }
+                        
                         AlertDialog.Builder(itemView.context)
                             .setTitle("Delete Activity")
-                            .setMessage("Delete this ${log.type.name.lowercase()} for ${smoker?.name ?: "Unknown"}?")
+                            .setMessage("Delete this $activityName for ${smoker?.name ?: "Unknown"}?")
                             .setPositiveButton("Delete") { _, _ ->
                                 handleActivityDeletion(itemView.context, log, smoker)
                             }
