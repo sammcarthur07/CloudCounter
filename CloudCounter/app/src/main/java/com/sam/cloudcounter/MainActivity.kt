@@ -6982,6 +6982,35 @@ class MainActivity : AppCompatActivity() {
 
                 // Get current group stats value for preserving rounds in sticky mode
                 val currentGroupStats = sessionStatsVM.groupStats.value
+                
+                // Calculate custom activity stats from room activities
+                val customActivityGroupStats = mutableMapOf<String, CustomActivityGroupStat>()
+                val currentTime = System.currentTimeMillis()
+                
+                // Group all custom activities by their ID
+                val customActivities = roomActivities.filter { it.type.startsWith("CUSTOM_") }
+                Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Found ${customActivities.size} custom activities in room")
+                
+                val customByType = customActivities.groupBy { activity ->
+                    activity.type.removePrefix("CUSTOM_")
+                }
+                
+                customByType.forEach { (customId, activities) ->
+                    if (activities.isNotEmpty()) {
+                        val sortedActivities = activities.sortedByDescending { it.timestamp }
+                        val lastActivity = sortedActivities.first()
+                        val activityName = lastActivity.customActivityName ?: "Custom"
+                        
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Processing $activityName (id: $customId) - ${activities.size} total")
+                        
+                        customActivityGroupStats[customId] = CustomActivityGroupStat(
+                            activityName = activityName,
+                            total = activities.size,
+                            lastSmokerName = lastActivity.smokerName,
+                            sinceLastMs = currentTime - lastActivity.timestamp
+                        )
+                    }
+                }
 
                 // Create GroupStats with the calculated gaps
                 val groupStats = GroupStats(
@@ -7010,7 +7039,8 @@ class MainActivity : AppCompatActivity() {
                     lastBowlSmokerName = roomStats.lastBowlSmokerName,
                     conesSinceLastBowl = roomStats.conesSinceLastBowl,
                     lastGapMs = lastGapMs,
-                    previousGapMs = previousGapMs
+                    previousGapMs = previousGapMs,
+                    customActivityGroupStats = customActivityGroupStats
                 )
 
                 // Apply the stats with gaps using applyLocalStats instead of applyRoomStats
@@ -7025,6 +7055,47 @@ class MainActivity : AppCompatActivity() {
                     val coneActivities = smokerActivities.filter { it.type == "CONE" }
                     val jointActivities = smokerActivities.filter { it.type == "JOINT" }
                     val bowlActivities = smokerActivities.filter { it.type == "BOWL" }
+                    
+                    // Calculate custom activity stats for this smoker
+                    val customActivityStats = mutableMapOf<String, CustomActivityStat>()
+                    val smokerCustomActivities = smokerActivities.filter { it.type.startsWith("CUSTOM_") }
+                    
+                    val smokerCustomByType = smokerCustomActivities.groupBy { activity ->
+                        activity.type.removePrefix("CUSTOM_")
+                    }
+                    
+                    smokerCustomByType.forEach { (customId, activities) ->
+                        if (activities.isNotEmpty()) {
+                            val activityName = activities.firstOrNull()?.customActivityName ?: "Custom"
+                            val sortedLogs = activities.sortedBy { it.timestamp }
+                            
+                            // Calculate gaps for this custom activity type
+                            val gaps = mutableListOf<Long>()
+                            if (sortedLogs.size >= 2) {
+                                for (i in 1 until sortedLogs.size) {
+                                    gaps.add(sortedLogs[i].timestamp - sortedLogs[i - 1].timestamp)
+                                }
+                            }
+                            
+                            val avgGap = if (gaps.isNotEmpty()) gaps.average().toLong() else 0L
+                            val longestGap = gaps.maxOrNull() ?: 0L
+                            val shortestGap = gaps.minOrNull() ?: 0L
+                            val lastGap = gaps.lastOrNull() ?: 0L
+                            val lastTime = sortedLogs.lastOrNull()?.timestamp ?: 0L
+                            
+                            customActivityStats[customId] = CustomActivityStat(
+                                activityName = activityName,
+                                total = activities.size,
+                                avgGapMs = avgGap,
+                                longestGapMs = longestGap,
+                                shortestGapMs = shortestGap,
+                                lastGapMs = lastGap,
+                                lastActivityTime = lastTime
+                            )
+                            
+                            Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Per-smoker stats for ${serverData.smokerName} - $activityName: ${activities.size} total")
+                        }
+                    }
                     
                     // Calculate last gaps for each activity type
                     val lastConeGap = if (coneActivities.size >= 2) {
@@ -7068,8 +7139,21 @@ class MainActivity : AppCompatActivity() {
                         shortestBowlGapMs = serverData.shortestBowlGapMs,
                         lastBowlGapMs = lastBowlGap,
                         lastBowlTime = lastBowlTime,
-                        lastActivityTime = lastActivityTime
+                        lastActivityTime = lastActivityTime,
+                        customActivityStats = customActivityStats
                     )
+                }
+                
+                // Log custom activity stats before passing to ViewModel
+                Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Passing to ViewModel - Group has ${customActivityGroupStats.size} custom activity types")
+                customActivityGroupStats.forEach { (id, stat) ->
+                    Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   Group - ${stat.activityName}: Total=${stat.total}, LastBy=${stat.lastSmokerName}")
+                }
+                
+                perSmokerStatsWithGaps.forEach { smokerStat ->
+                    if (smokerStat.customActivityStats.isNotEmpty()) {
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   ${smokerStat.smokerName} has ${smokerStat.customActivityStats.size} custom activity types")
+                    }
                 }
                 
                 sessionStatsVM.applyLocalStats(
@@ -7148,13 +7232,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // Sync rounds counter from room - but ONLY if we're not actively updating
-                val now = System.currentTimeMillis()
+                val currentTimeMillis = System.currentTimeMillis()
                 val roomRoundsCounter = updatedRoom.roundsCounter
 
                 // Only sync from room if we're not actively changing the counter locally
                 when {
                     // Case 1: We're actively updating rounds locally - ignore room sync completely
-                    isUpdatingRoundsLocally && (now - localRoundsUpdateTime < 5000) -> {
+                    isUpdatingRoundsLocally && (currentTimeMillis - localRoundsUpdateTime < 5000) -> {
                         Log.d(TAG, "🔄 Ignoring room counter sync - local update in progress")
                     }
 
@@ -7167,7 +7251,7 @@ class MainActivity : AppCompatActivity() {
                             roundsLeft = roomRoundsCounter
                             // Reset tracking when counter changes from room
                             smokersTakenTurnSinceCounterChange.clear()
-                            lastCounterChangeTime = now
+                            lastCounterChangeTime = currentTimeMillis
                             updateRoundsUI()
                         }
                     }
@@ -9135,6 +9219,9 @@ class MainActivity : AppCompatActivity() {
                 conesSinceLastBowl = coneLogs.size
             }
 
+            // Track custom activities stats
+            val customActivityGroupStats = mutableMapOf<String, CustomActivityGroupStat>()
+            
             // Calculate per-smoker stats
             for (smoker in allSmokersFromDb) {
                 val allLogs = withContext(Dispatchers.IO) {
@@ -9143,8 +9230,8 @@ class MainActivity : AppCompatActivity() {
 
                 val sessionLogs = allLogs.filter { it.timestamp >= sessionStart && it.timestamp <= now }
 
-                val cones = sessionLogs.count { it.type == ActivityType.CONE }
-                val joints = sessionLogs.count { it.type == ActivityType.JOINT }
+                val cones = sessionLogs.count { it.type == ActivityType.CONE && it.customActivityId.isNullOrEmpty() }
+                val joints = sessionLogs.count { it.type == ActivityType.JOINT && it.customActivityId.isNullOrEmpty() }
                 val bowls = sessionLogs.count { it.type == ActivityType.BOWL }
 
                 // Check if this smoker should get carried-over bowls
@@ -9160,16 +9247,105 @@ class MainActivity : AppCompatActivity() {
                     bowls
                 }
                 
-                if (cones > 0 || joints > 0 || adjustedBowls > 0) {  // Check adjustedBowls not bowls
-                    totalCones += cones
-                    totalJoints += joints
-                    totalBowls += bowls  // Still sum raw bowls for group total
+                // Calculate custom activity stats for this smoker
+                val customActivityStats = mutableMapOf<String, CustomActivityStat>()
+                val customLogs = sessionLogs.filter { !it.customActivityId.isNullOrEmpty() }
+                
+                Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Found ${customLogs.size} custom activities for ${smoker.name}")
+                customLogs.forEach { log ->
+                    Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   - ${log.customActivityName} (id: ${log.customActivityId}) at ${log.timestamp}")
+                }
+                
+                // Group custom activities by their ID
+                val customByType = customLogs.groupBy { it.customActivityId }
+                customByType.forEach { (customId, logs) ->
+                    if (customId != null && logs.isNotEmpty()) {
+                        val activityName = logs.firstOrNull()?.customActivityName ?: "Custom"
+                        val sortedLogs = logs.sortedBy { it.timestamp }
+                        
+                        // Calculate gaps for this custom activity type
+                        val gaps = mutableListOf<Long>()
+                        if (sortedLogs.size >= 2) {
+                            for (i in 1 until sortedLogs.size) {
+                                gaps.add(sortedLogs[i].timestamp - sortedLogs[i - 1].timestamp)
+                            }
+                        }
+                        
+                        val avgGap = if (gaps.isNotEmpty()) gaps.average().toLong() else 0L
+                        val longestGap = gaps.maxOrNull() ?: 0L
+                        val shortestGap = gaps.minOrNull() ?: 0L
+                        val lastGap = gaps.lastOrNull() ?: 0L
+                        val lastTime = sortedLogs.lastOrNull()?.timestamp ?: 0L
+                        
+                        customActivityStats[customId] = CustomActivityStat(
+                            activityName = activityName,
+                            total = logs.size,
+                            avgGapMs = avgGap,
+                            longestGapMs = longestGap,
+                            shortestGapMs = shortestGap,
+                            lastGapMs = lastGap,
+                            lastActivityTime = lastTime
+                        )
+                        
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Stats for ${smoker.name} - $activityName:")
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   Total: ${logs.size}, LastTime: $lastTime")
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   Gaps - Avg: ${avgGap}ms, Last: ${lastGap}ms")
+                        
+                        // Update group stats for this custom activity
+                        if (!customActivityGroupStats.containsKey(customId)) {
+                            customActivityGroupStats[customId] = CustomActivityGroupStat(
+                                activityName = activityName,
+                                total = 0,
+                                lastSmokerName = null,
+                                sinceLastMs = 0L
+                            )
+                        }
+                        
+                        val currentGroupStat = customActivityGroupStats[customId]!!
+                        val newTotal = currentGroupStat.total + logs.size
+                        
+                        // Check if this smoker has the most recent of this custom activity
+                        val existingLastTime = if (currentGroupStat.sinceLastMs > 0) {
+                            now - currentGroupStat.sinceLastMs
+                        } else {
+                            0L
+                        }
+                        
+                        if (lastTime > existingLastTime) {
+                            customActivityGroupStats[customId] = currentGroupStat.copy(
+                                total = newTotal,
+                                lastSmokerName = smoker.name,
+                                sinceLastMs = now - lastTime
+                            )
+                        } else {
+                            customActivityGroupStats[customId] = currentGroupStat.copy(
+                                total = newTotal
+                            )
+                        }
+                    }
+                }
+                
+                val hasRegularActivities = cones > 0 || joints > 0 || adjustedBowls > 0
+                val hasCustomActivities = customActivityStats.isNotEmpty()
+                
+                if (hasRegularActivities || hasCustomActivities) {
+                    if (hasRegularActivities) {
+                        totalCones += cones
+                        totalJoints += joints
+                        totalBowls += bowls  // Still sum raw bowls for group total
+                    }
 
-                    // Calculate gaps for each activity type
-                    val coneGaps = calculateGapsForType(sessionLogs, ActivityType.CONE)
-                    val jointGaps = calculateGapsForType(sessionLogs, ActivityType.JOINT)
-                    val bowlGaps = calculateGapsForType(sessionLogs, ActivityType.BOWL)
+                    // Calculate gaps for each activity type (exclude custom activities from regular types)
+                    val regularLogs = sessionLogs.filter { it.customActivityId.isNullOrEmpty() }
+                    val coneGaps = calculateGapsForType(regularLogs, ActivityType.CONE)
+                    val jointGaps = calculateGapsForType(regularLogs, ActivityType.JOINT)
+                    val bowlGaps = calculateGapsForType(regularLogs, ActivityType.BOWL)
 
+                    // Get last timestamps for time calculations
+                    val lastConeLog = regularLogs.filter { it.type == ActivityType.CONE }.maxByOrNull { it.timestamp }
+                    val lastJointLog = regularLogs.filter { it.type == ActivityType.JOINT }.maxByOrNull { it.timestamp }
+                    val lastBowlLog = regularLogs.filter { it.type == ActivityType.BOWL }.maxByOrNull { it.timestamp }
+                    
                     val perSmokerStat = PerSmokerStats(
                         smokerName = smoker.name,
                         totalCones = cones,
@@ -9178,12 +9354,20 @@ class MainActivity : AppCompatActivity() {
                         avgGapMs = coneGaps.avg,
                         longestGapMs = coneGaps.longest,
                         shortestGapMs = coneGaps.shortest,
+                        lastGapMs = coneGaps.last,
+                        lastConeTime = lastConeLog?.timestamp ?: 0L,
                         avgJointGapMs = jointGaps.avg,
                         longestJointGapMs = jointGaps.longest,
                         shortestJointGapMs = jointGaps.shortest,
+                        lastJointGapMs = jointGaps.last,
+                        lastJointTime = lastJointLog?.timestamp ?: 0L,
                         avgBowlGapMs = bowlGaps.avg,
                         longestBowlGapMs = bowlGaps.longest,
-                        shortestBowlGapMs = bowlGaps.shortest
+                        shortestBowlGapMs = bowlGaps.shortest,
+                        lastBowlGapMs = bowlGaps.last,
+                        lastBowlTime = lastBowlLog?.timestamp ?: 0L,
+                        lastActivityTime = sessionLogs.maxByOrNull { it.timestamp }?.timestamp ?: 0L,
+                        customActivityStats = customActivityStats
                     )
 
                     perSmokerList.add(perSmokerStat)
@@ -9287,7 +9471,8 @@ class MainActivity : AppCompatActivity() {
                 lastBowlSmokerName = lastBowlSmokerName,
                 conesSinceLastBowl = adjustedConesSinceLastBowl,
                 lastGapMs = lastGapMs,  // Gap between last two activities of ANY type
-                previousGapMs = previousGapMs  // Gap before that
+                previousGapMs = previousGapMs,  // Gap before that
+                customActivityGroupStats = customActivityGroupStats
             )
 
             withContext(Dispatchers.Main) {
@@ -9313,6 +9498,23 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "🔍📤   ${stat.smokerName}: C=${stat.totalCones}, J=${stat.totalJoints}, B=${stat.totalBowls}")
                 }
                 Log.d(TAG, "🔍📤 Group: C=${groupStats.totalCones}, J=${groupStats.totalJoints}, B=${groupStats.totalBowls}, R=${groupStats.totalRounds}")
+                
+                // Log custom activity group stats
+                Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Group stats for custom activities:")
+                customActivityGroupStats.forEach { (id, stat) ->
+                    Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   ${stat.activityName}: Total=${stat.total}, LastBy=${stat.lastSmokerName}, SinceLast=${stat.sinceLastMs}ms")
+                }
+                
+                // Log per-smoker custom stats
+                Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Per-smoker custom activity stats:")
+                perSmokerList.forEach { smokerStat ->
+                    if (smokerStat.customActivityStats.isNotEmpty()) {
+                        Log.d(TAG, "🌟 CUSTOM_ACTIVITY:   ${smokerStat.smokerName} has ${smokerStat.customActivityStats.size} custom activities")
+                        smokerStat.customActivityStats.forEach { (id, customStat) ->
+                            Log.d(TAG, "🌟 CUSTOM_ACTIVITY:     - ${customStat.activityName}: ${customStat.total} total")
+                        }
+                    }
+                }
 
                 val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
                 sessionStatsVM.applyLocalStats(
@@ -10749,7 +10951,8 @@ class MainActivity : AppCompatActivity() {
     private data class GapStats(
         val avg: Long = 0L,
         val longest: Long = 0L,
-        val shortest: Long = 0L
+        val shortest: Long = 0L,
+        val last: Long = 0L
     )
 
     // Helper function to calculate gaps for a specific activity type
@@ -10769,7 +10972,8 @@ class MainActivity : AppCompatActivity() {
             GapStats(
                 avg = gaps.average().toLong(),
                 longest = gaps.maxOrNull() ?: 0L,
-                shortest = gaps.minOrNull() ?: 0L
+                shortest = gaps.minOrNull() ?: 0L,
+                last = gaps.lastOrNull() ?: 0L
             )
         } else {
             GapStats()

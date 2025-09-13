@@ -25,7 +25,16 @@ data class GroupStats(
     val lastBowlSmokerName: String? = null,
     val conesSinceLastBowl: Int = 0,
     val lastGapMs: Long? = null,
-    val previousGapMs: Long? = null
+    val previousGapMs: Long? = null,
+    // Custom activity stats: Map of customActivityId to group stats
+    val customActivityGroupStats: Map<String, CustomActivityGroupStat> = emptyMap()
+)
+
+data class CustomActivityGroupStat(
+    val activityName: String,
+    val total: Int = 0,
+    val lastSmokerName: String? = null,
+    val sinceLastMs: Long = 0L
 )
 
 // ADD: Room info data class

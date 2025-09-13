@@ -245,6 +245,16 @@ class SeshFragment : Fragment() {
                 lastActivitiesText.append("${gs.lastBowlSmokerName} had the last bowl ${formatTime(gs.sinceLastBowlMs)} ago")
             }
             
+            // Add custom activities info
+            Log.d("SeshFragment", "🌟 CUSTOM_ACTIVITY: Group stats has ${gs.customActivityGroupStats.size} custom activities")
+            gs.customActivityGroupStats.forEach { (id, customStat) ->
+                Log.d("SeshFragment", "🌟 CUSTOM_ACTIVITY:   $id -> ${customStat.activityName}: LastBy=${customStat.lastSmokerName}, Since=${customStat.sinceLastMs}ms")
+                if (customStat.lastSmokerName != null && customStat.sinceLastMs > 0) {
+                    if (lastActivitiesText.isNotEmpty()) lastActivitiesText.append("\n")
+                    lastActivitiesText.append("${customStat.lastSmokerName} had the last ${customStat.activityName} ${formatTime(customStat.sinceLastMs)} ago")
+                }
+            }
+            
             // Update the text view with all last activity info
             if (lastActivitiesText.isNotEmpty()) {
                 binding.textLastConeInfo.text = lastActivitiesText.toString()
@@ -408,6 +418,33 @@ class SeshFragment : Fragment() {
                 )
             ))
             if (!nameAdded) nameAdded = true
+        }
+        
+        // Add custom activity stats
+        Log.d("SeshFragment", "🌟 CUSTOM_ACTIVITY: ${stat.smokerName} has ${stat.customActivityStats.size} custom activity types")
+        stat.customActivityStats.forEach { (id, customStat) ->
+            Log.d("SeshFragment", "🌟 CUSTOM_ACTIVITY:   $id -> ${customStat.activityName}: Total=${customStat.total}")
+            if (customStat.total > 0) {
+                val timeSinceLastCustom = if (customStat.lastActivityTime > 0) {
+                    val elapsed = currentTime - customStat.lastActivityTime
+                    formatTime(elapsed)
+                } else "-"
+                
+                Log.d("SeshFragment", "🌟 CUSTOM_ACTIVITY:   Adding row for ${customStat.activityName} (${customStat.total} total)")
+                
+                activities.add(Triple(
+                    if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
+                    "${customStat.total} ${customStat.activityName}",
+                    listOf(
+                        timeSinceLastCustom,  // Time since last custom activity
+                        if (customStat.total > 1) formatTime(customStat.lastGapMs) else "-",  // Last gap
+                        if (customStat.total > 1) formatTime(customStat.avgGapMs) else "-",
+                        if (customStat.total > 1) formatTime(customStat.shortestGapMs) else "-",
+                        if (customStat.total > 1) formatTime(customStat.longestGapMs) else "-"
+                    )
+                ))
+                if (!nameAdded) nameAdded = true
+            }
         }
 
         // Create rows - name appears on SAME ROW as first activity
