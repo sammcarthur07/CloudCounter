@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
-    private lateinit var customActivityManager: CustomActivityManager
+    lateinit var customActivityManager: CustomActivityManager
 
     private var currentDialog: Dialog? = null
 
