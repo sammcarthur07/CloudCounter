@@ -79,6 +79,8 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     // Data
     private var currentSmoker: String = "Sam"
     private var currentActivityType: String = "cones"
+    private var currentActivityId: String? = null  // For custom activities
+    private var currentActivityName: String? = null  // Display name for custom activities
     private var currentCount: Int = 0
     private var recentSmoker: String = ""
     private var recentSmokerCount: Int = 0
@@ -616,6 +618,13 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
+        // Load custom activity info if the type is custom
+        if (currentActivityType == "custom") {
+            currentActivityId = prefs.getString("current_custom_activity_id", null)
+            currentActivityName = prefs.getString("current_custom_activity_name", null)
+            Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: Loaded custom activity from prefs: id=$currentActivityId, name=$currentActivityName")
+        }
+        
         // Load font and lock preferences
         colorChangingEnabled = prefs.getBoolean("color_changing_enabled", true)
         randomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
@@ -915,11 +924,20 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                     }
                     
                     if (recentActivity != null) {
+                        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: Recent activity type: ${recentActivity.type}")
+                        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: customActivityId: ${recentActivity.customActivityId}")
+                        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: customActivityName: ${recentActivity.customActivityName}")
+                        
                         currentActivityType = when (recentActivity.type) {
                             com.sam.cloudcounter.ActivityType.CONE -> "cones"
                             com.sam.cloudcounter.ActivityType.JOINT -> "joints"
                             com.sam.cloudcounter.ActivityType.BOWL -> "bowls"
-                            com.sam.cloudcounter.ActivityType.CUSTOM -> "custom"
+                            com.sam.cloudcounter.ActivityType.CUSTOM -> {
+                                // Store custom activity info
+                                currentActivityId = recentActivity.customActivityId
+                                currentActivityName = recentActivity.customActivityName
+                                "custom"
+                            }
                             com.sam.cloudcounter.ActivityType.SESSION_SUMMARY -> "cones" // Default for session
                         }
                         
@@ -1033,10 +1051,21 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         // Save the new display state
         saveDisplayState()
         
-        if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
-            recentStatsText.text = "$recentSmoker: $recentSmokerCount ${currentActivityType}"
+        // Display activity name - use custom name if available
+        val displayActivityName = if (currentActivityType == "custom" && !currentActivityName.isNullOrEmpty()) {
+            currentActivityName!!
         } else {
-            recentStatsText.text = "${currentActivityType.capitalize()}"
+            currentActivityType.capitalize()
+        }
+        
+        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: updateUI() - currentActivityType: $currentActivityType")
+        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: updateUI() - currentActivityName: $currentActivityName")
+        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: updateUI() - displayActivityName: $displayActivityName")
+        
+        if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
+            recentStatsText.text = "$recentSmoker: $recentSmokerCount $displayActivityName"
+        } else {
+            recentStatsText.text = displayActivityName
         }
     }
     
@@ -1110,10 +1139,12 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             "cones" -> com.sam.cloudcounter.ActivityType.CONE
                             "joints" -> com.sam.cloudcounter.ActivityType.JOINT
                             "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
+                            "custom" -> com.sam.cloudcounter.ActivityType.CUSTOM
                             else -> com.sam.cloudcounter.ActivityType.CONE
                         }
                         
                         Log.d(TAG, "$LOG_PREFIX Creating activity: type=$activityType, smokerId=${smoker.smokerId}")
+                        Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: Creating activity with customActivityId=$currentActivityId, customActivityName=$currentActivityName")
                         
                         // Determine stash source and payer
                         val stashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
@@ -1154,6 +1185,8 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             type = activityType,
                             timestamp = System.currentTimeMillis(),
                             sessionStartTime = sessionStart,
+                            customActivityId = if (activityType == com.sam.cloudcounter.ActivityType.CUSTOM) currentActivityId else null,
+                            customActivityName = if (activityType == com.sam.cloudcounter.ActivityType.CUSTOM) currentActivityName else null,
                             gramsAtLog = gramsForActivity,
                             pricePerGramAtLog = pricePerGram
                         )
@@ -1281,6 +1314,8 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 val activityType = when (currentActivityType) {
                     "cones" -> com.sam.cloudcounter.ActivityType.CONE
                     "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                    "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
+                    "custom" -> com.sam.cloudcounter.ActivityType.CUSTOM
                     else -> com.sam.cloudcounter.ActivityType.CONE
                 }
                 
