@@ -113,8 +113,8 @@
     <string name="stash_invalid_amount">Please enter a valid amount</string>
     <string name="stash_invalid_ratio">Please enter a valid ratio</string>
     <string name="stash_sign_in_failed">Sign in failed: %1$s</string>
-    <string name="stash_added_grams">Added %1$.2f grams to stash</string>
-    <string name="stash_ratio_set">Ratio set to %1$.2f grams per bowl</string>
+    <string name="stash_added_grams">Added %1$.4f grams to stash</string>
+    <string name="stash_ratio_set">Ratio set to %1$.4f grams per bowl</string>
 
     <!-- Goals -->
     <string name="tab_goals">Goals</string>

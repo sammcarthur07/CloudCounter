@@ -33,7 +33,7 @@ data class Stash(
     val totalGrams: Double = 0.0,
     val currentGrams: Double = 0.0,
     val pricePerGram: Double = 0.0,
-    val gramsPerBowl: Double = 36.6,
+    val gramsPerBowl: Double = 0.366,
     val conesPerBowl: Double = 0.0,
     val consumeFromStash: Boolean = false,
     val lastUpdated: Date = Date()
@@ -69,7 +69,7 @@ data class ConsumptionRatio(
     val id: Int = 1,
     val coneGrams: Double = 0.3,
     val jointGrams: Double = 0.2,
-    val bowlGrams: Double = 36.6,
+    val bowlGrams: Double = 0.366,
     val userDefinedConeGrams: Double? = null,
     val deductConesFromStash: Boolean = true,  // NEW: default true
     val deductJointsFromStash: Boolean = true, // NEW: default true

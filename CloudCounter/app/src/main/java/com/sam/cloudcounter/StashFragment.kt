@@ -60,7 +60,7 @@ class StashFragment : Fragment() {
     private lateinit var authManager: FirebaseAuthManager
     private lateinit var googleSignInClient: GoogleSignInClient
 
-    private val decimalFormat = DecimalFormat("#.##")
+    private val decimalFormat = DecimalFormat("#.####")
     private val currencyFormat = DecimalFormat("$#,##0.00")
 
     private var currentUserId: String? = null
