@@ -3519,9 +3519,33 @@ class MainActivity : AppCompatActivity() {
     private fun updateCustomActivityGoals(activity: CustomActivity) {
         // Update goals that track custom activities
         lifecycleScope.launch {
-            // For now, just log that we would update goals
-            Log.d("CUSTOM_ACTIVITY", "📊 Would update goals for custom activity: ${activity.name}")
-            // TODO: Implement goal tracking for custom activities when goals system is updated
+            // Get current smoker name using the same pattern as other functions
+            val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+            val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+            val selectedSmokerObj = organizedSmokers.getOrNull(selectedPosition)
+            val currentSmokerName = selectedSmokerObj?.name ?: "Sam"
+            
+            val currentShareCode = getCurrentShareCode()
+            
+            Log.d("CUSTOM_ACTIVITY", "📊 === GOAL UPDATE FOR CUSTOM ACTIVITY ===")
+            Log.d("CUSTOM_ACTIVITY", "📊 Activity name: ${activity.name}")
+            Log.d("CUSTOM_ACTIVITY", "📊 Activity ID: '${activity.id}'")
+            Log.d("CUSTOM_ACTIVITY", "📊 Current smoker: $currentSmokerName")
+            Log.d("CUSTOM_ACTIVITY", "📊 Session share code: $currentShareCode")
+            
+            // Call the new unified goal service function
+            Log.d("CUSTOM_ACTIVITY", "📊 Calling goalService.updateGoalProgressForSelectedActivity")
+            Log.d("CUSTOM_ACTIVITY", "📊   with customActivityId: '${activity.id}'")
+            
+            goalService.updateGoalProgressForSelectedActivity(
+                activityType = ActivityType.JOINT, // Custom activities are logged as JOINT
+                customActivityId = activity.id,
+                customActivityName = activity.name,
+                sessionShareCode = currentShareCode,
+                currentSmokerName = currentSmokerName
+            )
+            
+            Log.d("CUSTOM_ACTIVITY", "📊 Goal service call completed")
         }
     }
     
@@ -8950,10 +8974,10 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🎯   smokerName: ${selectedSmoker.name}")
 
             try {
-                goalService.updateGoalProgressForActivity(
-                    type,
-                    sessionShareCode,
-                    selectedSmoker.name
+                goalService.updateGoalProgressForSelectedActivity(
+                    activityType = type,
+                    sessionShareCode = sessionShareCode,
+                    currentSmokerName = selectedSmoker.name
                 )
                 Log.d(TAG, "🎯 Goal update call completed")
             } catch (e: Exception) {

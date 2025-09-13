@@ -147,6 +147,9 @@ class GoalAdapter(
                             oldItem.currentJoints == newItem.currentJoints &&
                             oldItem.currentCones == newItem.currentCones &&
                             oldItem.currentBowls == newItem.currentBowls &&
+                            oldItem.selectedActivityType == newItem.selectedActivityType &&
+                            oldItem.targetValue == newItem.targetValue &&
+                            oldItem.currentValue == newItem.currentValue &&
                             oldItem.isPaused == newItem.isPaused &&
                             oldItem.isActive == newItem.isActive &&
                             oldItem.notificationsEnabled == newItem.notificationsEnabled &&  // Main field
@@ -166,7 +169,8 @@ class GoalAdapter(
                 // Check if only progress changed
                 if (oldItem.currentJoints != newItem.currentJoints ||
                     oldItem.currentCones != newItem.currentCones ||
-                    oldItem.currentBowls != newItem.currentBowls) {
+                    oldItem.currentBowls != newItem.currentBowls ||
+                    oldItem.currentValue != newItem.currentValue) {
                     return "PROGRESS_UPDATE"
                 }
             }
@@ -423,9 +427,14 @@ class GoalAdapter(
         }
 
         private fun updateProgressInternal(goal: Goal, animate: Boolean, isUndo: Boolean = false) {
-            // Calculate progress
-            val totalTarget = goal.targetJoints + goal.targetCones + goal.targetBowls
-            val totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls
+            // Calculate progress using new single activity type system
+            val totalTarget = if (goal.targetValue > 0) goal.targetValue else (goal.targetJoints + goal.targetCones + goal.targetBowls)
+            val totalCurrent = if (goal.targetValue > 0) goal.currentValue else (goal.currentJoints + goal.currentCones + goal.currentBowls)
+
+            Log.d(TAG, "🎯 GoalAdapter updateProgress: Goal ${goal.goalId}")
+            Log.d(TAG, "🎯   selectedActivityType: ${goal.selectedActivityType}")
+            Log.d(TAG, "🎯   targetValue: ${goal.targetValue}, currentValue: ${goal.currentValue}")
+            Log.d(TAG, "🎯   totalTarget: $totalTarget, totalCurrent: $totalCurrent")
 
             val progressPercentage = if (totalTarget > 0) {
                 if (goal.allowOverflow) {
@@ -434,6 +443,8 @@ class GoalAdapter(
                     min((totalCurrent * 100f / totalTarget).toInt(), 100)
                 }
             } else 0
+            
+            Log.d(TAG, "🎯   progressPercentage: $progressPercentage%")
 
             // Update progress text
             binding.textProgress.text = "$totalCurrent / $totalTarget"
@@ -487,14 +498,37 @@ class GoalAdapter(
         }
 
         private fun getGoalDescription(goal: Goal): String {
+            Log.d(TAG, "🎯 getGoalDescription: Goal ${goal.goalId}")
+            Log.d(TAG, "🎯   goalName: '${goal.goalName}'")
+            Log.d(TAG, "🎯   selectedActivityType: '${goal.selectedActivityType}'")
+            Log.d(TAG, "🎯   targetValue: ${goal.targetValue}")
+            
             return if (!goal.goalName.isNullOrEmpty()) {
                 goal.goalName
             } else {
-                val parts = mutableListOf<String>()
-                if (goal.targetJoints > 0) parts.add("${goal.targetJoints} Joints")
-                if (goal.targetCones > 0) parts.add("${goal.targetCones} Cones")
-                if (goal.targetBowls > 0) parts.add("${goal.targetBowls} Bowls")
-                parts.joinToString(", ")
+                // Use new single activity type system
+                if (goal.targetValue > 0) {
+                    val activityName = when (goal.selectedActivityType) {
+                        "joints" -> "Joints"
+                        "cones" -> "Cones" 
+                        "bowls" -> "Bowls"
+                        else -> {
+                            // This is a custom activity - get the name from CustomActivityManager
+                            val mainActivity = binding.root.context as? MainActivity
+                            val customActivityManager = mainActivity?.customActivityManager
+                            val customActivity = customActivityManager?.getCustomActivities()?.find { it.id == goal.selectedActivityType }
+                            customActivity?.name ?: "Custom Activity"
+                        }
+                    }
+                    "${goal.targetValue} $activityName"
+                } else {
+                    // Fallback to old system for existing goals
+                    val parts = mutableListOf<String>()
+                    if (goal.targetJoints > 0) parts.add("${goal.targetJoints} Joints")
+                    if (goal.targetCones > 0) parts.add("${goal.targetCones} Cones")
+                    if (goal.targetBowls > 0) parts.add("${goal.targetBowls} Bowls")
+                    parts.joinToString(", ").takeIf { it.isNotEmpty() } ?: "No Target Set"
+                }
             }
         }
 

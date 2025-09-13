@@ -33,7 +33,8 @@ class GoalService(private val application: Application) {
     data class SmokerProgress(
         val joints: Int = 0,
         val cones: Int = 0,
-        val bowls: Int = 0
+        val bowls: Int = 0,
+        val customActivities: Map<String, Int> = emptyMap()
     )
 
     private fun startNotificationUpdater() {
@@ -274,31 +275,153 @@ class GoalService(private val application: Application) {
                 goalList.forEach { goal ->
                     Log.d(TAG, "🎯 Checking goal ${goal.goalId}: ${goal.goalName} (type: ${goal.goalType})")
 
-                    if (shouldUpdateGoalFixed(goal, sessionShareCode, currentSessionId, isSessionActive, currentSmokerName)) {
-                        Log.d(TAG, "🎯 ✅ Goal ${goal.goalId} applies to this activity, updating...")
-                        updateSingleGoalProgress(goal.goalId, activityType, currentSmokerName)
+                    // Skip the shouldUpdateGoalFixed check for now and check activity match first
+                    // Check if this activity matches the goal's selected activity type
+                    val shouldTrackThisActivity = when (activityType) {
+                        ActivityType.JOINT -> goal.selectedActivityType == "joints"
+                        ActivityType.CONE -> goal.selectedActivityType == "cones"
+                        ActivityType.BOWL -> goal.selectedActivityType == "bowls"
+                        else -> false
+                    }
 
-                        // CRITICAL: Force immediate notification update after database update
+                    if (shouldTrackThisActivity) {
+                        if (shouldUpdateGoalFixed(goal, sessionShareCode, currentSessionId, isSessionActive, currentSmokerName)) {
+                            Log.d(TAG, "🎯 ✅ Goal ${goal.goalId} tracks this activity type (${goal.selectedActivityType}), updating...")
+                            updateSingleGoalForSelectedActivity(goal.goalId, currentSmokerName)
+                        } else {
+                            Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} tracks correct activity but doesn't apply to session/smoker")
+                        }
+                    } else {
+                        Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} tracks '${goal.selectedActivityType}' but activity is $activityType")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Error updating goal progress", e)
+            }
+        }
+    }
+
+    // New unified function for single activity type goals
+    fun updateGoalProgressForSelectedActivity(
+        activityType: ActivityType,
+        customActivityId: String? = null,
+        customActivityName: String? = null,
+        sessionShareCode: String? = null,
+        currentSmokerName: String = "Sam"
+    ) {
+        Log.d(TAG, "🎯 === UPDATE GOAL PROGRESS (SELECTED ACTIVITY) ===")
+        Log.d(TAG, "🎯 Activity type: $activityType")
+        Log.d(TAG, "🎯 Custom activity: $customActivityName (ID: $customActivityId)")
+        Log.d(TAG, "🎯 Session share code: $sessionShareCode")
+        Log.d(TAG, "🎯 Current smoker: $currentSmokerName")
+
+        val prefs = application.getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+        val currentSessionId = prefs.getLong("current_session_id", 0L)
+        val isSessionActive = prefs.getBoolean("session_active", false)
+
+        scope.launch {
+            try {
+                val goalList = goalDao.getActiveGoals().first()
+                Log.d(TAG, "🎯 Found ${goalList.size} active goals")
+
+                goalList.forEach { goal ->
+                    Log.d(TAG, "🎯 Checking goal ${goal.goalId}: ${goal.goalName} (type: ${goal.goalType})")
+                    Log.d(TAG, "🎯 Goal tracks activity type: ${goal.selectedActivityType}")
+
+                    if (shouldUpdateGoalFixed(goal, sessionShareCode, currentSessionId, isSessionActive, currentSmokerName)) {
+                        // Check if this activity matches the goal's selected activity type
+                        Log.d(TAG, "🎯 DEBUG: Checking activity match for goal ${goal.goalId}")
+                        Log.d(TAG, "🎯   Goal selectedActivityType: '${goal.selectedActivityType}'")
+                        Log.d(TAG, "🎯   Incoming customActivityId: '$customActivityId'")
+                        Log.d(TAG, "🎯   Incoming activityType: $activityType")
+                        
+                        val shouldTrackThisActivity = when {
+                            customActivityId != null -> {
+                                val matches = goal.selectedActivityType == customActivityId
+                                Log.d(TAG, "🎯   Custom activity comparison: '${goal.selectedActivityType}' == '$customActivityId' = $matches")
+                                matches
+                            }
+                            activityType == ActivityType.JOINT -> goal.selectedActivityType == "joints"
+                            activityType == ActivityType.CONE -> goal.selectedActivityType == "cones"
+                            activityType == ActivityType.BOWL -> goal.selectedActivityType == "bowls"
+                            else -> false
+                        }
+
+                        if (shouldTrackThisActivity) {
+                            Log.d(TAG, "🎯 ✅ Goal ${goal.goalId} MATCHES! Updating progress...")
+                            updateSingleGoalForSelectedActivity(goal.goalId, currentSmokerName)
+                        } else {
+                            Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} NO MATCH - goal tracks '${goal.selectedActivityType}' but received: customId='$customActivityId', type=$activityType")
+                        }
+                    } else {
+                        Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} does not apply to this session/smoker")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Error updating goal progress for selected activity", e)
+            }
+        }
+    }
+
+    // Overloaded function for custom activities
+    fun updateGoalProgressForCustomActivity(
+        customActivityId: String,
+        customActivityName: String,
+        sessionShareCode: String? = null,
+        currentSmokerName: String = "Sam"
+    ) {
+        Log.d(TAG, "🎯 === UPDATE GOAL PROGRESS (CUSTOM ACTIVITY) ===")
+        Log.d(TAG, "🎯 Custom activity: $customActivityName (ID: $customActivityId)")
+        Log.d(TAG, "🎯 Session share code: $sessionShareCode")
+        Log.d(TAG, "🎯 Current smoker: $currentSmokerName")
+
+        val prefs = application.getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+        val currentSessionId = prefs.getLong("current_session_id", 0L)
+        val isSessionActive = prefs.getBoolean("session_active", false)
+
+        scope.launch {
+            try {
+                val goalList = goalDao.getActiveGoals().first()
+                Log.d(TAG, "🎯 Found ${goalList.size} active goals")
+
+                goalList.forEach { goal ->
+                    Log.d(TAG, "🎯 Checking goal ${goal.goalId}: ${goal.goalName} (type: ${goal.goalType})")
+
+                    if (shouldUpdateGoalFixed(goal, sessionShareCode, currentSessionId, isSessionActive, currentSmokerName)) {
+                        Log.d(TAG, "🎯 ✅ Goal ${goal.goalId} applies to this custom activity, updating...")
+                        updateSingleGoalProgressForCustomActivity(goal.goalId, customActivityId, customActivityName, currentSmokerName)
+
+                        // Force immediate notification update after database update
                         val updatedGoal = goalDao.getGoalById(goal.goalId)
                         updatedGoal?.let {
                             if (it.notificationsEnabled) {
-                                // Always update notification, determine if silent based on progress
-                                val totalTarget = it.targetJoints + it.targetCones + it.targetBowls
-                                val totalCurrent = it.currentJoints + it.currentCones + it.currentBowls
+                                // Calculate total including custom activities
+                                val customActivitiesJson = it.customActivities
+                                val customTargets: Map<String, Int> = if (customActivitiesJson.isNotEmpty()) {
+                                    try {
+                                        gson.fromJson(customActivitiesJson, object : TypeToken<Map<String, Int>>() {}.type) ?: emptyMap()
+                                    } catch (e: Exception) {
+                                        emptyMap()
+                                    }
+                                } else {
+                                    emptyMap()
+                                }
+                                
+                                val totalTarget = it.targetJoints + it.targetCones + it.targetBowls + customTargets.values.sum()
+                                val totalCurrent = it.currentJoints + it.currentCones + it.currentBowls + getCustomActivitiesCurrentTotal(it)
                                 val progressPercentage = if (totalTarget > 0) (totalCurrent * 100 / totalTarget) else 0
 
-                                // Silent for regular updates, sound for milestones
                                 val isSilent = progressPercentage !in listOf(25, 50, 75, 100)
                                 notificationHelper.showPersistentGoalNotification(it, isSilentUpdate = isSilent)
                                 Log.d(TAG, "🎯 Notification updated immediately for goal ${it.goalId}")
                             }
                         }
                     } else {
-                        Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} does not apply to this activity")
+                        Log.d(TAG, "🎯 ❌ Goal ${goal.goalId} does not apply to this custom activity")
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "🎯 Error updating goal progress", e)
+                Log.e(TAG, "🎯 Error updating goal progress for custom activity", e)
             }
         }
     }
@@ -335,8 +458,33 @@ class GoalService(private val application: Application) {
         isSessionActive: Boolean
     ): Boolean {
         if (!goal.allowOverflow) {
-            val totalTarget = goal.targetJoints + goal.targetCones + goal.targetBowls
-            val totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls
+            // Check if this is a new single-activity goal (using targetValue) or legacy multi-activity goal
+            val isNewSingleActivityGoal = goal.targetValue > 0
+            
+            val totalTarget: Int
+            val totalCurrent: Int
+            
+            if (isNewSingleActivityGoal) {
+                // New single-activity goal system uses targetValue/currentValue
+                totalTarget = goal.targetValue
+                totalCurrent = goal.currentValue
+                Log.d(TAG, "🎯 Goal ${goal.goalId} overflow check: NEW system - current=$totalCurrent, target=$totalTarget")
+            } else {
+                // Legacy multi-activity goal system
+                val customTargets: Map<String, Int> = if (goal.customActivities.isNotEmpty()) {
+                    try {
+                        gson.fromJson(goal.customActivities, object : TypeToken<Map<String, Int>>() {}.type) ?: emptyMap()
+                    } catch (e: Exception) {
+                        emptyMap()
+                    }
+                } else {
+                    emptyMap()
+                }
+                totalTarget = goal.targetJoints + goal.targetCones + goal.targetBowls + customTargets.values.sum()
+                totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls + getCustomActivitiesCurrentTotal(goal)
+                Log.d(TAG, "🎯 Goal ${goal.goalId} overflow check: LEGACY system - current=$totalCurrent, target=$totalTarget")
+            }
+            
             if (totalCurrent >= totalTarget) {
                 Log.d(TAG, "🎯 Goal ${goal.goalId} has reached 100% and overflow not allowed")
                 return false
@@ -402,8 +550,18 @@ class GoalService(private val application: Application) {
         val previousPercentage = if (totalTarget > 0) (previousTotal * 100 / totalTarget) else 0
 
         if (!goal.allowOverflow) {
-            val totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls
-            if (totalCurrent >= totalTarget) {
+            val customTargets: Map<String, Int> = if (goal.customActivities.isNotEmpty()) {
+                try {
+                    gson.fromJson(goal.customActivities, object : TypeToken<Map<String, Int>>() {}.type) ?: emptyMap()
+                } catch (e: Exception) {
+                    emptyMap()
+                }
+            } else {
+                emptyMap()
+            }
+            val totalTargetWithCustom = goal.targetJoints + goal.targetCones + goal.targetBowls + customTargets.values.sum()
+            val totalCurrentWithCustom = goal.currentJoints + goal.currentCones + goal.currentBowls + getCustomActivitiesCurrentTotal(goal)
+            if (totalCurrentWithCustom >= totalTargetWithCustom) {
                 Log.d(TAG, "🎯 Goal already at 100% and auto-complete is enabled, not updating")
                 return
             }
@@ -549,8 +707,17 @@ class GoalService(private val application: Application) {
         Log.d(TAG, "🎯 === CHECK GOAL PROGRESS ===")
         Log.d(TAG, "🎯 Goal ${goal.goalId}: ${goal.goalName}")
 
-        val totalTarget = goal.targetJoints + goal.targetCones + goal.targetBowls
-        val totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls
+        val customTargets: Map<String, Int> = if (goal.customActivities.isNotEmpty()) {
+            try {
+                gson.fromJson(goal.customActivities, object : TypeToken<Map<String, Int>>() {}.type) ?: emptyMap()
+            } catch (e: Exception) {
+                emptyMap()
+            }
+        } else {
+            emptyMap()
+        }
+        val totalTarget = goal.targetJoints + goal.targetCones + goal.targetBowls + customTargets.values.sum()
+        val totalCurrent = goal.currentJoints + goal.currentCones + goal.currentBowls + getCustomActivitiesCurrentTotal(goal)
 
         Log.d(TAG, "🎯 Total current: $totalCurrent")
         Log.d(TAG, "🎯 Total target: $totalTarget")
@@ -724,6 +891,161 @@ class GoalService(private val application: Application) {
         }
 
         Log.d(TAG, "🎯 Goal $goalId deleted and notification cancelled")
+    }
+
+    private suspend fun updateSingleGoalProgressForCustomActivity(
+        goalId: Long,
+        customActivityId: String,
+        customActivityName: String,
+        smokerName: String
+    ) {
+        Log.d(TAG, "🎯 === UPDATE SINGLE GOAL PROGRESS (CUSTOM ACTIVITY) ===")
+        Log.d(TAG, "🎯 Goal ID: $goalId, Custom Activity: $customActivityName (ID: $customActivityId), Smoker: $smokerName")
+
+        val goal = goalDao.getGoalById(goalId)
+        if (goal == null) {
+            Log.e(TAG, "🎯 Goal $goalId not found!")
+            return
+        }
+
+        // Parse existing custom activities from JSON
+        val customActivitiesJson = goal.customActivities
+        val currentCustomActivities: MutableMap<String, Int> = if (customActivitiesJson.isNotEmpty()) {
+            try {
+                gson.fromJson(customActivitiesJson, object : TypeToken<MutableMap<String, Int>>() {}.type) ?: mutableMapOf()
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Error parsing custom activities JSON", e)
+                mutableMapOf()
+            }
+        } else {
+            mutableMapOf()
+        }
+
+        // Increment the count for this custom activity
+        currentCustomActivities[customActivityId] = (currentCustomActivities[customActivityId] ?: 0) + 1
+
+        // Update smoker progress
+        val updatedSmokerProgress = updateSmokerProgressJsonForCustomActivity(
+            goal.smokerProgress,
+            smokerName,
+            customActivityId
+        )
+
+        // Save updated goal
+        val updatedCustomActivitiesJson = gson.toJson(currentCustomActivities)
+        goalDao.updateGoalCustomActivities(goalId, updatedCustomActivitiesJson)
+        goalDao.updateGoalSmokerProgress(goalId, updatedSmokerProgress)
+
+        Log.d(TAG, "🎯 Updated custom activities: $updatedCustomActivitiesJson")
+        Log.d(TAG, "🎯 Updated smoker progress: $updatedSmokerProgress")
+    }
+
+    private fun updateSmokerProgressJsonForCustomActivity(
+        existingSmokerProgressJson: String,
+        smokerName: String,
+        customActivityId: String
+    ): String {
+        val progressMap: MutableMap<String, SmokerProgress> = if (existingSmokerProgressJson.isNotEmpty()) {
+            try {
+                gson.fromJson(existingSmokerProgressJson, object : TypeToken<MutableMap<String, SmokerProgress>>() {}.type) ?: mutableMapOf()
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Error parsing smoker progress JSON", e)
+                mutableMapOf()
+            }
+        } else {
+            mutableMapOf()
+        }
+
+        val currentProgress = progressMap[smokerName] ?: SmokerProgress()
+        val updatedCustomActivities = currentProgress.customActivities.toMutableMap()
+        updatedCustomActivities[customActivityId] = (updatedCustomActivities[customActivityId] ?: 0) + 1
+
+        val updatedProgress = currentProgress.copy(customActivities = updatedCustomActivities)
+        progressMap[smokerName] = updatedProgress
+
+        return gson.toJson(progressMap)
+    }
+
+    private fun getCustomActivitiesCurrentTotal(goal: Goal): Int {
+        return if (goal.customActivities.isNotEmpty()) {
+            try {
+                val customActivities: Map<String, Int> = gson.fromJson(goal.customActivities, object : TypeToken<Map<String, Int>>() {}.type) ?: emptyMap()
+                customActivities.values.sum()
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Error parsing custom activities for total calculation", e)
+                0
+            }
+        } else {
+            0
+        }
+    }
+
+    private suspend fun updateSingleGoalForSelectedActivity(
+        goalId: Long,
+        smokerName: String
+    ) {
+        Log.d(TAG, "🎯 === UPDATE SINGLE GOAL FOR SELECTED ACTIVITY ===")
+        Log.d(TAG, "🎯 Goal ID: $goalId, Smoker: $smokerName")
+
+        val goal = goalDao.getGoalById(goalId)
+        if (goal == null) {
+            Log.e(TAG, "🎯 Goal $goalId not found!")
+            return
+        }
+
+        // Check if goal allows overflow
+        if (!goal.allowOverflow && goal.currentValue >= goal.targetValue) {
+            Log.d(TAG, "🎯 Goal already at 100% and auto-complete is enabled, not updating")
+            return
+        }
+
+        // Increment the current value
+        val newCurrentValue = goal.currentValue + 1
+        goalDao.updateGoalCurrentValue(goalId, newCurrentValue)
+
+        Log.d(TAG, "🎯 Updated goal ${goalId} current value: ${goal.currentValue} -> $newCurrentValue")
+        Log.d(TAG, "🎯 Target value: ${goal.targetValue}")
+
+        // Calculate progress percentage
+        val progressPercentage = if (goal.targetValue > 0) (newCurrentValue * 100 / goal.targetValue) else 0
+        Log.d(TAG, "🎯 Progress percentage: $progressPercentage%")
+
+        // Update notification if enabled
+        val updatedGoal = goalDao.getGoalById(goalId)
+        updatedGoal?.let {
+            if (it.notificationsEnabled) {
+                // Check for milestones
+                val previousPercentage = if (goal.targetValue > 0) (goal.currentValue * 100 / goal.targetValue) else 0
+                val isSilent = when {
+                    goal.currentValue == 0 -> false // First activity - make sound
+                    progressPercentage >= 100 && previousPercentage < 100 -> false // Just completed - make sound
+                    progressPercentage >= 75 && previousPercentage < 75 -> false // Hit 75% milestone
+                    progressPercentage >= 50 && previousPercentage < 50 -> false // Hit 50% milestone
+                    progressPercentage >= 25 && previousPercentage < 25 -> false // Hit 25% milestone
+                    else -> true // Regular progress - silent
+                }
+                
+                notificationHelper.showPersistentGoalNotification(it, isSilentUpdate = isSilent)
+                Log.d(TAG, "🎯 Notification updated (silent: $isSilent) - ${progressPercentage}%")
+            }
+        }
+
+        // Handle goal completion
+        if (progressPercentage >= 100 && goal.isActive) {
+            when {
+                goal.isRecurring -> {
+                    Log.d(TAG, "🎯 Goal is recurring, resetting...")
+                    goalDao.updateGoalCurrentValue(goalId, 0)
+                }
+                !goal.allowOverflow -> {
+                    Log.d(TAG, "🎯 Auto-end enabled, marking goal as completed")
+                    goalDao.markGoalCompleted(goalId, System.currentTimeMillis())
+                }
+                else -> {
+                    Log.d(TAG, "🎯 Continue tracking enabled, goal continues past 100%")
+                }
+            }
+        }
     }
 
     fun cleanup() {

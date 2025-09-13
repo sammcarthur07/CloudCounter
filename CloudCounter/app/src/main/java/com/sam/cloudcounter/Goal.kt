@@ -18,6 +18,9 @@ data class Goal(
     val currentCones: Int = 0,
     val currentBowls: Int = 0,
     val customActivities: String = "{}",  // JSON map of custom activity counts
+    val selectedActivityType: String = "joints", // The single activity type selected for this goal
+    val targetValue: Int = 0, // Target count for the selected activity type
+    val currentValue: Int = 0, // Current count for the selected activity type
     val isRecurring: Boolean = false,
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),

@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,8 @@ import android.view.animation.LinearInterpolator
 import android.widget.*
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.DialogFragment
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlin.math.min
@@ -113,9 +116,11 @@ class AddGoalDialog : DialogFragment() {
         val layoutTimeBased = view.findViewById<LinearLayout>(R.id.layoutTimeBased)
         val editTimeDuration = view.findViewById<EditText>(R.id.editTimeDuration)
         val spinnerTimeUnit = view.findViewById<Spinner>(R.id.spinnerTimeUnit)
-        val editTargetJoints = view.findViewById<EditText>(R.id.editTargetJoints)
-        val editTargetCones = view.findViewById<EditText>(R.id.editTargetCones)
-        val editTargetBowls = view.findViewById<EditText>(R.id.editTargetBowls)
+        val spinnerActivityType = view.findViewById<Spinner>(R.id.spinnerActivityType)
+        val editTargetValue = view.findViewById<EditText>(R.id.editTargetValue)
+        
+        // Setup activity type spinner
+        setupActivityTypeSpinner(spinnerActivityType)
         val radioGroupOverflow = view.findViewById<RadioGroup>(R.id.radioGroupOverflow)
         val checkboxRecurring = view.findViewById<CheckBox>(R.id.checkboxRecurring)
         val checkboxProgressNotifications = view.findViewById<CheckBox>(R.id.checkboxProgressNotifications)
@@ -177,9 +182,9 @@ class AddGoalDialog : DialogFragment() {
         spinnerTimeUnit.adapter = spinnerAdapter
 
         // --- Pre-fill Form from SharedPreferences ---
-        editTargetJoints.setText(prefs.getInt("lastTargetJoints", 0).toString())
-        editTargetCones.setText(prefs.getInt("lastTargetCones", 0).toString())
-        editTargetBowls.setText(prefs.getInt("lastTargetBowls", 0).toString())
+        editTargetValue.setText(prefs.getInt("lastTargetValue", 1).toString())
+        val lastActivityType = prefs.getString("lastActivityType", "joints")
+        // Set spinner selection after activity types are populated
 
         val lastGoalType = GoalType.valueOf(prefs.getString("lastGoalType", GoalType.ALL_SESSIONS.name)!!)
         when (lastGoalType) {
@@ -216,17 +221,33 @@ class AddGoalDialog : DialogFragment() {
             imageCreateBackground,
             isPrimary = true,
             originalBackgroundColor = Color.parseColor("#98FB98"),
-            originalTextColor = Color.parseColor("#424242")
+            originalTextColor = Color.WHITE
         ) {
             val name = editGoalName.text.toString().trim()
-            val targetJoints = editTargetJoints.text.toString().toIntOrNull() ?: 0
-            val targetCones = editTargetCones.text.toString().toIntOrNull() ?: 0
-            val targetBowls = editTargetBowls.text.toString().toIntOrNull() ?: 0
-
-            if (targetJoints == 0 && targetCones == 0 && targetBowls == 0) {
-                Toast.makeText(context, "Please set at least one target value.", Toast.LENGTH_SHORT).show()
+            // Get selected activity type and target value
+            val selectedActivityPosition = spinnerActivityType.selectedItemPosition
+            val activityTypes = getAvailableActivityTypes()
+            val selectedActivityType = if (selectedActivityPosition >= 0 && selectedActivityPosition < activityTypes.size) {
+                activityTypes[selectedActivityPosition].first
+            } else {
+                "joints"
+            }
+            val targetValue = editTargetValue.text.toString().toIntOrNull() ?: 0
+            
+            Log.d("GoalDialog", "🎯 === CREATING NEW GOAL ===")
+            Log.d("GoalDialog", "🎯 Selected activity type: '$selectedActivityType'")
+            Log.d("GoalDialog", "🎯 Target value: $targetValue")
+            Log.d("GoalDialog", "🎯 Activity types available: ${activityTypes.map { "${it.first}:${it.second}" }}")
+            
+            if (targetValue <= 0) {
+                Toast.makeText(context, "Please set a target value greater than 0.", Toast.LENGTH_SHORT).show()
                 return@setupButtonWithImagePress
             }
+            
+            // Legacy compatibility - set the appropriate field based on selected type
+            val targetJoints = if (selectedActivityType == "joints") targetValue else 0
+            val targetCones = if (selectedActivityType == "cones") targetValue else 0
+            val targetBowls = if (selectedActivityType == "bowls") targetValue else 0
             if (selectedSmokers.isEmpty()) {
                 Toast.makeText(context, "Please select at least one smoker.", Toast.LENGTH_SHORT).show()
                 return@setupButtonWithImagePress
@@ -252,8 +273,10 @@ class AddGoalDialog : DialogFragment() {
                 return@setupButtonWithImagePress
             }
 
+            // Save preferences
             prefs.edit().apply {
-                putInt("lastTargetJoints", targetJoints); putInt("lastTargetCones", targetCones); putInt("lastTargetBowls", targetBowls)
+                putString("lastActivityType", selectedActivityType)
+                putInt("lastTargetValue", targetValue)
                 putString("lastGoalType", goalType.name); putInt("lastTimeDuration", timeDuration ?: 1)
                 putString("lastTimeUnit", timeUnit?.name ?: TimeUnit.DAY.name); putBoolean("lastRecurring", isRecurring)
                 putBoolean("lastAllowOverflow", allowOverflow); putBoolean("lastProgressNotif", progressNotifications)
@@ -263,6 +286,7 @@ class AddGoalDialog : DialogFragment() {
 
             val newGoal = Goal(
                 goalName = name, goalType = goalType, targetJoints = targetJoints, targetCones = targetCones, targetBowls = targetBowls,
+                selectedActivityType = selectedActivityType, targetValue = targetValue, currentValue = 0,
                 isRecurring = isRecurring, progressNotificationsEnabled = progressNotifications, completionNotificationsEnabled = completionNotifications,
                 allowOverflow = allowOverflow, selectedSmokers = smokerSelection, timeDuration = timeDuration, timeUnit = timeUnit,
                 sessionShareCode = if (goalType == GoalType.CURRENT_SESSION) currentSessionCode else null
@@ -498,6 +522,44 @@ class AddGoalDialog : DialogFragment() {
         }
 
         handler.post(animationRunnable)
+    }
+
+    private fun setupActivityTypeSpinner(spinner: Spinner) {
+        val activityTypes = getAvailableActivityTypes()
+        val displayNames = activityTypes.map { it.second }
+        
+        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, displayNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
+        
+        // Set selection based on saved preference
+        val prefs = requireContext().getSharedPreferences("GoalPrefs", android.content.Context.MODE_PRIVATE)
+        val lastActivityType = prefs.getString("lastActivityType", "joints")
+        val selectionIndex = activityTypes.indexOfFirst { it.first == lastActivityType }
+        if (selectionIndex >= 0) {
+            spinner.setSelection(selectionIndex)
+        }
+    }
+    
+    private fun getAvailableActivityTypes(): List<Pair<String, String>> {
+        // Get active activities from CustomActivityManager
+        val mainActivity = requireActivity() as? MainActivity
+        val customActivityManager = mainActivity?.customActivityManager
+        
+        // Core activities (filter out disabled ones)
+        val disabledCore = customActivityManager?.getDisabledCoreActivities() ?: emptySet()
+        val coreActivities = listOf(
+            "joints" to "Joints",
+            "cones" to "Cones", 
+            "bowls" to "Bowls"
+        ).filter { (key, _) -> key !in disabledCore }
+        
+        // Custom activities (only active ones)
+        val customActivities = customActivityManager?.getCustomActivities() ?: emptyList()
+        val customActivityPairs = customActivities.map { it.id to it.name }
+        
+        // Combine all activities
+        return coreActivities + customActivityPairs
     }
 
     private fun blendColors(from: Int, to: Int, ratio: Float): Int {

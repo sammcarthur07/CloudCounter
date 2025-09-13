@@ -63,4 +63,13 @@ interface GoalDao {
 
     @Query("UPDATE goals SET lastNotificationPercentage = :percentage WHERE goalId = :goalId")
     suspend fun updateLastNotificationPercentage(goalId: Long, percentage: Int)
+
+    @Query("UPDATE goals SET customActivities = :customActivities WHERE goalId = :goalId")
+    suspend fun updateGoalCustomActivities(goalId: Long, customActivities: String)
+
+    @Query("UPDATE goals SET smokerProgress = :smokerProgress WHERE goalId = :goalId")
+    suspend fun updateGoalSmokerProgress(goalId: Long, smokerProgress: String)
+
+    @Query("UPDATE goals SET currentValue = :currentValue WHERE goalId = :goalId")
+    suspend fun updateGoalCurrentValue(goalId: Long, currentValue: Int)
 }
