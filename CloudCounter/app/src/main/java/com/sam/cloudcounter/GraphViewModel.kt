@@ -61,10 +61,24 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _showBowls = MutableLiveData(true)
     val showBowls: LiveData<Boolean> = _showBowls
+    
+    // Track visibility of custom activities
+    private val _showCustomActivities = mutableMapOf<String, MutableLiveData<Boolean>>()
+    val showCustomActivities: Map<String, LiveData<Boolean>> = _showCustomActivities
 
     val colorJoints: Int = Color.parseColor("#4CAF50")
     val colorCones: Int = Color.parseColor("#FF9800")
     val colorBowls: Int = Color.parseColor("#2196F3")
+    
+    // Neon colors for custom activities
+    val customActivityColors = listOf(
+        Color.parseColor("#FF91A4"), // neon_candy (pink)
+        Color.parseColor("#BF7EFF"), // neon_purple
+        Color.parseColor("#FFFF66"), // neon_yellow
+        Color.parseColor("#5591a4"), // sort_smokers_blue
+        Color.parseColor("#FFA366"), // neon_orange
+        Color.parseColor("#98FB98")  // neon_green
+    )
 
     // This is the raw data stream from the database
     private val allActivities: LiveData<List<ActivityLog>>
@@ -119,6 +133,19 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     fun setShowBowls(show: Boolean) {
         if (_showBowls.value != show) _showBowls.value = show
     }
+    
+    fun setShowCustomActivity(customId: String, show: Boolean) {
+        if (!_showCustomActivities.containsKey(customId)) {
+            val liveData = MutableLiveData(true) // Default to visible
+            _showCustomActivities[customId] = liveData
+            _chartUiData.addSource(liveData) { refreshChartData() }
+        }
+        _showCustomActivities[customId]?.value = show
+    }
+    
+    fun getShowCustomActivity(customId: String): Boolean {
+        return _showCustomActivities[customId]?.value ?: true // Default to visible
+    }
 
     fun setSmokers(smokerIds: Set<Long>?) {
         if (_selectedSmokerIds.value != smokerIds) _selectedSmokerIds.value = smokerIds
@@ -167,6 +194,22 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         if (_showJoints.value == true) processLogsForChart(logs, ActivityType.JOINT, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Joints").apply { styleDataSet(this, colorJoints) }) }
         if (_showCones.value == true) processLogsForChart(logs, ActivityType.CONE, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Cones").apply { styleDataSet(this, colorCones) }) }
         if (_showBowls.value == true) processLogsForChart(logs, ActivityType.BOWL, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Bowls").apply { styleDataSet(this, colorBowls) }) }
+        
+        // Process custom activities
+        val customActivities = logs.filter { !it.customActivityId.isNullOrEmpty() }
+            .groupBy { it.customActivityId }
+        
+        var colorIndex = 0
+        customActivities.forEach { (customId, customLogs) ->
+            if (customId != null && getShowCustomActivity(customId)) {
+                val activityName = customLogs.firstOrNull()?.customActivityName ?: "Custom"
+                processCustomLogsForChart(customLogs, effectiveMode).takeIf { it.isNotEmpty() }?.let {
+                    val color = customActivityColors.getOrElse(colorIndex % customActivityColors.size) { customActivityColors[0] }
+                    dataSets.add(LineDataSet(it, activityName).apply { styleDataSet(this, color) })
+                    colorIndex++
+                }
+            }
+        }
 
         val descriptionSuffix = period.name.replace("_", " ").lowercase(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
         val displayModeText = if (effectiveMode.name != period.name) " (as ${effectiveMode.name.lowercase(Locale.getDefault())})" else ""
@@ -194,7 +237,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun processLogsForChart(logs: List<ActivityLog>, type: ActivityType, mode: EffectiveDisplayMode): List<Entry> {
-        val filtered = logs.filter { it.type == type }
+        val filtered = logs.filter { it.type == type && it.customActivityId.isNullOrEmpty() }
         if (filtered.isEmpty()) return emptyList()
 
         val format = when (mode) {
@@ -210,6 +253,22 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             .sortedBy { it.x }
     }
 
+    private fun processCustomLogsForChart(logs: List<ActivityLog>, mode: EffectiveDisplayMode): List<Entry> {
+        if (logs.isEmpty()) return emptyList()
+        
+        val format = when (mode) {
+            EffectiveDisplayMode.MINUTELY -> "yyyyMMddHHmm"
+            EffectiveDisplayMode.HOURLY -> "yyyyMMddHH"
+            EffectiveDisplayMode.DAILY, EffectiveDisplayMode.WEEKLY -> "yyyyMMdd"
+            EffectiveDisplayMode.MONTHLY -> "yyyyMMdd"
+            EffectiveDisplayMode.YEARLY -> "yyyyMM"
+        }
+        val sdf = SimpleDateFormat(format, Locale.getDefault())
+        return logs.groupBy { sdf.format(Date(it.timestamp)) }
+            .map { (_, group) -> Entry(group.minOf { it.timestamp }.toFloat(), group.size.toFloat()) }
+            .sortedBy { it.x }
+    }
+    
     private fun styleDataSet(dataSet: LineDataSet, color: Int) {
         dataSet.color = color
         dataSet.setCircleColor(color)

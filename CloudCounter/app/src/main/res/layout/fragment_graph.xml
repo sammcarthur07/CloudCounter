@@ -171,63 +171,19 @@
                     android:checked="true" />
             </LinearLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <!-- Chart Type Selection and Description -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
                 android:layout_marginBottom="8dp">
-
-                <LinearLayout
-                    android:id="@+id/custom_legend_container"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:gravity="start|center_vertical"
-                    android:orientation="horizontal"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toStartOf="@+id/chipGroupChartType"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:drawableStart="@drawable/legend_dot_green"
-                        android:drawablePadding="4dp"
-                        android:text="Joints"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:drawableStart="@drawable/legend_dot_orange"
-                        android:drawablePadding="4dp"
-                        android:text="Cones"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:drawableStart="@drawable/legend_dot_blue"
-                        android:drawablePadding="4dp"
-                        android:text="Bowls"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="12sp" />
-                </LinearLayout>
 
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chipGroupChartType"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:chipSpacingHorizontal="4dp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintHorizontal_bias="0.6"
                     app:selectionRequired="true"
                     app:singleSelection="true">
 
@@ -251,17 +207,61 @@
                     android:id="@+id/text_chart_description"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
                     android:gravity="end"
                     android:textColor="?android:attr/textColorPrimary"
                     android:textSize="12sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/chipGroupChartType"
-                    app:layout_constraintTop_toTopOf="parent"
                     tools:text="All time (as hourly)" />
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
+
+            <!-- Color Key/Legend -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:layout_marginBottom="8dp">
+                
+                <LinearLayout
+                    android:id="@+id/custom_legend_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/legend_dot_green"
+                        android:drawablePadding="4dp"
+                        android:text="Joints"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/legend_dot_orange"
+                        android:drawablePadding="4dp"
+                        android:text="Cones"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/legend_dot_blue"
+                        android:drawablePadding="4dp"
+                        android:text="Bowls"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="12dp" />
+
+                </LinearLayout>
+                
+            </HorizontalScrollView>
 
             <com.github.mikephil.charting.charts.LineChart
                 android:id="@+id/lineChart"

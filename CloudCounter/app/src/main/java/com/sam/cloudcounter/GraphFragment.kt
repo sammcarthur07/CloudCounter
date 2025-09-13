@@ -11,6 +11,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer // FIX: Added the missing import for Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import android.widget.CheckBox
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.graphics.drawable.GradientDrawable
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.Legend
@@ -101,6 +105,7 @@ class GraphFragment : Fragment() {
         setupChartTypeChipGroupListener()
         setupLineToggleCheckBoxListeners()
         setupUserSelection()
+        observeCustomActivities()
     }
 
     // FIX: Created this function to group all ViewModel observers.
@@ -636,6 +641,11 @@ class GraphFragment : Fragment() {
                         iDataSet.color = graphViewModel.colorBowls
                         iDataSet.setCircleColor(graphViewModel.colorBowls)
                     }
+                    else -> {
+                        // Custom activity - color already set in ViewModel
+                        // Just ensure circle color matches line color
+                        iDataSet.setCircleColor(iDataSet.color)
+                    }
                 }
             }
         }
@@ -697,6 +707,92 @@ class GraphFragment : Fragment() {
         binding.checkBoxShowJoints.isChecked = graphViewModel.showJoints.value ?: true
         binding.checkBoxShowCones.isChecked = graphViewModel.showCones.value ?: true
         binding.checkBoxShowBowls.isChecked = graphViewModel.showBowls.value ?: true
+    }
+    
+    private fun observeCustomActivities() {
+        // Get active custom activities from CustomActivityManager
+        val customActivityManager = (requireActivity() as? MainActivity)?.customActivityManager
+        if (customActivityManager != null) {
+            // Get currently active custom activities from the manager
+            val activeCustomActivities = customActivityManager.getCustomActivities()
+            
+            // Update UI with active custom activities
+            updateCustomActivityCheckboxes(activeCustomActivities)
+            updateCustomActivityLegend(activeCustomActivities)
+            
+            // Also observe for changes in logged activities to refresh the graph
+            val repo = (requireActivity().application as CloudCounterApplication).repository
+            repo.allActivities.observe(viewLifecycleOwner) { _ ->
+                // Refresh UI when activities change
+                val currentCustomActivities = customActivityManager.getCustomActivities()
+                updateCustomActivityCheckboxes(currentCustomActivities)
+                updateCustomActivityLegend(currentCustomActivities)
+            }
+        }
+    }
+    
+    private fun updateCustomActivityCheckboxes(customActivities: List<CustomActivity>) {
+        // Get the parent container of the checkboxes
+        val checkboxContainer = binding.checkBoxShowJoints.parent as? LinearLayout ?: return
+        
+        // Remove any existing custom activity checkboxes (keep first 3 for joints/cones/bowls)
+        while (checkboxContainer.childCount > 3) {
+            checkboxContainer.removeViewAt(3)
+        }
+        
+        // Add checkbox for each custom activity
+        customActivities.forEach { activity ->
+            val checkbox = CheckBox(requireContext()).apply {
+                text = activity.name
+                isChecked = graphViewModel.getShowCustomActivity(activity.id)
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                
+                setOnCheckedChangeListener { _, isChecked ->
+                    graphViewModel.setShowCustomActivity(activity.id, isChecked)
+                }
+            }
+            checkboxContainer.addView(checkbox)
+        }
+    }
+    
+    private fun updateCustomActivityLegend(customActivities: List<CustomActivity>) {
+        // Get the legend container
+        val legendContainer = binding.root.findViewById<LinearLayout>(R.id.custom_legend_container) ?: return
+        
+        // Remove any existing custom activity legend items (keep first 3 for joints/cones/bowls)
+        while (legendContainer.childCount > 3) {
+            legendContainer.removeViewAt(3)
+        }
+        
+        // Add legend item for each custom activity (up to 6 total custom activities)
+        customActivities.take(6).forEachIndexed { index, activity ->
+            val legendItem = TextView(requireContext()).apply {
+                text = activity.name
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
+                textSize = 12f
+                
+                // Create colored dot drawable
+                val dot = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    val color = graphViewModel.customActivityColors.getOrElse(index) { 
+                        graphViewModel.customActivityColors[0] 
+                    }
+                    setColor(color)
+                    setSize(24, 24)
+                }
+                setCompoundDrawablesWithIntrinsicBounds(dot, null, null, null)
+                compoundDrawablePadding = 4 * resources.displayMetrics.density.toInt()
+                
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginEnd = 12 * resources.displayMetrics.density.toInt()
+                }
+            }
+            legendContainer.addView(legendItem)
+        }
     }
 
     override fun onDestroyView() {
