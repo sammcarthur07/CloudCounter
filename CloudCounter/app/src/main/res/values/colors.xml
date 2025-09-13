@@ -9,7 +9,7 @@
     <color name="chip_unselected">#E0E0E0</color>
 
     <color name="my_light_primary">#98FB98</color>
-    <color name="my_dark_grey_background">#FF424242</color>
+    <color name="my_dark_grey_background">#FF000000</color>
     <color name="toolbar_title_text_color_on_green">#FF424242</color>
     <color name="tab_unselected_text_color_on_grey">#D3D3D3</color>
     <color name="text_on_dark_background">#FFFFFFFF</color>
