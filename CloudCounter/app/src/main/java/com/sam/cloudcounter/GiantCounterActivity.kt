@@ -919,6 +919,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             com.sam.cloudcounter.ActivityType.CONE -> "cones"
                             com.sam.cloudcounter.ActivityType.JOINT -> "joints"
                             com.sam.cloudcounter.ActivityType.BOWL -> "bowls"
+                            com.sam.cloudcounter.ActivityType.CUSTOM -> "custom"
                             com.sam.cloudcounter.ActivityType.SESSION_SUMMARY -> "cones" // Default for session
                         }
                         

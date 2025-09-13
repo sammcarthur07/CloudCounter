@@ -381,6 +381,19 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun recordConsumption(activityType: ActivityType, smokerUid: String, smokerName: String, timestamp: Long, bowlQuantity: Int = 1) {
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 === STASH VIEWMODEL recordConsumption ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 Activity type: $activityType")
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 Smoker: $smokerName ($smokerUid)")
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 Is core activity: ${activityType in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+        
+        // IMPORTANT: Only process core activity types - custom activities should never reach here
+        if (activityType !in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+            Log.w("CUSTOM_STASH_DEBUG", "🔶 ❌❌❌ BLOCKING CUSTOM ACTIVITY FROM STASH: $activityType")
+            return
+        }
+        
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 ✅ PROCEEDING with core activity stash processing")
+
         val source = _stashSource.value ?: return
         val current = _currentStash.value ?: return
         val currentRatios = _ratios.value ?: return
@@ -425,12 +438,16 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
 
         // IMPORTANT: Only consume if we actually have enough
         // Don't consume if insufficient (the switch should have already happened in MainActivity)
+        Log.d("CUSTOM_STASH_DEBUG", "🔶 Consumption check: grams=$grams, available=${current.currentGrams}, shouldConsume=$shouldConsume")
+        
         if (grams > 0 && current.currentGrams >= grams) {
+            Log.d("CUSTOM_STASH_DEBUG", "🔶 💰 DEDUCTING FROM STASH: ${grams}g for $activityType")
             viewModelScope.launch {
                 val updated = current.copy(
                     currentGrams = (current.currentGrams - grams).coerceAtLeast(0.0),
                     lastUpdated = Date()
                 )
+                Log.d("CUSTOM_STASH_DEBUG", "🔶 💰 Stash before: ${current.currentGrams}g, after: ${updated.currentGrams}g")
                 withContext(Dispatchers.IO) {
                     stashDao.updateStash(updated)
                     val entry = StashEntry(
@@ -455,7 +472,11 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             // Still recalculate stats even if no consumption
             // Log that we're not consuming because there's not enough
             if (grams > 0 && current.currentGrams < grams) {
-                Log.d(TAG, "Not consuming from stash: insufficient grams (needed: $grams, available: ${current.currentGrams})")
+                Log.d("CUSTOM_STASH_DEBUG", "🔶 ⚠️ Not consuming from stash: insufficient grams (needed: $grams, available: ${current.currentGrams})")
+            } else if (grams <= 0) {
+                Log.d("CUSTOM_STASH_DEBUG", "🔶 ⚠️ Not consuming from stash: no grams to consume (grams=$grams)")
+            } else {
+                Log.d("CUSTOM_STASH_DEBUG", "🔶 ⚠️ Not consuming from stash: unknown reason")
             }
             recalculateStats()
         }

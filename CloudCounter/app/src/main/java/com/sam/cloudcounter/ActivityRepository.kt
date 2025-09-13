@@ -54,6 +54,10 @@ class ActivityRepository(
                 gramsAtLog = ratios?.bowlGrams ?: 0.2,
                 pricePerGramAtLog = stash?.pricePerGram ?: 0.0
             )
+            ActivityType.CUSTOM -> log.copy(
+                gramsAtLog = 0.0, // Custom activities don't consume from stash
+                pricePerGramAtLog = 0.0
+            )
             ActivityType.SESSION_SUMMARY -> log // Session summaries don't have consumption
         }
 

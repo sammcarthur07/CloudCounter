@@ -407,7 +407,17 @@ class StashStatsCalculator(
             return emptyStats(statsType, timePeriod, dataScope, windowStart, windowEnd)
         }
 
-        Log.d(TAG, ">>> CALCULATING ACTUAL STATS for ${activities.size} activities")
+        // IMPORTANT: Filter out custom activities - only process core activity types for stash calculations
+        val coreActivities = activities.filter { 
+            it.type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL) 
+        }
+        
+        Log.d(TAG, ">>> CALCULATING ACTUAL STATS: ${activities.size} total activities, ${coreActivities.size} core activities (filtered out ${activities.size - coreActivities.size} custom activities)")
+        
+        if (coreActivities.isEmpty()) {
+            return emptyStats(statsType, timePeriod, dataScope, windowStart, windowEnd)
+        }
+
         val counts = mutableMapOf<ActivityType, Int>()
         val grams = mutableMapOf<ActivityType, Double>()  // FIX: Track grams by activity type
         val costs = mutableMapOf<ActivityType, Double>()  // FIX: Track costs by activity type
@@ -416,7 +426,7 @@ class StashStatsCalculator(
         var totalCost = 0.0
         val userStats = mutableMapOf<Long, UserActivityStats>()
 
-        activities.forEach { activity ->
+        coreActivities.forEach { activity ->
             // Update counts
             counts[activity.type] = (counts[activity.type] ?: 0) + 1
 

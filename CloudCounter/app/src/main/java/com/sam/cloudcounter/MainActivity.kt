@@ -3261,7 +3261,7 @@ class MainActivity : AppCompatActivity() {
             
             // Store pending custom activity
             pendingCustomActivity = activity
-            pendingActivityType = ActivityType.JOINT // Use JOINT as proxy for custom
+            pendingActivityType = ActivityType.CUSTOM // Use CUSTOM type for custom activities
             
             if (!hasCloudSmokers) {
                 Log.d("CUSTOM_ACTIVITY", "🎯 No cloud smokers - showing no cloud user popup")
@@ -3445,7 +3445,7 @@ class MainActivity : AppCompatActivity() {
             smokerId = capturedSmoker.smokerId,
             consumerId = capturedSmoker.smokerId,
             payerStashOwnerId = payerStashOwnerId,
-            type = ActivityType.JOINT, // Use JOINT as the type for custom activities
+            type = ActivityType.CUSTOM, // Use CUSTOM type for custom activities
             timestamp = adjustedNow,
             sessionId = if (sessionActive) sessionStart else null,
             sessionStartTime = if (sessionActive) sessionStart else null,
@@ -7500,7 +7500,7 @@ class MainActivity : AppCompatActivity() {
                         // Check if this is a custom activity
                         val isCustom = activity.type.startsWith("CUSTOM_")
                         val activityType = if (isCustom) {
-                            ActivityType.JOINT // Use JOINT as the type for custom activities
+                            ActivityType.CUSTOM // Use CUSTOM type for custom activities
                         } else {
                             ActivityType.valueOf(activity.type)
                         }
@@ -8555,7 +8555,7 @@ class MainActivity : AppCompatActivity() {
                 // Check if this is a custom activity
                 val isCustom = remote.type.startsWith("CUSTOM_")
                 val activityType = if (isCustom) {
-                    ActivityType.JOINT // Use JOINT as the type for custom activities
+                    ActivityType.CUSTOM // Use CUSTOM type for custom activities
                 } else {
                     try {
                         ActivityType.valueOf(remote.type.uppercase())
@@ -8600,6 +8600,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun logHit(type: ActivityType, now: Long) {
+        Log.d("CUSTOM_STASH_DEBUG", "🚀 === logHit ENTRY ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🚀 Activity type: $type")
+        Log.d("CUSTOM_STASH_DEBUG", "🚀 Is custom type: ${type == ActivityType.CUSTOM}")
+        
         // Add session check at the beginning
         if (!sessionActive) {
             Log.w(TAG, "🎯 Cannot log hit - session not active")
@@ -8819,6 +8823,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -8945,21 +8950,34 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🎯🔴 NOT advancing smoker (autoMode: $isAutoMode, type: $type, isBowl: ${type == ActivityType.BOWL})")
         }
 
-        // STASH TRACKING
+        // STASH TRACKING WITH CUSTOM ACTIVITY DEBUG
         val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+        Log.d("CUSTOM_STASH_DEBUG", "🔵 === STASH TRACKING CHECK ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🔵 Activity type: $type")
+        Log.d("CUSTOM_STASH_DEBUG", "🔵 Is core activity: ${type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+        Log.d("CUSTOM_STASH_DEBUG", "🔵 Stash available: ${stashViewModel.currentStash.value != null}")
+        
         if (stashViewModel.currentStash.value != null) {
-            val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
-                selectedSmoker.cloudUserId
+            // IMPORTANT: Only process core activities for stash system
+            if (type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+                Log.d("CUSTOM_STASH_DEBUG", "🔵 ✅ Processing CORE activity for stash")
+                val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
+                    selectedSmoker.cloudUserId
+                } else {
+                    "local_${selectedSmoker.uid}"
+                }
+                stashViewModel.recordConsumption(
+                    activityType = type,
+                    smokerUid = smokerUid!!,
+                    smokerName = selectedSmoker.name,
+                    timestamp = now
+                )
+                stashViewModel.onActivityLogged(type)
             } else {
-                "local_${selectedSmoker.uid}"
+                Log.d("CUSTOM_STASH_DEBUG", "🔵 ❌ SKIPPING CUSTOM activity - not processing for stash")
             }
-            stashViewModel.recordConsumption(
-                activityType = type,
-                smokerUid = smokerUid!!,
-                smokerName = selectedSmoker.name,
-                timestamp = now
-            )
-            stashViewModel.onActivityLogged(type)
+        } else {
+            Log.d("CUSTOM_STASH_DEBUG", "🔵 ❌ No stash available - skipping stash tracking")
         }
 
         // GOAL TRACKING
@@ -9255,7 +9273,7 @@ class MainActivity : AppCompatActivity() {
                 val sessionLogs = allLogs.filter { it.timestamp >= sessionStart && it.timestamp <= now }
 
                 val cones = sessionLogs.count { it.type == ActivityType.CONE && it.customActivityId.isNullOrEmpty() }
-                val joints = sessionLogs.count { it.type == ActivityType.JOINT && it.customActivityId.isNullOrEmpty() }
+                val joints = sessionLogs.count { it.type == ActivityType.JOINT }
                 val bowls = sessionLogs.count { it.type == ActivityType.BOWL }
 
                 // Check if this smoker should get carried-over bowls
@@ -9666,6 +9684,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -9732,20 +9751,32 @@ class MainActivity : AppCompatActivity() {
             sessionStatsVM.refreshTimer()
         }
 
-        // STASH TRACKING
+        // STASH TRACKING WITH CUSTOM ACTIVITY DEBUG
+        Log.d("CUSTOM_STASH_DEBUG", "🟡 === STASH TRACKING CHECK (Location 2) ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🟡 Activity type: $type")
+        Log.d("CUSTOM_STASH_DEBUG", "🟡 Is core activity: ${type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+        Log.d("CUSTOM_STASH_DEBUG", "🟡 Stash available: ${stashViewModel.currentStash.value != null}")
+        
         if (stashViewModel.currentStash.value != null) {
-            val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
-                selectedSmoker.cloudUserId
+            // IMPORTANT: Only process core activities for stash system
+            if (type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+                Log.d("CUSTOM_STASH_DEBUG", "🟡 ✅ Processing CORE activity for stash")
+                val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
+                    selectedSmoker.cloudUserId
+                } else {
+                    "local_${selectedSmoker.uid}"
+                }
+                stashViewModel.recordConsumption(
+                    activityType = type,
+                    smokerUid = smokerUid!!,
+                    smokerName = selectedSmoker.name,
+                    timestamp = now
+                )
             } else {
-                "local_${selectedSmoker.uid}"
+                Log.d("CUSTOM_STASH_DEBUG", "🟡 ❌ SKIPPING CUSTOM activity - not processing for stash")
             }
-            stashViewModel.recordConsumption(
-                activityType = type,
-                smokerUid = smokerUid!!,
-                smokerName = selectedSmoker.name,
-                timestamp = now
-            )
-            stashViewModel.onActivityLogged(type)
+        } else {
+            Log.d("CUSTOM_STASH_DEBUG", "🟡 ❌ No stash available - skipping stash tracking")
         }
 
         // GOAL TRACKING
@@ -10097,6 +10128,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
+                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -10206,21 +10238,33 @@ class MainActivity : AppCompatActivity() {
             sessionStatsVM.refreshTimer()
         }
 
-        // STASH TRACKING using CAPTURED smoker
+        // STASH TRACKING using CAPTURED smoker WITH CUSTOM ACTIVITY DEBUG
         val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+        Log.d("CUSTOM_STASH_DEBUG", "🟢 === STASH TRACKING CHECK (Location 3 - CAPTURED) ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🟢 Activity type: $type")
+        Log.d("CUSTOM_STASH_DEBUG", "🟢 Is core activity: ${type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+        Log.d("CUSTOM_STASH_DEBUG", "🟢 Stash available: ${stashViewModel.currentStash.value != null}")
+        
         if (stashViewModel.currentStash.value != null) {
-            val smokerUid = if (capturedSmoker.isCloudSmoker && !capturedSmoker.cloudUserId.isNullOrEmpty()) {
-                capturedSmoker.cloudUserId
+            // IMPORTANT: Only process core activities for stash system
+            if (type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+                Log.d("CUSTOM_STASH_DEBUG", "🟢 ✅ Processing CORE activity for stash")
+                val smokerUid = if (capturedSmoker.isCloudSmoker && !capturedSmoker.cloudUserId.isNullOrEmpty()) {
+                    capturedSmoker.cloudUserId
+                } else {
+                    "local_${capturedSmoker.uid}"
+                }
+                stashViewModel.recordConsumption(
+                    activityType = type,
+                    smokerUid = smokerUid!!,
+                    smokerName = capturedSmoker.name,
+                    timestamp = now
+                )
             } else {
-                "local_${capturedSmoker.uid}"
+                Log.d("CUSTOM_STASH_DEBUG", "🟢 ❌ SKIPPING CUSTOM activity - not processing for stash")
             }
-            stashViewModel.recordConsumption(
-                activityType = type,
-                smokerUid = smokerUid!!,
-                smokerName = capturedSmoker.name,
-                timestamp = now
-            )
-            stashViewModel.onActivityLogged(type)
+        } else {
+            Log.d("CUSTOM_STASH_DEBUG", "🟢 ❌ No stash available - skipping stash tracking")
         }
 
         // GOAL TRACKING using CAPTURED smoker
@@ -12316,21 +12360,33 @@ class MainActivity : AppCompatActivity() {
             sessionStatsVM.refreshTimer()
         }
 
-        // Update stash tracking
+        // Update stash tracking WITH CUSTOM ACTIVITY DEBUG
         val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+        Log.d("CUSTOM_STASH_DEBUG", "🔴 === STASH TRACKING CHECK (Location 4) ===")
+        Log.d("CUSTOM_STASH_DEBUG", "🔴 Activity type: $type")
+        Log.d("CUSTOM_STASH_DEBUG", "🔴 Is core activity: ${type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+        Log.d("CUSTOM_STASH_DEBUG", "🔴 Stash available: ${stashViewModel.currentStash.value != null}")
+        
         if (stashViewModel.currentStash.value != null) {
-            val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
-                selectedSmoker.cloudUserId
+            // IMPORTANT: Only process core activities for stash system
+            if (type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+                Log.d("CUSTOM_STASH_DEBUG", "🔴 ✅ Processing CORE activity for stash")
+                val smokerUid = if (selectedSmoker.isCloudSmoker && !selectedSmoker.cloudUserId.isNullOrEmpty()) {
+                    selectedSmoker.cloudUserId
+                } else {
+                    "local_${selectedSmoker.uid}"
+                }
+                stashViewModel.recordConsumption(
+                    activityType = type,
+                    smokerUid = smokerUid!!,
+                    smokerName = selectedSmoker.name,
+                    timestamp = timestamp
+                )
             } else {
-                "local_${selectedSmoker.uid}"
+                Log.d("CUSTOM_STASH_DEBUG", "🔴 ❌ SKIPPING CUSTOM activity - not processing for stash")
             }
-            stashViewModel.recordConsumption(
-                activityType = type,
-                smokerUid = smokerUid!!,
-                smokerName = selectedSmoker.name,
-                timestamp = timestamp
-            )
-            stashViewModel.onActivityLogged(type)
+        } else {
+            Log.d("CUSTOM_STASH_DEBUG", "🔴 ❌ No stash available - skipping stash tracking")
         }
 
         withContext(Dispatchers.Main) {
@@ -13801,21 +13857,33 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Update stash tracking
+            // Update stash tracking WITH CUSTOM ACTIVITY DEBUG
             val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+            Log.d("CUSTOM_STASH_DEBUG", "🟣 === STASH TRACKING CHECK (Location 5 - Specific Smoker) ===")
+            Log.d("CUSTOM_STASH_DEBUG", "🟣 Activity type: $type")
+            Log.d("CUSTOM_STASH_DEBUG", "🟣 Is core activity: ${type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)}")
+            Log.d("CUSTOM_STASH_DEBUG", "🟣 Stash available: ${stashViewModel.currentStash.value != null}")
+            
             if (stashViewModel.currentStash.value != null) {
-                val smokerUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
-                    smoker.cloudUserId
+                // IMPORTANT: Only process core activities for stash system
+                if (type in listOf(ActivityType.JOINT, ActivityType.CONE, ActivityType.BOWL)) {
+                    Log.d("CUSTOM_STASH_DEBUG", "🟣 ✅ Processing CORE activity for stash")
+                    val smokerUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
+                        smoker.cloudUserId
+                    } else {
+                        "local_${smoker.uid}"
+                    }
+                    stashViewModel.recordConsumption(
+                        activityType = type,
+                        smokerUid = smokerUid!!,
+                        smokerName = smoker.name,
+                        timestamp = adjustedTimestamp
+                    )
                 } else {
-                    "local_${smoker.uid}"
+                    Log.d("CUSTOM_STASH_DEBUG", "🟣 ❌ SKIPPING CUSTOM activity - not processing for stash")
                 }
-                stashViewModel.recordConsumption(
-                    activityType = type,
-                    smokerUid = smokerUid!!,
-                    smokerName = smoker.name,
-                    timestamp = adjustedTimestamp
-                )
-                stashViewModel.onActivityLogged(type)
+            } else {
+                Log.d("CUSTOM_STASH_DEBUG", "🟣 ❌ No stash available - skipping stash tracking")
             }
 
             // Update goals

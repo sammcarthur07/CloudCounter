@@ -569,17 +569,17 @@ class GoalService(private val application: Application) {
 
         val newJoints = when (activityType) {
             ActivityType.JOINT -> goal.currentJoints + 1
-            ActivityType.CONE, ActivityType.BOWL, ActivityType.SESSION_SUMMARY -> goal.currentJoints
+            ActivityType.CONE, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentJoints
         }
 
         val newCones = when (activityType) {
             ActivityType.CONE -> goal.currentCones + 1
-            ActivityType.JOINT, ActivityType.BOWL, ActivityType.SESSION_SUMMARY -> goal.currentCones
+            ActivityType.JOINT, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentCones
         }
 
         val newBowls = when (activityType) {
             ActivityType.BOWL -> goal.currentBowls + 1
-            ActivityType.JOINT, ActivityType.CONE, ActivityType.SESSION_SUMMARY -> goal.currentBowls
+            ActivityType.JOINT, ActivityType.CONE, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentBowls
         }
 
         val updatedSmokerProgress = updateSmokerProgressJson(
@@ -656,6 +656,9 @@ class GoalService(private val application: Application) {
                 ActivityType.JOINT -> smokerData.put("j", smokerData.optInt("j", 0) + 1)
                 ActivityType.CONE -> smokerData.put("c", smokerData.optInt("c", 0) + 1)
                 ActivityType.BOWL -> smokerData.put("b", smokerData.optInt("b", 0) + 1)
+                ActivityType.CUSTOM -> {
+                    // Custom activities don't update legacy goal counts
+                }
                 ActivityType.SESSION_SUMMARY -> {
                     // Don't update individual counts for session summary
                 }

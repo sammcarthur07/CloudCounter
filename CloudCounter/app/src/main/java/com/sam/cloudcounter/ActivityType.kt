@@ -7,5 +7,6 @@ enum class ActivityType {
     CONE,
     JOINT,
     BOWL,
+    CUSTOM,  // For custom activities - should not interact with stash
     SESSION_SUMMARY
 }

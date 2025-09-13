@@ -21,6 +21,7 @@ class StashIntegration(
     /**
      * Process an activity for stash consumption.
      * This is now a simple pass-through to the ViewModel which holds the logic.
+     * Custom activities are excluded from stash system entirely.
      */
     fun handleActivity(
         activityType: ActivityType,
@@ -28,8 +29,18 @@ class StashIntegration(
         smokerName: String,
         timestamp: Long
     ) {
-        // The ViewModel now contains all the necessary logic for recording consumption.
-        stashViewModel.recordConsumption(activityType, smokerUid, smokerName, timestamp)
+        // IMPORTANT: Only process core activity types - exclude custom activities from stash system
+        when (activityType) {
+            ActivityType.JOINT,
+            ActivityType.CONE,
+            ActivityType.BOWL -> {
+                Log.d(TAG, "Processing ${activityType.name} activity for stash consumption")
+                stashViewModel.recordConsumption(activityType, smokerUid, smokerName, timestamp)
+            }
+            else -> {
+                Log.d(TAG, "Skipping ${activityType.name} activity - custom activities don't interact with stash")
+            }
+        }
     }
 
     /**
@@ -46,6 +57,7 @@ class StashIntegration(
             val ratios = stashViewModel.ratios.value ?: ConsumptionRatio()
             val stash = stashViewModel.currentStash.value ?: Stash()
 
+            // IMPORTANT: Only count core activity types - exclude custom activities from stash calculations
             val cones = activities.count { it.type == ActivityType.CONE }
             val joints = activities.count { it.type == ActivityType.JOINT }
             val bowls = activities.count { it.type == ActivityType.BOWL }
