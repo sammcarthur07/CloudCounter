@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val GIANT_COUNTER_REQUEST_CODE = 1001
+        const val ACTION_CUSTOM_ACTIVITIES_CHANGED = "com.sam.cloudcounter.CUSTOM_ACTIVITIES_CHANGED"
         private const val ADMIN_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
 
         // Add neon colors for font coloring
@@ -3203,6 +3204,9 @@ class MainActivity : AppCompatActivity() {
                 selectedIconName = null
                 refreshActivityList()
                 
+                // Broadcast that custom activities have changed
+                broadcastCustomActivitiesChanged()
+                
                 // Sync to cloud if in session
                 currentShareCode?.let { code ->
                     syncCustomActivityToCloud(customActivity, code)
@@ -3213,6 +3217,13 @@ class MainActivity : AppCompatActivity() {
         }
         
         dialog.show()
+    }
+    
+    private fun broadcastCustomActivitiesChanged() {
+        // Send a local broadcast to notify fragments about custom activity changes
+        val intent = Intent(ACTION_CUSTOM_ACTIVITIES_CHANGED)
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+        Log.d("CUSTOM_ACTIVITY", "📡 Broadcasting custom activities changed")
     }
     
     private fun showDeleteConfirmationDialog(activity: CustomActivity, parentDialog: Dialog) {
@@ -3228,6 +3239,9 @@ class MainActivity : AppCompatActivity() {
                     // Refresh the dialog to show updated list
                     parentDialog.dismiss()
                     showCustomActivityDialog()
+                    
+                    // Broadcast that custom activities have changed
+                    broadcastCustomActivitiesChanged()
                     
                     // TODO: Delete from cloud if in session
                 }

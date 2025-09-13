@@ -38,6 +38,10 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.widget.Toast
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class StatsFragment : Fragment() {
 
@@ -54,6 +58,16 @@ class StatsFragment : Fragment() {
 
     // internal mutable set backing the selection chips
     private val selectedSmokersInternal = mutableSetOf<Long>()
+    
+    // Broadcast receiver for custom activity changes
+    private val customActivityChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == MainActivity.ACTION_CUSTOM_ACTIVITIES_CHANGED) {
+                Log.d("StatsFragment", "📡 Received custom activities changed broadcast")
+                setupCategoryChips()
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,6 +79,12 @@ class StatsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewModel = ViewModelProvider(requireActivity()).get(StatsViewModel::class.java)
+        
+        // Register broadcast receiver for custom activity changes
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(
+            customActivityChangeReceiver,
+            IntentFilter(MainActivity.ACTION_CUSTOM_ACTIVITIES_CHANGED)
+        )
 
         // seed internal selection so UI reflects current model state
         viewModel.selectedSmokerIds.value?.let { selectedSmokersInternal.addAll(it) }
@@ -94,34 +114,41 @@ class StatsFragment : Fragment() {
             }
         }
 
-        // category chips - add custom activities dynamically
-        setupCategoryChips()
-        
+        // Set up the listener first, before adding chips
         binding.chipGroupCategory.setOnCheckedStateChangeListener { _, checked ->
+            Log.d("StatsFragment", "ChipGroup checked state changed: $checked")
             val chipId = checked.firstOrNull()
             if (chipId != null) {
                 val chip = binding.chipGroupCategory.findViewById<Chip>(chipId)
                 val tag = chip?.tag
+                Log.d("StatsFragment", "Selected chip: id=$chipId, text=${chip?.text}, tag=$tag")
                 
                 if (tag is String && tag.startsWith("CUSTOM_")) {
-                    // For custom activities, we use JOINT type but filter by customActivityId
-                    viewModel.setActivityType(ActivityType.JOINT)
+                    // For custom activities, we use CUSTOM type and filter by customActivityId
+                    Log.d("StatsFragment", "Setting custom activity: ${tag.removePrefix("CUSTOM_")}")
+                    viewModel.setActivityType(ActivityType.CUSTOM)
                     viewModel.setCustomActivityId(tag.removePrefix("CUSTOM_"))
                 } else {
                     val type = when (chipId) {
                         R.id.chipCategoryJoint -> ActivityType.JOINT
                         R.id.chipCategoryCone  -> ActivityType.CONE
                         R.id.chipCategoryBowl  -> ActivityType.BOWL
+                        R.id.chipCategoryAll -> null
                         else                   -> null
                     }
+                    Log.d("StatsFragment", "Setting activity type: $type")
                     viewModel.setActivityType(type)
                     viewModel.setCustomActivityId(null)
                 }
             } else {
+                Log.d("StatsFragment", "No chip selected")
                 viewModel.setActivityType(null)
                 viewModel.setCustomActivityId(null)
             }
         }
+        
+        // Now add custom activity chips after the listener is set
+        setupCategoryChips()
 
         // user / smoker selection chips
         val repo = (requireActivity().application as CloudCounterApplication).repository
@@ -559,26 +586,48 @@ class StatsFragment : Fragment() {
     }
 
     private fun setupCategoryChips() {
-        // Keep existing chips (Joint, Cone, Bowl already in XML)
-        // Add custom activity chips dynamically
+        // First, remove any previously added custom activity chips
+        val chipGroup = binding.chipGroupCategory
+        val chipsToRemove = mutableListOf<View>()
+        
+        for (i in 0 until chipGroup.childCount) {
+            val child = chipGroup.getChildAt(i)
+            if (child is Chip && child.tag != null && child.tag.toString().startsWith("CUSTOM_")) {
+                chipsToRemove.add(child)
+            }
+        }
+        chipsToRemove.forEach { chipGroup.removeView(it) }
+        
+        // Add custom activity chips dynamically with proper styling
         val customActivityManager = CustomActivityManager(requireContext())
         val customActivities = customActivityManager.getCustomActivities()
         
         customActivities.forEach { activity ->
-            val chip = Chip(requireContext()).apply {
+            // Inflate a chip from XML to get proper styling
+            val chip = layoutInflater.inflate(R.layout.chip_category_item, chipGroup, false) as Chip
+            chip.apply {
                 text = activity.name
-                isCheckable = true
                 tag = "CUSTOM_${activity.id}"
-                chipBackgroundColor = android.content.res.ColorStateList.valueOf(
-                    Color.parseColor(activity.color)
-                )
+                id = View.generateViewId() // Generate unique ID for the chip
+                // Ensure the chip is checkable (should be from style, but let's be explicit)
+                isCheckable = true
+                Log.d("StatsFragment", "Added custom chip: ${activity.name} with id: $id and tag: $tag")
             }
-            binding.chipGroupCategory.addView(chip)
+            chipGroup.addView(chip)
         }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Refresh category chips when fragment becomes visible again
+        // This ensures custom activities are updated if they changed while on another tab
+        setupCategoryChips()
     }
     
     override fun onDestroyView() {
         super.onDestroyView()
+        // Unregister broadcast receiver
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(customActivityChangeReceiver)
         _binding = null
     }
 }

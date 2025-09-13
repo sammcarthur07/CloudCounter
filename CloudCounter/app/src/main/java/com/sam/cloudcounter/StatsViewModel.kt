@@ -90,6 +90,9 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
         val byType = if (customActivityId != null) {
             // Filter by custom activity ID
             logs.filter { it.customActivityId == customActivityId }
+        } else if (typeFilter == ActivityType.CUSTOM) {
+            // Filter for all custom activities (when CUSTOM type is selected but no specific ID)
+            logs.filter { !it.customActivityId.isNullOrEmpty() }
         } else {
             // Filter by regular activity type
             typeFilter?.let { tf -> logs.filter { it.type == tf } } ?: logs
