@@ -663,12 +663,15 @@ class ChatFragment : Fragment() {
                 handleDeveloperDelete(message)
             }
 
-            binding.recyclerMessages.apply {
-                layoutManager = LinearLayoutManager(requireContext()).apply {
-                    reverseLayout = false
-                    stackFromEnd = true
+            // Check if binding is still valid before accessing it
+            _binding?.let { validBinding ->
+                validBinding.recyclerMessages.apply {
+                    layoutManager = LinearLayoutManager(requireContext()).apply {
+                        reverseLayout = false
+                        stackFromEnd = true
+                    }
+                    adapter = messageAdapter
                 }
-                adapter = messageAdapter
             }
         }
 

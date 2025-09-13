@@ -377,6 +377,11 @@ class AboutFragment : Fragment() {
     // City diversity tracking
     private val recentCityHistory = mutableListOf<String>() // Track last 10 cities shown
     private var lastCountryShown = "" // Track last country to avoid consecutive same country
+    
+    // User location alternation tracking
+    private var showUserLocationNext = true // When user's location is at 4:20, alternate between user and other cities
+    private var userLocationCity: String? = null // Store user's city name when at 4:20
+    private var lastShownOther420Index = -1 // Track last shown other 4:20 city to ensure variety
 
     private var keyboardListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
@@ -780,6 +785,8 @@ class AboutFragment : Fragment() {
                                 // Check if it's 4:20 at device location
                                 if (isCurrently420AtLocation(it.latitude, it.longitude)) {
                                     isUsingDeviceLocation = true
+                                    userLocationCity = "$city, $country"
+                                    showUserLocationNext = true // Start by showing user location
                                     withContext(Dispatchers.Main) {
                                         updateLocationText("$city, $country", isCurrently420 = true)
                                     }
@@ -1452,11 +1459,51 @@ This app is vibe coded without writing a single line of code with the help of Cl
                     return
                 }
 
-                if (!isUsingDeviceLocation || !isCurrently420AtDeviceLocation()) {
+                // Get all cities with their times
+                val allCities = findNext420LocationsWithTime()
+                
+                if (isUsingDeviceLocation && isCurrently420AtDeviceLocation()) {
+                    Log.d(TAG, "📱 Device location is at 4:20 - alternating display")
+                    
+                    // Filter to only get cities that are currently at 4:20 (excluding user's location)
+                    val other420Cities = allCities.filter { (city, _, seconds) ->
+                        seconds <= 120 && city != userLocationCity // Within 2 minutes = currently 4:20
+                    }
+                    
+                    if (showUserLocationNext || other420Cities.isEmpty()) {
+                        // Show user's location
+                        Log.d(TAG, "📍 Showing user's location: $userLocationCity")
+                        fadeToNewText {
+                            currentDisplayCity = userLocationCity
+                            currentDisplayTargetTime = System.currentTimeMillis()
+                            currentDisplayMode = "actual"
+                            updateLocationText(userLocationCity ?: "", isCurrently420 = true)
+                        }
+                        showUserLocationNext = false // Next time show another city
+                    } else {
+                        // Show another city that's at 4:20
+                        if (other420Cities.isNotEmpty()) {
+                            // Ensure variety by not showing the same city twice in a row
+                            lastShownOther420Index = (lastShownOther420Index + 1) % other420Cities.size
+                            val (city, targetTime, _) = other420Cities[lastShownOther420Index]
+                            Log.d(TAG, "🌍 Showing other 4:20 city: $city")
+                            fadeToNewText {
+                                currentDisplayCity = city
+                                currentDisplayTargetTime = targetTime
+                                currentDisplayMode = "actual"
+                                updateLocationText(city, isCurrently420 = true)
+                            }
+                        }
+                        showUserLocationNext = true // Next time show user's location
+                    }
+                } else {
                     Log.d(TAG, "📍 Device location not being used or not 4:20 at device")
-
-                    // Get all cities with their times
-                    val allCities = findNext420LocationsWithTime()
+                    
+                    // Reset alternation tracking when not at user's 4:20
+                    isUsingDeviceLocation = false
+                    userLocationCity = null
+                    showUserLocationNext = true
+                    lastShownOther420Index = -1
 
                     // Check if any city is within sticky threshold
                     val stickyCandidates = allCities.filter { it.third in 1..STICKY_THRESHOLD_SECONDS }
@@ -1470,8 +1517,6 @@ This app is vibe coded without writing a single line of code with the help of Cl
                         // Normal A-B rotation with region spreading
                         performNormalRotation(allCities)
                     }
-                } else {
-                    Log.d(TAG, "📱 Using device location for 4:20")
                 }
 
                 Log.d(TAG, "⏭️ Scheduling next rotation in ${ROTATION_INTERVAL_MS}ms")
@@ -1612,6 +1657,12 @@ This app is vibe coded without writing a single line of code with the help of Cl
     private fun fadeToNewText(onFadeComplete: () -> Unit) {
         Log.d(TAG, "🎬 fadeToNewText() called using AlphaAnimation")
 
+        // Null check to prevent crashes
+        if (_binding == null) {
+            Log.w(TAG, "⚠️ fadeToNewText called but binding is null")
+            return
+        }
+
         // Cancel any existing animations
         binding.text420Location.clearAnimation()
 
@@ -1669,6 +1720,13 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
         liveCountdownRunnable = object : Runnable {
             override fun run() {
+                // Check if fragment is still attached and binding is valid
+                if (!isAdded || _binding == null) {
+                    Log.w(TAG, "⚠️ Live countdown tick skipped - fragment not attached or binding null")
+                    liveCountdownRunnable = null
+                    return
+                }
+
                 if (currentDisplayTargetTime > 0 && !isShowingClimax) {
                     val now = System.currentTimeMillis()
                     val secondsUntil = ((currentDisplayTargetTime - now) / 1000).toInt()
@@ -1701,7 +1759,12 @@ This app is vibe coded without writing a single line of code with the help of Cl
                     }
                 }
 
-                handler.postDelayed(this, 1000)
+                // Only schedule next tick if still attached
+                if (isAdded && _binding != null) {
+                    handler.postDelayed(this, 1000)
+                } else {
+                    Log.w(TAG, "⚠️ Not scheduling next countdown tick - fragment detached")
+                }
             }
         }
 
@@ -1711,6 +1774,12 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
     // Add these new DIRECT update functions that don't fade (for per-second updates)
     private fun updateStickyCountdownTextDirect(city: String, secondsUntil: Int) {
+        // Null check to prevent crashes
+        if (_binding == null) {
+            Log.w(TAG, "⚠️ updateStickyCountdownTextDirect called but binding is null")
+            return
+        }
+
         val greenColor = "#98FB98"
         val minutes = secondsUntil / 60
         val seconds = secondsUntil % 60
@@ -1724,13 +1793,23 @@ This app is vibe coded without writing a single line of code with the help of Cl
         val text = "Get ready! It's <font color='$greenColor'><b>420</b></font> in $city in just $timeText!"
 
         // Direct update without fade for smooth countdown
-        binding.text420Location.text = HtmlCompat.fromHtml(
-            text,
-            HtmlCompat.FROM_HTML_MODE_LEGACY
-        )
+        try {
+            binding.text420Location.text = HtmlCompat.fromHtml(
+                text,
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to update sticky countdown text: ${e.message}")
+        }
     }
 
     private fun updateApproachingCountdownTextDirect(city: String, secondsUntil: Int) {
+        // Null check to prevent crashes
+        if (_binding == null) {
+            Log.w(TAG, "⚠️ updateApproachingCountdownTextDirect called but binding is null")
+            return
+        }
+
         val greenColor = "#98FB98"
 
         // Calculate time components
@@ -1764,10 +1843,14 @@ This app is vibe coded without writing a single line of code with the help of Cl
         val text = "<font color='$greenColor'><b>420</b></font> next in $city, $timeText from now!"
 
         // Direct update without fade for smooth countdown
-        binding.text420Location.text = HtmlCompat.fromHtml(
-            text,
-            HtmlCompat.FROM_HTML_MODE_LEGACY
-        )
+        try {
+            binding.text420Location.text = HtmlCompat.fromHtml(
+                text,
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to update countdown text: ${e.message}")
+        }
     }
 
     // Update performNormalRotation to add more logging
@@ -2065,28 +2148,55 @@ This app is vibe coded without writing a single line of code with the help of Cl
     override fun onDestroyView() {
         super.onDestroyView()
         Log.d(TAG, "🎯 AboutFragment onDestroyView - cleaning up")
+        Log.d(TAG, "📋 Fragment lifecycle: Cleaning up handlers and listeners")
 
         // Stop sticky countdown
         stickyCountdownRunnable?.let {
+            Log.d(TAG, "🛑 Removing sticky countdown runnable")
             handler.removeCallbacks(it)
             stickyCountdownRunnable = null
         }
 
+        // CRITICAL: Stop live countdown runnable to prevent NPE
+        liveCountdownRunnable?.let {
+            Log.d(TAG, "🛑 Removing live countdown runnable")
+            handler.removeCallbacks(it)
+            liveCountdownRunnable = null
+        }
+
+        // Stop location rotation runnable
+        locationRunnable?.let { runnable ->
+            Log.d(TAG, "🛑 Removing location rotation runnable")
+            handler.removeCallbacks(runnable)
+            locationRunnable = null
+        }
+
+        // Stop timer runnable
+        timerRunnable?.let { runnable ->
+            Log.d(TAG, "🛑 Removing timer runnable")
+            handler.removeCallbacks(runnable)
+            timerRunnable = null
+        }
+
+        // Remove all callbacks from handler to be extra safe
+        handler.removeCallbacksAndMessages(null)
+        Log.d(TAG, "🛑 Removed all pending handler callbacks")
+
         // Remove keyboard listener before destroying binding
         keyboardListener?.let { listener ->
-            binding.root.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+            if (_binding != null) {
+                binding.root.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+            }
         }
         keyboardListener = null
 
+        // Clean up stats manager and listeners
         statsManager.cleanup()
         adjustmentsListener?.remove()
         activitiesListener?.remove()
-        locationRunnable?.let { runnable ->
-            handler.removeCallbacks(runnable)
-        }
-        timerRunnable?.let { runnable ->
-            handler.removeCallbacks(runnable)
-        }
+
+        // Finally nullify binding
+        Log.d(TAG, "🛑 Nullifying binding")
         _binding = null
     }
 }
