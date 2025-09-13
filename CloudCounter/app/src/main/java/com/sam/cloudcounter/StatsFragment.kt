@@ -94,15 +94,33 @@ class StatsFragment : Fragment() {
             }
         }
 
-        // category chips
+        // category chips - add custom activities dynamically
+        setupCategoryChips()
+        
         binding.chipGroupCategory.setOnCheckedStateChangeListener { _, checked ->
-            val type = when (checked.firstOrNull()) {
-                R.id.chipCategoryJoint -> ActivityType.JOINT
-                R.id.chipCategoryCone  -> ActivityType.CONE
-                R.id.chipCategoryBowl  -> ActivityType.BOWL
-                else                   -> null
+            val chipId = checked.firstOrNull()
+            if (chipId != null) {
+                val chip = binding.chipGroupCategory.findViewById<Chip>(chipId)
+                val tag = chip?.tag
+                
+                if (tag is String && tag.startsWith("CUSTOM_")) {
+                    // For custom activities, we use JOINT type but filter by customActivityId
+                    viewModel.setActivityType(ActivityType.JOINT)
+                    viewModel.setCustomActivityId(tag.removePrefix("CUSTOM_"))
+                } else {
+                    val type = when (chipId) {
+                        R.id.chipCategoryJoint -> ActivityType.JOINT
+                        R.id.chipCategoryCone  -> ActivityType.CONE
+                        R.id.chipCategoryBowl  -> ActivityType.BOWL
+                        else                   -> null
+                    }
+                    viewModel.setActivityType(type)
+                    viewModel.setCustomActivityId(null)
+                }
+            } else {
+                viewModel.setActivityType(null)
+                viewModel.setCustomActivityId(null)
             }
-            viewModel.setActivityType(type)
         }
 
         // user / smoker selection chips
@@ -540,6 +558,25 @@ class StatsFragment : Fragment() {
         return "Every ${parts.joinToString(" ")}"
     }
 
+    private fun setupCategoryChips() {
+        // Keep existing chips (Joint, Cone, Bowl already in XML)
+        // Add custom activity chips dynamically
+        val customActivityManager = CustomActivityManager(requireContext())
+        val customActivities = customActivityManager.getCustomActivities()
+        
+        customActivities.forEach { activity ->
+            val chip = Chip(requireContext()).apply {
+                text = activity.name
+                isCheckable = true
+                tag = "CUSTOM_${activity.id}"
+                chipBackgroundColor = android.content.res.ColorStateList.valueOf(
+                    Color.parseColor(activity.color)
+                )
+            }
+            binding.chipGroupCategory.addView(chip)
+        }
+    }
+    
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 23, // Changed from 22 to 23
+    version = 24, // Changed from 23 to 24 for custom activities
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -425,6 +425,21 @@ abstract class AppDatabase : RoomDatabase() {
                 Log.d("Migration", "Migration from 22 to 23 completed successfully")
             }
         }
+        
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 23 to 24 - Adding custom activities support")
+                
+                // Add custom activity fields to activity_logs table
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN customActivityId TEXT")
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN customActivityName TEXT")
+                
+                // Add custom activities field to goals table
+                database.execSQL("ALTER TABLE goals ADD COLUMN customActivities TEXT NOT NULL DEFAULT '{}'")
+                
+                Log.d("Migration", "Migration 23 to 24 completed successfully")
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
@@ -448,7 +463,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_19_20,
                         MIGRATION_20_21,
                         MIGRATION_21_TO_22,
-                        MIGRATION_22_23 // Added displayOrder migration
+                        MIGRATION_22_23, // Added displayOrder migration
+                        MIGRATION_23_24  // Added custom activities migration
                     )
                     .fallbackToDestructiveMigration()
                     .build()

@@ -50,26 +50,26 @@ import android.widget.ImageView
 import com.google.android.material.tabs.TabLayout
 import android.app.Dialog
 import android.graphics.drawable.ColorDrawable
-import android.animation.*
-import android.graphics.drawable.GradientDrawable
-import android.widget.FrameLayout
-import androidx.cardview.widget.CardView
-import android.view.WindowManager
 import android.view.Gravity
-import android.view.animation.DecelerateInterpolator
+import android.widget.GridLayout
+import android.widget.FrameLayout
+import androidx.core.content.res.ResourcesCompat
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.view.animation.DecelerateInterpolator
+import kotlin.random.Random
+import android.graphics.drawable.GradientDrawable
+import androidx.cardview.widget.CardView
+import android.view.WindowManager
 import androidx.transition.Fade
 import androidx.transition.TransitionManager
-import android.animation.ValueAnimator
 import kotlin.math.min
-import androidx.core.content.res.ResourcesCompat
 import android.graphics.Typeface
-import kotlin.random.Random
 import java.util.UUID
 import java.util.Date
-import android.widget.GridLayout
 
 
 class MainActivity : AppCompatActivity() {
@@ -202,6 +202,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+    private lateinit var customActivityManager: CustomActivityManager
 
     private var currentDialog: Dialog? = null
 
@@ -218,6 +219,8 @@ class MainActivity : AppCompatActivity() {
     private var processedActivityIds = mutableSetOf<String>()
 
     private var lastSelectedActivityButton: Button? = null
+    private val customActivityButtons = mutableListOf<Button>()
+    private val coreActivityButtons = mutableListOf<Button>()
 
     // Cloud functionality
     private lateinit var authManager: FirebaseAuthManager
@@ -282,7 +285,8 @@ class MainActivity : AppCompatActivity() {
     private var isAutoMode = true  // true = auto, false = sticky
     private var initialRoundsSet = 0  // Store the initial rounds when session starts
     private var currentRoomName: String? = null
-    private var pendingActivityType: ActivityType? = null  // Store activity type when showing no session popup   //
+    private var pendingActivityType: ActivityType? = null
+    private var pendingCustomActivity: CustomActivity? = null  // Store activity type when showing no session popup   //
     private var isUpdatingRoundsLocally = false
     private var localRoundsUpdateTime = 0L
     // Cached latest room snapshot so notifications can reflect remote activity immediately
@@ -1897,6 +1901,7 @@ class MainActivity : AppCompatActivity() {
         // Initialize helpers
         confettiHelper = ConfettiHelper(this)
         confettiHelper.setupKonfettiOverlay(this)
+        customActivityManager = CustomActivityManager(this)
 
         // Initialize cloud services and restore session
         initializeCloudServices()
@@ -1909,6 +1914,8 @@ class MainActivity : AppCompatActivity() {
         setupVibrationToggle()
         setupLayoutRotation()
         setupGiantCounterButton()
+        setupCustomActivityButton()
+        setupActivityButtons()
 
         // Initialize Stash ViewModel if not already initialized by delegation
         if (!::stashViewModel.isInitialized) {
@@ -2711,6 +2718,821 @@ class MainActivity : AppCompatActivity() {
             startActivityForResult(intent, GIANT_COUNTER_REQUEST_CODE)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
+    }
+    
+    private fun setupCustomActivityButton() {
+        Log.d("CUSTOM_ACTIVITY", "🎯 Setting up custom activity button")
+        binding.btnAddCustomActivity.setOnClickListener {
+            Log.d("CUSTOM_ACTIVITY", "➕ Custom activity button clicked")
+            showCustomActivityDialog()
+        }
+    }
+    
+    private fun setupActivityButtons() {
+        Log.d("CUSTOM_ACTIVITY", "🔄 Setting up activity buttons")
+        val container = binding.activityButtonContainer
+        container.removeAllViews()
+        
+        // Clear button references
+        customActivityButtons.clear()
+        coreActivityButtons.clear()
+        
+        // Get current button order
+        val order = customActivityManager.getActivityOrder()
+        val customActivities = customActivityManager.getCustomActivities()
+        
+        Log.d("CUSTOM_ACTIVITY", "📊 Button order: $order")
+        Log.d("CUSTOM_ACTIVITY", "📋 Custom activities: ${customActivities.size}")
+        
+        // Calculate button width based on number of buttons
+        val displayWidth = resources.displayMetrics.widthPixels
+        val containerPadding = (16 * resources.displayMetrics.density).toInt() * 2
+        val availableWidth = displayWidth - containerPadding
+        val numberOfButtons = 3 + customActivities.size // 3 core + custom
+        val buttonWidth = availableWidth / numberOfButtons
+        
+        Log.d("BUTTON_RESIZE", "📏 Display width: $displayWidth")
+        Log.d("BUTTON_RESIZE", "📏 Available width: $availableWidth")  
+        Log.d("BUTTON_RESIZE", "📏 Number of buttons: $numberOfButtons")
+        Log.d("BUTTON_RESIZE", "📏 Button width: $buttonWidth")
+        
+        // Create buttons in order
+        order.forEach { activityId ->
+            when (activityId) {
+                "joint" -> addActivityButton(container, "ADD JOINT", ActivityType.JOINT, buttonWidth)
+                "cone" -> addActivityButton(container, "ADD CONE", ActivityType.CONE, buttonWidth)
+                "bowl" -> addActivityButton(container, "ADD BOWL", ActivityType.BOWL, buttonWidth)
+                else -> {
+                    // Custom activity
+                    val customActivity = customActivities.find { it.id == activityId }
+                    customActivity?.let {
+                        addCustomActivityButton(container, it, buttonWidth)
+                    }
+                }
+            }
+        }
+    }
+    
+    private fun addActivityButton(container: LinearLayout, text: String, type: ActivityType, width: Int) {
+        val buttonContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                marginEnd = 4.dpToPx(this@MainActivity)
+            }
+            orientation = LinearLayout.VERTICAL
+        }
+        
+        val button = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            id = when (type) {
+                ActivityType.JOINT -> R.id.btnAddJoint
+                ActivityType.CONE -> R.id.btnAddCone
+                ActivityType.BOWL -> R.id.btnAddBowl
+                else -> View.generateViewId()
+            }
+            this.text = text
+            setBackgroundColor(Color.TRANSPARENT)
+            setTextColor(getColor(R.color.my_light_primary))
+            strokeColor = ColorStateList.valueOf(getColor(R.color.my_light_primary))
+            strokeWidth = 4
+            cornerRadius = 8.dpToPx(this@MainActivity)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        
+        // Store reference to core button
+        coreActivityButtons.add(button)
+        
+        // Set up click listeners
+        setupRetroactiveButton(button, type)
+        if (type == ActivityType.BOWL) {
+            button.setOnLongClickListener {
+                vibrateFeedback(50)
+                showBowlQuantityDialog()
+                true
+            }
+        }
+        
+        buttonContainer.addView(button)
+        
+        // Add auto controls if needed
+        val autoControls = createAutoControls(type)
+        buttonContainer.addView(autoControls)
+        
+        container.addView(buttonContainer)
+        
+        // Store button references (removed as they're vals in binding)
+    }
+    
+    private fun addCustomActivityButton(container: LinearLayout, activity: CustomActivity, width: Int) {
+        Log.d("CUSTOM_ACTIVITY", "➕ Adding custom button: ${activity.name}")
+        
+        val buttonContainer = LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                marginEnd = 4.dpToPx(this@MainActivity)
+            }
+            orientation = LinearLayout.VERTICAL
+        }
+        
+        val button = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            id = View.generateViewId()
+            text = activity.getButtonText()
+            setBackgroundColor(Color.TRANSPARENT)
+            setTextColor(getColor(R.color.my_light_primary)) // Use same green color as other buttons
+            strokeColor = ColorStateList.valueOf(getColor(R.color.my_light_primary)) // Green border
+            strokeWidth = 4 // Same stroke width as other buttons
+            cornerRadius = 8.dpToPx(this@MainActivity)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            
+            // Add icon if needed
+            activity.iconResId?.let { iconRes ->
+                setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
+                compoundDrawablePadding = 4.dpToPx(this@MainActivity)
+                compoundDrawables[0]?.setTint(getColor(R.color.my_light_primary)) // Green tint
+            }
+        }
+        
+        // Store reference to custom button
+        customActivityButtons.add(button)
+        
+        // Set click listener for custom activity (short click)
+        button.setOnClickListener {
+            Log.d("CUSTOM_ACTIVITY", "🎯 Custom activity clicked: ${activity.name}")
+            vibrateFeedback(50)
+            
+            // Reset previous button
+            lastSelectedActivityButton?.let { setActivityButtonSelected(it, false) }
+            
+            // Set this button as selected
+            setActivityButtonSelected(button, true)
+            lastSelectedActivityButton = button
+            
+            // Show confetti
+            confettiHelper.showConfettiFromButton(button)
+            
+            // Track countdown timing
+            val now = System.currentTimeMillis()
+            countdownStartTime = now
+            
+            handleCustomActivityClick(activity)
+        }
+        
+        // Long click for retroactive logging (future feature)
+        button.setOnLongClickListener {
+            Log.d("CUSTOM_ACTIVITY", "📝 Custom activity long clicked: ${activity.name}")
+            vibrateFeedback(50)
+            // Could add retroactive logging for custom activities here
+            true
+        }
+        
+        buttonContainer.addView(button)
+        container.addView(buttonContainer)
+    }
+    
+    private fun createAutoControls(type: ActivityType): LinearLayout {
+        return LinearLayout(this).apply {
+            id = when (type) {
+                ActivityType.JOINT -> R.id.layoutJointAutoControls
+                ActivityType.CONE -> R.id.layoutConeAutoControls
+                ActivityType.BOWL -> R.id.layoutBowlAutoControls
+                else -> View.generateViewId()
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (-10).dpToPx(this@MainActivity)
+            }
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            
+            val checkBox = CheckBox(this@MainActivity).apply {
+                id = when (type) {
+                    ActivityType.JOINT -> R.id.checkboxJointAuto
+                    ActivityType.CONE -> R.id.checkboxConeAuto
+                    ActivityType.BOWL -> R.id.checkboxBowlAuto
+                    else -> View.generateViewId()
+                }
+                text = "Auto"
+                textSize = 12f
+            }
+            
+            val timer = TextView(this@MainActivity).apply {
+                id = when (type) {
+                    ActivityType.JOINT -> R.id.textJointTimer
+                    ActivityType.CONE -> R.id.textConeTimer
+                    ActivityType.BOWL -> R.id.textBowlTimer
+                    else -> View.generateViewId()
+                }
+                text = "0:00"
+                textSize = 12f
+                visibility = View.GONE
+                (layoutParams as? LinearLayout.LayoutParams)?.marginStart = 8.dpToPx(this@MainActivity)
+            }
+            
+            addView(checkBox)
+            addView(timer)
+        }
+    }
+    
+    private fun showCustomActivityDialog() {
+        Log.d("CUSTOM_ACTIVITY", "📝 Showing custom activity dialog")
+        
+        val dialog = Dialog(this, R.style.TransparentDialog)
+        val view = layoutInflater.inflate(R.layout.dialog_add_custom_activity, null)
+        dialog.setContentView(view)
+        
+        // Get views
+        val etActivityName = view.findViewById<EditText>(R.id.etActivityName)
+        val tvIconSelectionLabel = view.findViewById<TextView>(R.id.tvIconSelectionLabel)
+        val iconGrid = view.findViewById<GridLayout>(R.id.iconGrid)
+        val btnSave = view.findViewById<Button>(R.id.btnSave)
+        val btnCancel = view.findViewById<Button>(R.id.btnCancel)
+        val btnReset = view.findViewById<Button>(R.id.btnReset)
+        val layoutCurrentActivities = view.findViewById<LinearLayout>(R.id.layoutCurrentActivities)
+        val tvCurrentActivitiesLabel = view.findViewById<TextView>(R.id.tvCurrentActivitiesLabel)
+        
+        var selectedIconRes: Int? = null
+        var selectedIconName: String? = null
+        
+        fun refreshActivityList() {
+            layoutCurrentActivities.removeAllViews()
+            
+            // Get disabled core activities
+            val disabledCore = customActivityManager.getDisabledCoreActivities()
+            
+            // Show core activities first (if not disabled)
+            val coreActivities = listOf(
+                Triple("joint", "Joint", R.color.my_light_primary),
+                Triple("cone", "Cone", R.color.my_light_primary),
+                Triple("bowl", "Bowl", R.color.my_light_primary)
+            )
+            
+            coreActivities.forEach { (id, name, color) ->
+                if (!disabledCore.contains(id)) {
+                    val itemView = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            bottomMargin = 8.dpToPx(this@MainActivity)
+                        }
+                        setPadding(8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 
+                                  8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
+                        background = ContextCompat.getDrawable(this@MainActivity, R.drawable.rounded_edittext_background)
+                    }
+                    
+                    val nameText = TextView(this).apply {
+                        text = "ADD $name (Core)"
+                        textSize = 16f
+                        setTextColor(ContextCompat.getColor(context, color))
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+                    
+                    val deleteButton = Button(this).apply {
+                        text = "Remove"
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        setOnClickListener {
+                            AlertDialog.Builder(this@MainActivity)
+                                .setTitle("Remove $name Button?")
+                                .setMessage("This will hide the $name button. You can restore it later using the Reset button.")
+                                .setPositiveButton("Remove") { _, _ ->
+                                    val newDisabled = disabledCore.toMutableSet()
+                                    newDisabled.add(id)
+                                    customActivityManager.setDisabledCoreActivities(newDisabled)
+                                    refreshActivityList()
+                                    setupActivityButtons()
+                                    
+                                    // Update remaining slots text
+                                    val maxCustom = customActivityManager.getMaxCustomActivities()
+                                    val currentCustom = customActivityManager.getCustomActivities().size
+                                    val remaining = maxCustom - currentCustom
+                                    Toast.makeText(this@MainActivity, 
+                                        "$remaining custom activity slot${if (remaining != 1) "s" else ""} available", 
+                                        Toast.LENGTH_SHORT).show()
+                                }
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                        }
+                    }
+                    
+                    itemView.addView(nameText)
+                    itemView.addView(deleteButton)
+                    layoutCurrentActivities.addView(itemView)
+                }
+            }
+            
+            // Show custom activities
+            val customActivities = customActivityManager.getCustomActivities()
+            customActivities.forEach { activity ->
+                val itemView = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        bottomMargin = 8.dpToPx(this@MainActivity)
+                    }
+                    setPadding(8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 
+                              8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
+                    background = ContextCompat.getDrawable(this@MainActivity, R.drawable.rounded_edittext_background)
+                }
+                
+                val nameText = TextView(this).apply {
+                    text = "${activity.name} (Custom)"
+                    textSize = 16f
+                    setTextColor(Color.parseColor(activity.color))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                
+                val deleteButton = Button(this).apply {
+                    text = "Delete"
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    setOnClickListener {
+                        showDeleteConfirmationDialog(activity, dialog)
+                    }
+                }
+                
+                itemView.addView(nameText)
+                itemView.addView(deleteButton)
+                layoutCurrentActivities.addView(itemView)
+            }
+            
+            // Update save button state based on available slots
+            val maxCustom = customActivityManager.getMaxCustomActivities()
+            val hasSpace = customActivities.size < maxCustom
+            if (!hasSpace) {
+                etActivityName.isEnabled = false
+                etActivityName.hint = "Remove an activity to add custom"
+                btnSave.isEnabled = false
+            } else {
+                etActivityName.isEnabled = true
+                etActivityName.hint = "Enter name (max 6 chars)"
+                // Re-evaluate based on current text
+                val text = etActivityName.text.toString()
+                btnSave.isEnabled = text.isNotEmpty() && (text.length <= CustomActivity.MAX_NAME_LENGTH || selectedIconRes != null)
+            }
+        }
+        
+        // Initial load
+        refreshActivityList()
+        
+        // Setup icon selection
+        val iconOptions = listOf(
+            view.findViewById<LinearLayout>(R.id.iconOption1),
+            view.findViewById<LinearLayout>(R.id.iconOption2),
+            view.findViewById<LinearLayout>(R.id.iconOption3),
+            view.findViewById<LinearLayout>(R.id.iconOption4),
+            view.findViewById<LinearLayout>(R.id.iconOption5),
+            view.findViewById<LinearLayout>(R.id.iconOption6)
+        )
+        
+        val iconResources = listOf(
+            R.drawable.ic_leaf,
+            R.drawable.ic_smoke,
+            R.drawable.ic_fire,
+            R.drawable.ic_bolt,
+            android.R.drawable.star_off,
+            R.drawable.ic_wave
+        )
+        
+        val iconNames = listOf("Leaf", "Smoke", "Fire", "Bolt", "Star", "Wave")
+        
+        iconOptions.forEachIndexed { index, option ->
+            option.setOnClickListener {
+                // Reset all backgrounds
+                iconOptions.forEach { it.setBackgroundColor(Color.TRANSPARENT) }
+                // Highlight selected
+                option.setBackgroundColor(Color.parseColor("#33ff91a4"))
+                selectedIconRes = iconResources[index]
+                selectedIconName = iconNames[index]
+                btnSave.isEnabled = true
+                Log.d("CUSTOM_ACTIVITY", "🎨 Icon selected: ${iconNames[index]}")
+            }
+        }
+        
+        // Text change listener
+        etActivityName.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val text = s?.toString() ?: ""
+                Log.d("CUSTOM_ACTIVITY", "📝 Text changed: '$text' (length: ${text.length})")
+                
+                if (text.length > CustomActivity.MAX_NAME_LENGTH) {
+                    // Show icon selection
+                    tvIconSelectionLabel.visibility = View.VISIBLE
+                    iconGrid.visibility = View.VISIBLE
+                    btnSave.isEnabled = selectedIconRes != null
+                } else {
+                    // Hide icon selection
+                    tvIconSelectionLabel.visibility = View.GONE
+                    iconGrid.visibility = View.GONE
+                    selectedIconRes = null
+                    selectedIconName = null
+                    btnSave.isEnabled = text.isNotEmpty()
+                }
+            }
+        })
+        
+        // Reset button listener
+        btnReset.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Reset to Default?")
+                .setMessage("This will remove all custom activities and their data, and restore the default Joint, Cone, and Bowl buttons. This action cannot be undone.")
+                .setPositiveButton("Reset") { _, _ ->
+                    customActivityManager.clearAllCustomActivities()
+                    setupActivityButtons()
+                    dialog.dismiss()
+                    Toast.makeText(this, "Reset to default activities", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+        
+        // Button listeners
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        btnSave.setOnClickListener {
+            val name = etActivityName.text.toString().trim()
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Please enter an activity name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            // Check if we're at the limit
+            val maxCustom = customActivityManager.getMaxCustomActivities()
+            if (customActivityManager.getCustomActivities().size >= maxCustom) {
+                Toast.makeText(this, "Remove an activity first to add custom", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            // Create custom activity
+            val displayName = if (name.length > CustomActivity.MAX_NAME_LENGTH && selectedIconName != null) {
+                "ADD $selectedIconName".uppercase()
+            } else {
+                "ADD ${name.uppercase()}"
+            }
+            
+            val customActivity = CustomActivity(
+                name = if (name.length > CustomActivity.MAX_NAME_LENGTH && selectedIconName != null) selectedIconName!! else name,
+                displayName = displayName,
+                iconResId = if (name.length > CustomActivity.MAX_NAME_LENGTH) selectedIconRes else null
+            )
+            
+            Log.d("CUSTOM_ACTIVITY", "💾 Saving custom activity: ${customActivity.name}")
+            
+            if (customActivityManager.addCustomActivity(customActivity)) {
+                Toast.makeText(this, "Custom activity added: ${customActivity.name}", Toast.LENGTH_SHORT).show()
+                setupActivityButtons() // Refresh buttons
+                
+                // Clear the input field and refresh list
+                etActivityName.setText("")
+                selectedIconRes = null
+                selectedIconName = null
+                refreshActivityList()
+                
+                // Sync to cloud if in session
+                currentShareCode?.let { code ->
+                    syncCustomActivityToCloud(customActivity, code)
+                }
+            } else {
+                Toast.makeText(this, "Failed to add custom activity", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        dialog.show()
+    }
+    
+    private fun showDeleteConfirmationDialog(activity: CustomActivity, parentDialog: Dialog) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete ${activity.name}?")
+            .setMessage("This will delete all data associated with this custom activity. This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                Log.d("CUSTOM_ACTIVITY", "🗑️ Deleting custom activity: ${activity.name}")
+                if (customActivityManager.deleteCustomActivity(activity.id)) {
+                    Toast.makeText(this, "Custom activity deleted", Toast.LENGTH_SHORT).show()
+                    setupActivityButtons() // Refresh buttons
+                    
+                    // Refresh the dialog to show updated list
+                    parentDialog.dismiss()
+                    showCustomActivityDialog()
+                    
+                    // TODO: Delete from cloud if in session
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun handleCustomActivityClick(activity: CustomActivity) {
+        Log.d("CUSTOM_ACTIVITY", "🎯 Handling custom activity click: ${activity.name}")
+        
+        // Use the same logic as regular activities
+        // This will handle session checks, stash deduction, cloud sync, etc.
+        logCustomActivitySafe(activity)
+    }
+    
+    private fun logCustomActivitySafe(activity: CustomActivity) {
+        Log.d("CUSTOM_ACTIVITY", "🎯 logCustomActivitySafe called - activity: ${activity.name}")
+        Log.d("CUSTOM_ACTIVITY", "🎯 Session state - active: $sessionActive, start: $sessionStart")
+        
+        if (smokers.isEmpty()) {
+            Log.d("CUSTOM_ACTIVITY", "🎯 No smokers exist - showing add smoker dialog")
+            addSmokerDialog.show()
+            return
+        }
+        
+        val hasCloudSmokers = smokers.any { it.isCloudSmoker }
+        
+        if (!sessionActive) {
+            Log.w("CUSTOM_ACTIVITY", "🎯 WARNING: Activity logged without active session!")
+            
+            // Store pending custom activity
+            pendingCustomActivity = activity
+            pendingActivityType = ActivityType.JOINT // Use JOINT as proxy for custom
+            
+            if (!hasCloudSmokers) {
+                Log.d("CUSTOM_ACTIVITY", "🎯 No cloud smokers - showing no cloud user popup")
+                showNoCloudUserPopup()
+            } else {
+                Log.d("CUSTOM_ACTIVITY", "🎯 Showing no active session popup for custom activity: ${activity.name}")
+                showNoActiveSessionPopupForType(ActivityType.JOINT)
+            }
+            return
+        }
+        
+        val now = System.currentTimeMillis()
+        synchronized(hitLoggingLock) {
+            if (isLoggingHit || now - lastHitTime < MIN_HIT_INTERVAL_MS) return
+            isLoggingHit = true
+            lastHitTime = now
+        }
+        
+        val selectedPosition = binding.spinnerSmoker.selectedItemPosition
+        val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+        val capturedSmoker = organizedSmokers.getOrNull(selectedPosition)
+        
+        if (capturedSmoker == null) {
+            synchronized(hitLoggingLock) { isLoggingHit = false }
+            Toast.makeText(this, "Please select a valid smoker!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        lifecycleScope.launch {
+            try {
+                val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+                val currentStash = stashViewModel.currentStash.value
+                val ratios = stashViewModel.ratios.value
+                
+                if (currentStash != null && ratios != null) {
+                    // Custom activities use joint ratios for stash deduction
+                    val requiredGrams = ratios.jointGrams
+                    
+                    val currentSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+                    val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+                    
+                    var switchedToTheirStash = false
+                    
+                    when (currentSource) {
+                        StashSource.MY_STASH -> {
+                            if (currentStash.currentGrams < requiredGrams) {
+                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
+                                switchedToTheirStash = true
+                                Log.d("CUSTOM_ACTIVITY", "🎯 Auto-switched to Their Stash due to insufficient My Stash")
+                            }
+                        }
+                        StashSource.EACH_TO_OWN -> {
+                            val isCurrentUser = (capturedSmoker.isCloudSmoker && capturedSmoker.cloudUserId == currentUserId) ||
+                                    (!capturedSmoker.isCloudSmoker && capturedSmoker.uid == currentUserId)
+                            
+                            if (isCurrentUser && currentStash.currentGrams < requiredGrams) {
+                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
+                                switchedToTheirStash = true
+                                Log.d("CUSTOM_ACTIVITY", "🎯 Auto-switched to Their Stash for current user in Each-to-Own mode")
+                            }
+                        }
+                        StashSource.THEIR_STASH -> {
+                            Log.d("CUSTOM_ACTIVITY", "🎯 Already on Their Stash, no switch needed")
+                        }
+                    }
+                    
+                    if (switchedToTheirStash) {
+                        withContext(Dispatchers.Main) {
+                            supportFragmentManager.fragments
+                                .filterIsInstance<StashFragment>()
+                                .firstOrNull()?.let { fragment ->
+                                    fragment.setAttributionRadioSilently(StashSource.THEIR_STASH)
+                                }
+                        }
+                        delay(100)
+                    }
+                }
+                
+                val finalStashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+                Log.d("CUSTOM_ACTIVITY", "🎯 CRITICAL: Final stash source before logging: $finalStashSource")
+                
+                proceedWithCustomActivityLog(activity, now, finalStashSource, capturedSmoker)
+            } catch (e: Exception) {
+                Log.e("CUSTOM_ACTIVITY", "Error in logCustomActivitySafe", e)
+            } finally {
+                synchronized(hitLoggingLock) { isLoggingHit = false }
+            }
+        }
+    }
+    
+    private suspend fun proceedWithCustomActivityLog(
+        activity: CustomActivity,
+        timestamp: Long,
+        stashSource: StashSource,
+        capturedSmoker: Smoker
+    ) {
+        Log.d("CUSTOM_ACTIVITY", "🎯 proceedWithCustomActivityLog: activity=${activity.name}, source=$stashSource, smoker=${capturedSmoker.name}")
+        
+        val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+        
+        // Determine payerStashOwnerId based on stash source
+        val payerStashOwnerId = when (stashSource) {
+            StashSource.MY_STASH -> null
+            StashSource.THEIR_STASH -> "their_stash"
+            StashSource.EACH_TO_OWN -> {
+                if (capturedSmoker.cloudUserId == currentUserId || capturedSmoker.uid == currentUserId) {
+                    null
+                } else {
+                    "other_${capturedSmoker.smokerId}"
+                }
+            }
+        }
+        
+        // Check if password verification is needed
+        if (capturedSmoker.isCloudSmoker &&
+            capturedSmoker.passwordHash != null &&
+            !capturedSmoker.isPasswordVerified) {
+            
+            withContext(Dispatchers.Main) {
+                passwordDialog.showVerifyPasswordDialog(
+                    smokerName = capturedSmoker.name,
+                    onPasswordEntered = { password ->
+                        verifyPasswordAndLogCustomActivity(capturedSmoker, activity, timestamp, password, payerStashOwnerId)
+                    }
+                )
+            }
+        } else {
+            // No password needed or already verified
+            logCustomActivityWithPayerAndSmoker(activity, timestamp, payerStashOwnerId, capturedSmoker)
+        }
+    }
+    
+    private fun verifyPasswordAndLogCustomActivity(
+        smoker: Smoker,
+        activity: CustomActivity,
+        timestamp: Long,
+        password: String,
+        payerStashOwnerId: String?
+    ) {
+        lifecycleScope.launch {
+            val isValid = smoker.passwordHash
+                ?.let { PasswordUtils.verifyPassword(password, it) }
+                ?: false
+            
+            if (isValid) {
+                val verified = smoker.copy(isPasswordVerified = true)
+                withContext(Dispatchers.IO) {
+                    repo.updateSmoker(verified)
+                }
+                logCustomActivityWithPayerAndSmoker(activity, timestamp, payerStashOwnerId, verified)
+            } else {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Incorrect password", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private suspend fun logCustomActivityWithPayerAndSmoker(
+        activity: CustomActivity,
+        now: Long,
+        payerStashOwnerId: String?,
+        capturedSmoker: Smoker
+    ) {
+        Log.d("CUSTOM_ACTIVITY", "🎯 === logCustomActivityWithPayerAndSmoker START ===")
+        Log.d("CUSTOM_ACTIVITY", "🎯 Activity: ${activity.name}, Time: $now, PayerStashOwnerId: '$payerStashOwnerId', Smoker: ${capturedSmoker.name}")
+        
+        if (!sessionActive) {
+            Log.w("CUSTOM_ACTIVITY", "🎯 Cannot log hit - session not active")
+            return
+        }
+        
+        val adjustedNow = now - rewindOffset
+        val stashViewModel = ViewModelProvider(this).get(StashViewModel::class.java)
+        val currentStash = stashViewModel.currentStash.value
+        val ratios = stashViewModel.ratios.value
+        
+        // Create the activity log with custom activity info
+        val activityLog = ActivityLog(
+            id = 0L,
+            smokerId = capturedSmoker.smokerId,
+            consumerId = capturedSmoker.smokerId,
+            payerStashOwnerId = payerStashOwnerId,
+            type = ActivityType.JOINT, // Use JOINT as the type for custom activities
+            timestamp = adjustedNow,
+            sessionId = if (sessionActive) sessionStart else null,
+            sessionStartTime = if (sessionActive) sessionStart else null,
+            customActivityId = activity.id,
+            customActivityName = activity.name,
+            gramsAtLog = ratios?.jointGrams ?: 0.5, // Use joint ratios for custom activities
+            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0
+        )
+        
+        // Store in local database first
+        val insertedId = withContext(Dispatchers.IO) {
+            val id = repo.insert(activityLog)
+            Log.d("CUSTOM_ACTIVITY", "🎯 INSERTED custom activity ID $id for smoker ${capturedSmoker.name}")
+            id
+        }
+        
+        // Handle cloud sync if in a cloud session
+        if (currentShareCode != null) {
+            val smokerActivityUid = if (capturedSmoker.isCloudSmoker) {
+                capturedSmoker.cloudUserId!!
+            } else {
+                "local_${capturedSmoker.uid}"
+            }
+            
+            // Sync custom activity to cloud
+            sessionSyncService.addCustomActivityToRoom(
+                shareCode = currentShareCode!!,
+                smokerUid = smokerActivityUid,
+                smokerName = capturedSmoker.name,
+                customActivity = activity,
+                timestamp = adjustedNow,
+                deviceId = getAndroidDeviceId()
+            ).fold(
+                onSuccess = {
+                    Log.d("CUSTOM_ACTIVITY", "🎯 Custom activity synced to cloud room for ${capturedSmoker.name}")
+                    lastHitCameFromUI = true
+                    handler.postDelayed({
+                        lastHitCameFromUI = false
+                    }, 500)
+                },
+                onFailure = { error ->
+                    Log.e("CUSTOM_ACTIVITY", "🎯 Failed to sync to room: ${error.message}")
+                    // Fall back to syncing as JOINT type
+                    sessionSyncService.addActivityToRoom(
+                        shareCode = currentShareCode!!,
+                        smokerUid = smokerActivityUid,
+                        smokerName = capturedSmoker.name,
+                        activityType = ActivityType.JOINT,
+                        timestamp = adjustedNow,
+                        deviceId = getAndroidDeviceId()
+                    )
+                }
+            )
+        } else {
+            // Local session - just refresh stats
+            refreshLocalSessionStatsIfNeeded()
+        }
+        
+        // Get the current spinner position BEFORE any changes
+        val currentSpinnerPosition = binding.spinnerSmoker.selectedItemPosition
+        
+        // Handle post-hit actions with the CAPTURED smoker and position
+        handlePostHitActionsWithPayerAndSmoker(capturedSmoker, currentSpinnerPosition, ActivityType.JOINT, adjustedNow, payerStashOwnerId)
+        
+        // Update goals tracking for custom activities
+        updateCustomActivityGoals(activity)
+        
+        Log.d("CUSTOM_ACTIVITY", "🎯 === logCustomActivityWithPayerAndSmoker END ===")
+    }
+    
+    private fun updateCustomActivityGoals(activity: CustomActivity) {
+        // Update goals that track custom activities
+        lifecycleScope.launch {
+            // For now, just log that we would update goals
+            Log.d("CUSTOM_ACTIVITY", "📊 Would update goals for custom activity: ${activity.name}")
+            // TODO: Implement goal tracking for custom activities when goals system is updated
+        }
+    }
+    
+    private fun syncCustomActivityToCloud(activity: CustomActivity, roomCode: String) {
+        Log.d("CUSTOM_ACTIVITY", "☁️ Syncing custom activity to cloud: ${activity.name}")
+        // TODO: Implement cloud sync for custom activities
+    }
+    
+    private fun syncCustomActivityLogToCloud(log: ActivityLog, roomCode: String) {
+        Log.d("CUSTOM_ACTIVITY", "☁️ Syncing custom activity log to cloud")
+        // TODO: Implement cloud sync for custom activity logs
     }
     
     private fun updateLayoutPosition(isAtBottom: Boolean) {
@@ -5320,8 +6142,8 @@ class MainActivity : AppCompatActivity() {
             if (timersVisible) {
                 // Double the height when "See Less" is shown (timers visible)
                 setActivityButtonHeights(jointButton, coneButton, bowlButton, 96.dpToPx(this))
-                // Apply margin for expanded state
-                params.topMargin = -19.dpToPx(this)
+                // Apply margin for expanded state - same spacing as collapsed
+                params.topMargin = -5.dpToPx(this)
             } else {
                 // Normal height when "Advanced" is shown (timers hidden)
                 setActivityButtonHeights(jointButton, coneButton, bowlButton, 48.dpToPx(this))
@@ -11464,60 +12286,58 @@ class MainActivity : AppCompatActivity() {
         val buttonContainer = binding.buttonContainer
         val params = buttonContainer.layoutParams as LinearLayout.LayoutParams
 
-        // Get the activity buttons
-        val jointButton = binding.btnAddJoint
-        val coneButton = binding.btnAddCone
-        val bowlButton = binding.btnAddBowl
+        // Combine all active buttons (core + custom)
+        val allActiveButtons = coreActivityButtons + customActivityButtons
 
         if (timersVisible) {
             binding.btnToggleTimers.text = "See Less"
             binding.timerContainer.visibility = View.VISIBLE
             binding.roundsContainer.visibility = View.VISIBLE
+
+            // Make auto-controls visible
             binding.layoutConeAutoControls.visibility = View.VISIBLE
             binding.layoutJointAutoControls.visibility = View.VISIBLE
             binding.layoutBowlAutoControls.visibility = View.VISIBLE
 
-            // Double the height when "See Less" is shown
-            setActivityButtonHeights(jointButton, coneButton, bowlButton, 96.dpToPx(this))
-            params.topMargin = -19.dpToPx(this)
-            
-            // Switch to expanded background
-            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_expanded)
+            // FIX: Set height for all dynamically created buttons
+            allActiveButtons.forEach { it.layoutParams.height = 96.dpToPx(this) }
+            params.topMargin = -5.dpToPx(this) // Use consistent margin for proper spacing
 
+            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_expanded)
             Log.d(TAG, "🔘 Showing all timer controls with doubled button heights")
+
         } else {
             binding.btnToggleTimers.text = "Advanced"
             binding.timerContainer.visibility = View.GONE
             binding.roundsContainer.visibility = View.GONE
+
+            // Hide auto-controls
             binding.layoutConeAutoControls.visibility = View.GONE
             binding.layoutJointAutoControls.visibility = View.GONE
             binding.layoutBowlAutoControls.visibility = View.GONE
 
-            // Normal height when "Advanced" is shown
-            setActivityButtonHeights(jointButton, coneButton, bowlButton, 48.dpToPx(this))
-            params.topMargin = -5.dpToPx(this)
-            
-            // Switch to collapsed background
-            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_collapsed)
+            // FIX: Set height for all dynamically created buttons
+            allActiveButtons.forEach { it.layoutParams.height = 48.dpToPx(this) }
+            params.topMargin = -5.dpToPx(this) // Use the smaller negative margin for collapsed state
 
+            binding.sectionBackgroundImage.setImageResource(R.drawable.section_background_collapsed)
             Log.d(TAG, "🔘 Hiding all timer controls with normal button heights")
         }
 
+        // Request layout update for all buttons after changing their height
+        allActiveButtons.forEach { it.requestLayout() }
+
         buttonContainer.layoutParams = params
-        
-        // Notify ChatFragment about expansion state change if layout is at bottom
+
         val isLayoutAtBottom = prefs.getBoolean("layout_at_bottom", false)
         if (isLayoutAtBottom) {
             val chatFragment = supportFragmentManager.fragments.find { it is ChatFragment } as? ChatFragment
-            chatFragment?.let {
-                Log.d("KEYBOARD_FIX", "🔘 Notifying ChatFragment of expansion state change (expanded: $timersVisible)")
-                it.onExpansionStateChanged(timersVisible)
-            }
+            chatFragment?.onExpansionStateChanged(timersVisible)
         }
-        
+
         Log.d(TAG, "🔘 === TOGGLE TIMERS COMPLETE ===")
     }
-    
+
     // Public method to check if button section is expanded
     fun isButtonSectionExpanded(): Boolean {
         return timersVisible
@@ -12793,11 +13613,23 @@ class MainActivity : AppCompatActivity() {
         notificationManager.cancelAll()
     }
 
+    private fun resetButtonColors() {
+        // Reset core activity buttons
+        coreActivityButtons.forEach { button ->
+            setActivityButtonSelected(button, false)
+        }
+        
+        // Reset custom activity buttons
+        customActivityButtons.forEach { button ->
+            setActivityButtonSelected(button, false)
+        }
+    }
+    
     private fun setActivityButtonSelected(button: Button, isSelected: Boolean) {
         if (isSelected) {
-            // Filled state - green background, grey text (same as app background)
+            // Filled state - green background, black text
             button.setBackgroundColor(ContextCompat.getColor(this, R.color.my_light_primary))
-            button.setTextColor(ContextCompat.getColor(this, android.R.color.background_dark))
+            button.setTextColor(Color.BLACK)
             // Remove stroke for filled state
             (button as? com.google.android.material.button.MaterialButton)?.strokeWidth = 0
         } else {

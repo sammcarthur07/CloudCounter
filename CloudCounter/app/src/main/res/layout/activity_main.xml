@@ -91,6 +91,18 @@
             android:padding="4dp" />
 
         <ImageButton
+            android:id="@+id/btnAddCustomActivity"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_input_add"
+            android:scaleType="centerInside"
+            android:contentDescription="Add custom activity"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+
+        <ImageButton
             android:id="@+id/btnGiantCounter"
             android:layout_width="24dp"
             android:layout_height="24dp"
@@ -127,14 +139,29 @@
             android:padding="4dp" />
     </LinearLayout>
 
+    <!-- Dynamic activity button container for custom activities -->
     <LinearLayout
+        android:id="@+id/activityButtonContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:paddingTop="0dp"
         android:paddingBottom="8dp"
         android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingEnd="8dp"
+        android:visibility="visible" />
+
+    <!-- Original static button layout - now hidden -->
+    <LinearLayout
+        android:id="@+id/staticButtonContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="0dp"
+        android:paddingBottom="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -413,7 +440,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:visibility="gone"
-        android:layout_marginTop="-8dp">
+        android:layout_marginTop="4dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -479,7 +506,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:visibility="gone"
-        android:layout_marginTop="-10dp">
+        android:layout_marginTop="4dp">
 
         <ImageButton
             android:id="@+id/btnRoundMinus"

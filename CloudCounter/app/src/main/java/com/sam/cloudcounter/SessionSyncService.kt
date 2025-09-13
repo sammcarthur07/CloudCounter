@@ -454,6 +454,84 @@ class SessionSyncService(
     /**
      * Add activity directly to room document and update auto-add timers
      */
+    suspend fun addCustomActivityToRoom(
+        shareCode: String,
+        smokerUid: String,
+        smokerName: String,
+        customActivity: CustomActivity,
+        timestamp: Long,
+        deviceId: String = ""
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "🎯 addCustomActivityToRoom() - ${customActivity.name} for $smokerName (UID: $smokerUid) in room $shareCode")
+        return@withContext try {
+            val roomRef = roomsCollection.document(shareCode)
+            
+            firestore.runTransaction { transaction ->
+                val roomSnapshot = transaction.get(roomRef)
+                val room = roomSnapshot.toObject(RoomData::class.java)
+                    ?: throw Exception("Room not found")
+                
+                // Store custom activity info in room if not already there
+                val currentCustomActivities = room.customActivities?.toMutableMap() ?: mutableMapOf()
+                if (!currentCustomActivities.containsKey(customActivity.id)) {
+                    currentCustomActivities[customActivity.id] = mapOf(
+                        "name" to customActivity.name,
+                        "displayName" to customActivity.displayName,
+                        "iconResId" to (customActivity.iconResId ?: 0),
+                        "color" to customActivity.color,
+                        "createdAt" to customActivity.createdAt
+                    )
+                }
+                
+                val newActivity = SessionActivity(
+                    smokerId = smokerUid,
+                    smokerName = smokerName,
+                    type = "CUSTOM_${customActivity.id}",
+                    customActivityName = customActivity.name,
+                    timestamp = timestamp,
+                    deviceId = deviceId
+                )
+                
+                val currentActivities = room.safeActivities()
+                val updatedActivities = currentActivities + newActivity
+                
+                val activeParticipantCount = updatedActivities
+                    .map { it.smokerId }
+                    .distinct()
+                    .count()
+                
+                val updatedStats = calculateSessionStatsWithActiveCount(
+                    updatedActivities,
+                    room.startTime,
+                    activeParticipantCount
+                )
+                
+                val updatedAutoAddState = updateAutoAddTimers(
+                    room.safeAutoAddState(),
+                    updatedActivities,
+                    ActivityType.JOINT, // Use JOINT as proxy for custom activities
+                    timestamp
+                )
+                
+                val updatedRoom = room.copy(
+                    activities = updatedActivities,
+                    currentStats = updatedStats,
+                    customActivities = currentCustomActivities,
+                    autoAddState = updatedAutoAddState,
+                    updatedAt = timestamp
+                )
+                
+                transaction.set(roomRef, updatedRoom)
+            }.await()
+            
+            Log.d(TAG, "✅ Custom activity ${customActivity.name} added to room $shareCode")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to add custom activity to room: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+    
     suspend fun addActivityToRoom(
         shareCode: String,
         smokerUid: String,

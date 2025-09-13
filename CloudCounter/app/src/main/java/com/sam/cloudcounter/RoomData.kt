@@ -20,7 +20,8 @@ data class RoomData(
     val updatedAt: Long = System.currentTimeMillis(),
     val sharedSmokers: Map<String, Map<String, Any>> = emptyMap(),
     val passwordHash: String? = null, // NEW: Add password field
-    val joinedUsers: List<String> = emptyList() // NEW: Track users who have successfully joined with password
+    val joinedUsers: List<String> = emptyList(), // NEW: Track users who have successfully joined with password
+    val customActivities: Map<String, Map<String, Any>>? = null // Store custom activity definitions
 ) {
     // Existing safe methods...
     fun safeActivities(): List<SessionActivity> = activities
@@ -50,7 +51,8 @@ data class RoomSmoker(
 data class SessionActivity(
     val smokerId: String = "",
     val smokerName: String = "",
-    val type: String = "",         // "CONE", "JOINT", "BOWL"
+    val type: String = "",         // "CONE", "JOINT", "BOWL", or "CUSTOM_[id]"
+    val customActivityName: String? = null, // Name of custom activity if type starts with CUSTOM_
     val timestamp: Long = 0L,
     val deviceId: String = ""      // Which device added it (for debugging)
 )

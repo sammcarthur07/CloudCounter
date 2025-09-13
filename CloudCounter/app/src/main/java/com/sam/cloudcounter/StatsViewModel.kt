@@ -64,6 +64,12 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
     fun setActivityType(type: ActivityType?) {
         _selectedActivityType.value = type
     }
+    
+    private val _selectedCustomActivityId = MutableLiveData<String?>(null)
+    val selectedCustomActivityId: LiveData<String?> = _selectedCustomActivityId
+    fun setCustomActivityId(id: String?) {
+        _selectedCustomActivityId.value = id
+    }
 
     private val _calculatedStats = MediatorLiveData<CalculatedStats>()
     val calculatedStats: LiveData<CalculatedStats> = _calculatedStats
@@ -72,14 +78,22 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
         _calculatedStats.addSource(smokerLogs) { recalc() }
         _calculatedStats.addSource(_selectedTimePeriod) { recalc() }
         _calculatedStats.addSource(_selectedActivityType) { recalc() }
+        _calculatedStats.addSource(_selectedCustomActivityId) { recalc() }
     }
 
     private fun recalc() {
         val logs = smokerLogs.value.orEmpty()
         val period = _selectedTimePeriod.value ?: TimePeriod.ALL_TIME
         val typeFilter = _selectedActivityType.value
+        val customActivityId = _selectedCustomActivityId.value
 
-        val byType = typeFilter?.let { tf -> logs.filter { it.type == tf } } ?: logs
+        val byType = if (customActivityId != null) {
+            // Filter by custom activity ID
+            logs.filter { it.customActivityId == customActivityId }
+        } else {
+            // Filter by regular activity type
+            typeFilter?.let { tf -> logs.filter { it.type == tf } } ?: logs
+        }
 
         val (start, end) = timeRange(period)
         val byTime = if (start != null && end != null) {

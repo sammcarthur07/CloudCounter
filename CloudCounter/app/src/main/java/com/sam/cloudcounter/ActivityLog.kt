@@ -43,6 +43,10 @@ data class ActivityLog(
     var associatedConesCount: Int? = null,
 
     val bowlQuantity: Int = 1,
+    
+    // Custom activity fields
+    val customActivityId: String? = null,
+    val customActivityName: String? = null,
 
     // Snapshot values at the time of logging
     val gramsAtLog: Double = 0.0,
