@@ -143,28 +143,49 @@ class CustomActivityManager(private val context: Context) {
      */
     fun getActivityOrder(): List<String> {
         val orderString = prefs.getString(KEY_ACTIVITY_ORDER, DEFAULT_ORDER) ?: DEFAULT_ORDER
-        val order = orderString.split(",").toMutableList()
+        Log.d(TAG, "📊 Retrieved saved order string: $orderString")
+        val savedOrder = orderString.split(",").toMutableList()
         
         // Get custom activities and disabled core
         val customActivities = getCustomActivities()
         val disabledCore = getDisabledCoreActivities()
         
-        // Build the order: custom activities LEFT of core buttons
+        // Simply return the saved order, filtering out disabled/deleted items
         val finalOrder = mutableListOf<String>()
         
-        // Add custom activities first (they appear to the LEFT)
-        customActivities.forEach { activity ->
-            if (!finalOrder.contains(activity.id)) {
-                finalOrder.add(activity.id)
+        // Add activities in the exact saved order
+        savedOrder.forEach { activityId ->
+            when (activityId) {
+                "joint", "cone", "bowl" -> {
+                    // Add core activities if they're not disabled
+                    if (!disabledCore.contains(activityId)) {
+                        finalOrder.add(activityId)
+                    }
+                }
+                else -> {
+                    // Add custom activities if they still exist
+                    if (customActivities.any { it.id == activityId }) {
+                        finalOrder.add(activityId)
+                    }
+                }
             }
         }
         
-        // Then add enabled core activities in fixed order
-        if (!disabledCore.contains("joint")) finalOrder.add("joint")
-        if (!disabledCore.contains("cone")) finalOrder.add("cone")
-        if (!disabledCore.contains("bowl")) finalOrder.add("bowl")
+        // Add any new custom activities that aren't in the saved order yet
+        customActivities.forEach { activity ->
+            if (!finalOrder.contains(activity.id)) {
+                finalOrder.add(activity.id) // Add new custom activities at the end to preserve order
+            }
+        }
         
-        Log.d(TAG, "📊 Current activity order: $finalOrder")
+        // Add any core activities that aren't in the saved order yet (shouldn't happen but just in case)
+        listOf("joint", "cone", "bowl").forEach { coreId ->
+            if (!finalOrder.contains(coreId) && !disabledCore.contains(coreId)) {
+                finalOrder.add(coreId)
+            }
+        }
+        
+        Log.d(TAG, "📊 Final activity order: $finalOrder")
         return finalOrder
     }
     

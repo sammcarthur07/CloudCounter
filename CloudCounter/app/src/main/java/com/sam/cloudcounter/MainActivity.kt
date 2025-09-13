@@ -2969,29 +2969,111 @@ class MainActivity : AppCompatActivity() {
                 Triple("bowl", "Bowl", R.color.my_light_primary)
             )
             
-            coreActivities.forEach { (id, name, color) ->
-                if (!disabledCore.contains(id)) {
-                    val itemView = LinearLayout(this).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        ).apply {
-                            bottomMargin = 8.dpToPx(this@MainActivity)
+            // Build a list of all activities in order
+            val allOrderedActivities = mutableListOf<Triple<String, String, Boolean>>() // id, name, isCore
+            val currentOrder = customActivityManager.getActivityOrder()
+            val customActivities = customActivityManager.getCustomActivities()
+            
+            currentOrder.forEach { activityId ->
+                when (activityId) {
+                    "joint" -> if (!disabledCore.contains("joint")) allOrderedActivities.add(Triple(activityId, "Joint", true))
+                    "cone" -> if (!disabledCore.contains("cone")) allOrderedActivities.add(Triple(activityId, "Cone", true))
+                    "bowl" -> if (!disabledCore.contains("bowl")) allOrderedActivities.add(Triple(activityId, "Bowl", true))
+                    else -> {
+                        customActivities.find { it.id == activityId }?.let {
+                            allOrderedActivities.add(Triple(activityId, it.name, false))
                         }
-                        setPadding(8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 
-                                  8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
-                        background = ContextCompat.getDrawable(this@MainActivity, R.drawable.rounded_edittext_background)
                     }
-                    
-                    val nameText = TextView(this).apply {
-                        text = "ADD $name (Core)"
-                        textSize = 16f
-                        setTextColor(ContextCompat.getColor(context, color))
-                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                        gravity = Gravity.CENTER_VERTICAL
+                }
+            }
+            
+            Log.d("CUSTOM_ACTIVITY_REORDER", "📋 All activities in order: ${allOrderedActivities.map { it.second }}")
+            
+            // Display ALL activities in the saved order (not just core activities separately)
+            allOrderedActivities.forEachIndexed { orderIndex, (activityId, activityName, isCore) ->
+                val itemView = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        bottomMargin = 8.dpToPx(this@MainActivity)
                     }
+                    setPadding(8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 
+                              8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
+                    background = ContextCompat.getDrawable(this@MainActivity, R.drawable.rounded_edittext_background)
+                }
+                
+                // Up arrow button for all activities
+                val upButton = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                    text = "▲"
+                    textSize = 14f
+                    layoutParams = LinearLayout.LayoutParams(
+                        48.dpToPx(this@MainActivity),
+                        48.dpToPx(this@MainActivity)
+                    ).apply {
+                        marginEnd = 4.dpToPx(this@MainActivity)
+                    }
+                    minWidth = 0
+                    minHeight = 0
+                    setPadding(0, 0, 0, 0)
+                    isEnabled = orderIndex > 0
+                    alpha = if (orderIndex > 0) 1.0f else 0.3f
+                    setTextColor(if (isEnabled) Color.WHITE else Color.GRAY)
+                    strokeColor = ColorStateList.valueOf(if (isEnabled) getColor(R.color.my_light_primary) else Color.GRAY)
+                    strokeWidth = 2
                     
+                    if (isEnabled) {
+                        setOnClickListener {
+                            Log.d("CUSTOM_ACTIVITY_REORDER", "⬆️ Up clicked for $activityName at index $orderIndex")
+                            vibrateFeedback(30)
+                            moveActivity(activityId, -1)
+                            dialog.dismiss()
+                            showCustomActivityDialog()
+                        }
+                    }
+                }
+                
+                // Down arrow button for all activities
+                val downButton = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                    text = "▼"
+                    textSize = 14f
+                    layoutParams = LinearLayout.LayoutParams(
+                        48.dpToPx(this@MainActivity),
+                        48.dpToPx(this@MainActivity)
+                    ).apply {
+                        marginEnd = 8.dpToPx(this@MainActivity)
+                    }
+                    minWidth = 0
+                    minHeight = 0
+                    setPadding(0, 0, 0, 0)
+                    isEnabled = orderIndex < allOrderedActivities.size - 1
+                    alpha = if (orderIndex < allOrderedActivities.size - 1) 1.0f else 0.3f
+                    setTextColor(if (isEnabled) Color.WHITE else Color.GRAY)
+                    strokeColor = ColorStateList.valueOf(if (isEnabled) getColor(R.color.my_light_primary) else Color.GRAY)
+                    strokeWidth = 2
+                    
+                    if (isEnabled) {
+                        setOnClickListener {
+                            Log.d("CUSTOM_ACTIVITY_REORDER", "⬇️ Down clicked for $activityName at index $orderIndex")
+                            vibrateFeedback(30)
+                            moveActivity(activityId, 1)
+                            dialog.dismiss()
+                            showCustomActivityDialog()
+                        }
+                    }
+                }
+                
+                val nameText = TextView(this).apply {
+                    text = if (isCore) "ADD $activityName (Core)" else "$activityName (Custom)"
+                    textSize = 16f
+                    setTextColor(if (isCore) getColor(R.color.my_light_primary) else Color.WHITE)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                
+                // Different controls for core vs custom
+                if (isCore) {
                     val deleteButton = Button(this).apply {
                         text = "Remove"
                         layoutParams = LinearLayout.LayoutParams(
@@ -3000,11 +3082,11 @@ class MainActivity : AppCompatActivity() {
                         )
                         setOnClickListener {
                             AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Remove $name Button?")
-                                .setMessage("This will hide the $name button. You can restore it later using the Reset button.")
+                                .setTitle("Remove $activityName Button?")
+                                .setMessage("This will hide the $activityName button. You can restore it later using the Reset button.")
                                 .setPositiveButton("Remove") { _, _ ->
                                     val newDisabled = disabledCore.toMutableSet()
-                                    newDisabled.add(id)
+                                    newDisabled.add(activityId)
                                     customActivityManager.setDisabledCoreActivities(newDisabled)
                                     refreshActivityList()
                                     setupActivityButtons()
@@ -3022,51 +3104,40 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     
+                    itemView.addView(upButton)
+                    itemView.addView(downButton)
                     itemView.addView(nameText)
                     itemView.addView(deleteButton)
-                    layoutCurrentActivities.addView(itemView)
-                }
-            }
-            
-            // Show custom activities
-            val customActivities = customActivityManager.getCustomActivities()
-            customActivities.forEach { activity ->
-                val itemView = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        bottomMargin = 8.dpToPx(this@MainActivity)
+                } else {
+                    // Custom activity - add delete button
+                    val customActivity = customActivities.find { it.id == activityId }
+                    val deleteButton = com.google.android.material.button.MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+                        text = "Delete"
+                        textSize = 12f
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            48.dpToPx(this@MainActivity)
+                        )
+                        setTextColor(Color.parseColor("#FF6B6B")) // Red color for delete
+                        strokeColor = ColorStateList.valueOf(Color.parseColor("#FF6B6B"))
+                        strokeWidth = 2
+                        setOnClickListener {
+                            Log.d("CUSTOM_ACTIVITY_REORDER", "🗑️ Delete button clicked for $activityName")
+                            vibrateFeedback(30)
+                            customActivity?.let { showDeleteConfirmationDialog(it, dialog) }
+                        }
                     }
-                    setPadding(8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 
-                              8.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
-                    background = ContextCompat.getDrawable(this@MainActivity, R.drawable.rounded_edittext_background)
+                    
+                    itemView.addView(upButton)
+                    itemView.addView(downButton)
+                    itemView.addView(nameText)
+                    itemView.addView(deleteButton)
                 }
                 
-                val nameText = TextView(this).apply {
-                    text = "${activity.name} (Custom)"
-                    textSize = 16f
-                    setTextColor(Color.parseColor(activity.color))
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                
-                val deleteButton = Button(this).apply {
-                    text = "Delete"
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                    setOnClickListener {
-                        showDeleteConfirmationDialog(activity, dialog)
-                    }
-                }
-                
-                itemView.addView(nameText)
-                itemView.addView(deleteButton)
                 layoutCurrentActivities.addView(itemView)
             }
+            
+            // All activities are now displayed above in the correct order
             
             // Update save button state based on available slots
             val maxCustom = customActivityManager.getMaxCustomActivities()
@@ -3224,6 +3295,53 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(ACTION_CUSTOM_ACTIVITIES_CHANGED)
         androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
         Log.d("CUSTOM_ACTIVITY", "📡 Broadcasting custom activities changed")
+    }
+    
+    private fun moveCustomActivity(activityId: String, direction: Int) {
+        // Delegate to the more general moveActivity function
+        moveActivity(activityId, direction)
+    }
+    
+    private fun moveActivity(activityId: String, direction: Int) {
+        Log.d("CUSTOM_ACTIVITY_REORDER", "🔄 Moving activity $activityId by $direction")
+        
+        val currentOrder = customActivityManager.getActivityOrder().toMutableList()
+        val currentIndex = currentOrder.indexOf(activityId)
+        
+        if (currentIndex == -1) {
+            Log.e("CUSTOM_ACTIVITY_REORDER", "❌ Activity not found in order: $activityId")
+            return
+        }
+        
+        val newIndex = currentIndex + direction
+        
+        // Validate new index
+        if (newIndex < 0 || newIndex >= currentOrder.size) {
+            Log.w("CUSTOM_ACTIVITY_REORDER", "⚠️ Invalid new index: $newIndex")
+            return
+        }
+        
+        // Log the move
+        Log.d("CUSTOM_ACTIVITY_REORDER", "📊 Current order: $currentOrder")
+        Log.d("CUSTOM_ACTIVITY_REORDER", "🔄 Moving $activityId from position $currentIndex to $newIndex")
+        
+        // Swap the items
+        val temp = currentOrder[currentIndex]
+        currentOrder[currentIndex] = currentOrder[newIndex]
+        currentOrder[newIndex] = temp
+        
+        Log.d("CUSTOM_ACTIVITY_REORDER", "📊 New order: $currentOrder")
+        
+        // Save the new order
+        customActivityManager.saveActivityOrder(currentOrder)
+        
+        // Update the UI
+        setupActivityButtons()
+        
+        // Broadcast the change
+        broadcastCustomActivitiesChanged()
+        
+        Log.d("CUSTOM_ACTIVITY_REORDER", "✅ Successfully moved activity from position $currentIndex to $newIndex")
     }
     
     private fun showDeleteConfirmationDialog(activity: CustomActivity, parentDialog: Dialog) {
