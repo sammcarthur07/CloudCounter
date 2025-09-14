@@ -356,8 +356,8 @@ class SessionStatsViewModel : ViewModel() {
         }
     }
 
-    fun decrementActivityCount(smokerName: String, activityType: ActivityType) {
-        Log.d(TAG, "➖ DECREMENT: $smokerName - $activityType")
+    fun decrementActivityCount(smokerName: String, activityType: ActivityType, customActivityId: String? = null) {
+        Log.d(TAG, "➖ DECREMENT: $smokerName - $activityType${if (customActivityId != null) " (customId=$customActivityId)" else ""}")
         val currentPerSmokerStats = _perSmokerStats.value ?: emptyList()
         val currentGroupStats = _groupStats.value ?: return
 
@@ -367,6 +367,19 @@ class SessionStatsViewModel : ViewModel() {
                     ActivityType.CONE -> stat.copy(totalCones = (stat.totalCones - 1).coerceAtLeast(0))
                     ActivityType.JOINT -> stat.copy(totalJoints = (stat.totalJoints - 1).coerceAtLeast(0))
                     ActivityType.BOWL -> stat.copy(totalBowls = (stat.totalBowls - 1).coerceAtLeast(0))
+                    ActivityType.CUSTOM -> {
+                        // Decrement the per-smoker count for this custom activity ID
+                        if (customActivityId != null && stat.customActivityStats.containsKey(customActivityId)) {
+                            val updatedCustom = stat.customActivityStats.toMutableMap()
+                            val existing = updatedCustom[customActivityId]!!
+                            updatedCustom[customActivityId] = existing.copy(
+                                total = (existing.total - 1).coerceAtLeast(0)
+                            )
+                            stat.copy(customActivityStats = updatedCustom)
+                        } else {
+                            stat
+                        }
+                    }
                     else -> stat
                 }
             } else {
@@ -378,12 +391,24 @@ class SessionStatsViewModel : ViewModel() {
             ActivityType.CONE -> currentGroupStats.copy(totalCones = (currentGroupStats.totalCones - 1).coerceAtLeast(0))
             ActivityType.JOINT -> currentGroupStats.copy(totalJoints = (currentGroupStats.totalJoints - 1).coerceAtLeast(0))
             ActivityType.BOWL -> currentGroupStats.copy(totalBowls = (currentGroupStats.totalBowls - 1).coerceAtLeast(0))
+            ActivityType.CUSTOM -> {
+                if (customActivityId != null) {
+                    val updatedCustomGroup = currentGroupStats.customActivityGroupStats.toMutableMap()
+                    val existing = updatedCustomGroup[customActivityId]
+                    if (existing != null) {
+                        updatedCustomGroup[customActivityId] = existing.copy(
+                            total = (existing.total - 1).coerceAtLeast(0)
+                        )
+                        currentGroupStats.copy(customActivityGroupStats = updatedCustomGroup)
+                    } else currentGroupStats
+                } else currentGroupStats
+            }
             else -> currentGroupStats
         }
 
         _perSmokerStats.value = updatedPerSmoker
         _groupStats.value = updatedGroup
-        Log.d(TAG, "➖ DECREMENT: Updated totals - cones=${updatedGroup.totalCones}")
+        Log.d(TAG, "➖ DECREMENT: Updated totals - cones=${updatedGroup.totalCones}, joints=${updatedGroup.totalJoints}, bowls=${updatedGroup.totalBowls}")
     }
 
     fun recalculateGaps() {

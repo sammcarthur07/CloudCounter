@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Base: triangle with flat horizontal base -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,19 L17,19 L12,12 Z"/>
+    <!-- Neck rising from triangle center; thicker and reaches base of triangle -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10,2 H14 V19 H10 Z"/>
+    <!-- Downstem: shifted slightly left; starts mid-base area, not bottom -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M14.5,17.25 L6.8,8.25"/>
+</vector>
+

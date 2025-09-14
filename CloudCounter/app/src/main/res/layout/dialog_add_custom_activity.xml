@@ -19,7 +19,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Create your own activity to track. Max 6 characters for text, or choose an icon."
+        android:text="Create your own activity to track. Max 8 characters for text, or choose an icon."
         android:textSize="14sp"
         android:textColor="?android:attr/textColorSecondary"
         android:layout_marginBottom="16dp" />
@@ -59,7 +59,7 @@
         android:id="@+id/etActivityName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter name (max 6 chars)"
+        android:hint="Enter name (8 chars or icon)"
         android:maxLength="20"
         android:inputType="textCapCharacters"
         android:textSize="16sp"
@@ -71,11 +71,10 @@
         android:id="@+id/tvIconSelectionLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Select an icon (name is too long):"
+        android:text="Select an icon (optional):"
         android:textSize="14sp"
         android:textColor="?android:attr/textColorPrimary"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone" />
+        android:layout_marginBottom="8dp" />
 
     <!-- Icon Selection Grid -->
     <GridLayout
@@ -84,8 +83,7 @@
         android:layout_height="wrap_content"
         android:columnCount="3"
         android:rowCount="2"
-        android:layout_marginBottom="16dp"
-        android:visibility="gone">
+        android:layout_marginBottom="16dp">
 
         <LinearLayout
             android:id="@+id/iconOption1"
@@ -100,13 +98,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@drawable/ic_leaf"
+                android:src="@drawable/ic_pills"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Leaf"
+                android:text="Pills"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -124,13 +122,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@drawable/ic_smoke"
+                android:src="@drawable/ic_bong"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Smoke"
+                android:text="Bong"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -148,13 +146,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@drawable/ic_fire"
+                android:src="@drawable/ic_cough"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Fire"
+                android:text="Cough"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -172,13 +170,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@drawable/ic_bolt"
+                android:src="@drawable/ic_stretch"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Bolt"
+                android:text="Stretch"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -196,13 +194,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@android:drawable/star_off"
+                android:src="@drawable/ic_cigarette"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Star"
+                android:text="Cigarette"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -220,13 +218,13 @@
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:src="@drawable/ic_wave"
+                android:src="@drawable/ic_water_glass"
                 android:tint="#ff91a4" />
             
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Wave"
+                android:text="Water"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
         </LinearLayout>

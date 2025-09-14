@@ -102,6 +102,13 @@
                     android:layout_height="wrap_content"
                     android:text="All Time"
                     android:checked="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCustom"
+                    style="@style/CustomOutlinedChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Custom" />
             </com.google.android.material.chip.ChipGroup>
 
             <!-- User(s) selection -->

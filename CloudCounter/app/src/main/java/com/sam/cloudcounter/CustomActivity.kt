@@ -7,7 +7,7 @@ import java.util.UUID
  */
 data class CustomActivity(
     val id: String = UUID.randomUUID().toString(),
-    val name: String,           // Max 6 chars or icon identifier
+    val name: String,           // Max 8 chars or icon identifier
     val displayName: String,    // "ADD CUSTOM" format
     val iconResId: Int? = null, // Icon resource if using icon instead of text
     val color: String = "#ff91a4", // Neon candy color
@@ -17,37 +17,36 @@ data class CustomActivity(
 ) {
     
     companion object {
-        const val MAX_NAME_LENGTH = 6
+        const val MAX_NAME_LENGTH = 8
         const val MAX_CUSTOM_ACTIVITIES = 1 // Current limit
         const val DEFAULT_COLOR = "#ff91a4" // Neon candy
         
         // Available icons for custom activities
         val AVAILABLE_ICONS = listOf(
-            R.drawable.ic_leaf,
-            R.drawable.ic_smoke,
-            R.drawable.ic_fire,
-            R.drawable.ic_bolt,
-            android.R.drawable.star_off,
-            R.drawable.ic_wave
+            R.drawable.ic_pills,
+            R.drawable.ic_bong,
+            R.drawable.ic_cough,
+            R.drawable.ic_stretch,
+            R.drawable.ic_cigarette,
+            R.drawable.ic_water_glass
         )
         
         val ICON_NAMES = listOf(
-            "Leaf",
-            "Smoke",
-            "Fire",
-            "Bolt", 
-            "Star",
-            "Wave"
+            "Pills",
+            "Bong",
+            "Cough",
+            "Stretch", 
+            "Cigarette",
+            "Water"
         )
     }
     
-    fun requiresIcon(): Boolean = name.length > MAX_NAME_LENGTH
-    
+    fun requiresIcon(): Boolean = name.length > MAX_NAME_LENGTH || iconResId != null
+
     fun getButtonText(): String {
-        return if (requiresIcon()) {
-            "ADD" // Just "ADD" when using icon
-        } else {
-            "ADD ${name.uppercase()}"
-        }
+        // For icon-based activities, no text should appear on the button
+        if (iconResId != null) return ""
+        // For text-based activities (<= MAX_NAME_LENGTH), show two lines
+        return "ADD\n${name.uppercase()}"
     }
 }

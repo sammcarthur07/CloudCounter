@@ -71,6 +71,11 @@ class StashFragment : Fragment() {
     private var theirStashTotalGrams = 0.0
     private var theirStashTotalCost = 0.0
 
+    // Custom time selection state for stash time-period chips
+    private var lastNonCustomStashTimeChipId: Int = R.id.chipSesh
+    private var lastSelectedSessionsCountStash: Int = 0
+    private var isStashCustomDialogShowing: Boolean = false
+
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
@@ -246,9 +251,70 @@ class StashFragment : Fragment() {
             recalculateStats()
         }
 
-        binding.chipGroupTimePeriod.setOnCheckedStateChangeListener { _, _ ->
-            Log.d("STASH_UI", "Time period chip changed")
-            recalculateStats()
+        binding.chipGroupTimePeriod.setOnCheckedStateChangeListener { group, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            val chipId = checkedIds.first()
+            if (chipId == R.id.chipCustom) {
+                showCustomSessionPickerDialog(
+                    onDone = { selectedRanges ->
+                        if (selectedRanges.isEmpty()) {
+                            stashViewModel.setUseCustomSessions(false)
+                            group.check(lastNonCustomStashTimeChipId)
+                            if (lastSelectedSessionsCountStash == 0) updateStashCustomChipLabel(true)
+                        } else {
+                            stashViewModel.setCustomSessions(selectedRanges)
+                            stashViewModel.setUseCustomSessions(true)
+                            lastSelectedSessionsCountStash = selectedRanges.size
+                            updateStashCustomChipLabel(false)
+                        }
+                    },
+                    onCancel = {
+                        stashViewModel.setUseCustomSessions(false)
+                        group.check(lastNonCustomStashTimeChipId)
+                        if (lastSelectedSessionsCountStash == 0) updateStashCustomChipLabel(true)
+                    }
+                )
+            } else {
+                lastNonCustomStashTimeChipId = chipId
+                if (stashViewModel.useCustomSessions.value == true) {
+                    stashViewModel.setUseCustomSessions(false)
+                }
+                Log.d("STASH_UI", "Time period chip changed")
+                recalculateStats()
+            }
+        }
+
+        // Reopen custom picker when tapping custom chip again
+        binding.root.post {
+            val customChip = binding.chipGroupTimePeriod.findViewById<com.google.android.material.chip.Chip>(R.id.chipCustom)
+            customChip?.setOnClickListener {
+                val alreadyChecked = binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom
+                if (!alreadyChecked) return@setOnClickListener
+                showCustomSessionPickerDialog(
+                    onDone = { selectedRanges ->
+                        if (selectedRanges.isEmpty()) {
+                            stashViewModel.setUseCustomSessions(false)
+                            if (binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
+                                binding.chipGroupTimePeriod.check(lastNonCustomStashTimeChipId)
+                            }
+                            if (lastSelectedSessionsCountStash == 0) updateStashCustomChipLabel(true)
+                        } else {
+                            stashViewModel.setCustomSessions(selectedRanges)
+                            stashViewModel.setUseCustomSessions(true)
+                            lastSelectedSessionsCountStash = selectedRanges.size
+                            if (binding.chipGroupTimePeriod.checkedChipId != R.id.chipCustom) {
+                                binding.chipGroupTimePeriod.check(R.id.chipCustom)
+                            }
+                            updateStashCustomChipLabel(false)
+                        }
+                    },
+                    onCancel = {
+                        if (lastSelectedSessionsCountStash == 0 && binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
+                            binding.chipGroupTimePeriod.check(lastNonCustomStashTimeChipId)
+                        }
+                    }
+                )
+            }
         }
 
         binding.radioGroupAttribution.setOnCheckedChangeListener { _, checkedId ->
@@ -282,6 +348,7 @@ class StashFragment : Fragment() {
                 R.id.chipWeek -> StashTimePeriod.WEEK
                 R.id.chipMonth -> StashTimePeriod.MONTH
                 R.id.chipYear -> StashTimePeriod.YEAR
+                R.id.chipCustom -> StashTimePeriod.CUSTOM
                 else -> StashTimePeriod.THIS_SESH
             }
 
@@ -399,6 +466,20 @@ class StashFragment : Fragment() {
             }
 
             setupWindowInsets()
+        }
+
+        // Custom session selection observers (for label/state sync)
+        stashViewModel.customSessionRanges.observe(viewLifecycleOwner) { ranges ->
+            lastSelectedSessionsCountStash = ranges?.size ?: 0
+            updateStashCustomChipLabel(lastSelectedSessionsCountStash == 0)
+        }
+        stashViewModel.useCustomSessions.observe(viewLifecycleOwner) { useCustom ->
+            val group = _binding?.chipGroupTimePeriod ?: return@observe
+            if (useCustom == true) {
+                if (group.checkedChipId != R.id.chipCustom) group.check(R.id.chipCustom)
+            } else {
+                if (group.checkedChipId == R.id.chipCustom) group.check(lastNonCustomStashTimeChipId)
+            }
         }
     }
 
@@ -1879,6 +1960,379 @@ class StashFragment : Fragment() {
     // Extension function for dp to px conversion
     private fun Int.dpToPx(): Int {
         return (this * requireContext().resources.displayMetrics.density).toInt()
+    }
+
+    // ===== Custom Session Picker for Stash (1:1 with Stats/Graph) =====
+    private fun updateStashCustomChipLabel(reset: Boolean = false) {
+        val chip = binding.chipGroupTimePeriod.findViewById<com.google.android.material.chip.Chip>(R.id.chipCustom)
+        if (reset || lastSelectedSessionsCountStash <= 0) {
+            chip?.text = "..."
+        } else {
+            chip?.text = "${lastSelectedSessionsCountStash}"
+        }
+    }
+
+    private fun showCustomSessionPickerDialog(
+        onDone: (List<Pair<Long, Long>>) -> Unit,
+        onCancel: () -> Unit
+    ) {
+        if (isStashCustomDialogShowing) return
+        isStashCustomDialogShowing = true
+
+        val dialog = Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+
+        val rootContainer = FrameLayout(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+
+        val mainCard = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 16.dpToPx().toFloat()
+            cardElevation = 8.dpToPx().toFloat()
+            setCardBackgroundColor(android.graphics.Color.parseColor("#E64A4A4A"))
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                gravity = android.view.Gravity.CENTER
+                setMargins(16.dpToPx(), 0, 16.dpToPx(), 0)
+            }
+        }
+
+        val contentLayout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.dpToPx(), 20.dpToPx(), 20.dpToPx(), 12.dpToPx())
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val titleText = TextView(requireContext()).apply {
+            text = "SELECT SESSIONS"
+            textSize = 18f
+            setTextColor(android.graphics.Color.parseColor("#98FB98"))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            letterSpacing = 0.1f
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+        }
+        contentLayout.addView(titleText)
+
+        val subtitle = TextView(requireContext()).apply {
+            text = "Tap to select multiple sessions"
+            textSize = 12f
+            setTextColor(android.graphics.Color.WHITE)
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 12.dpToPx()
+            }
+        }
+        contentLayout.addView(subtitle)
+
+        val divider = View(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2.dpToPx()).apply {
+                topMargin = 4.dpToPx()
+                bottomMargin = 12.dpToPx()
+            }
+            setBackgroundColor(android.graphics.Color.parseColor("#3398FB98"))
+        }
+        contentLayout.addView(divider)
+
+        val scroll = ScrollView(requireContext()).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        val listContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        scroll.addView(listContainer)
+        contentLayout.addView(scroll)
+
+        val buttonRow = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = 12.dpToPx()
+            }
+        }
+
+        val cancelButton = createStashThemedDialogButton("Cancel", false, android.graphics.Color.WHITE) {
+            animateCardSelection(dialog, 400L) { onCancel() }
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginEnd = 8.dpToPx() }
+        }
+
+        val selectedRanges = mutableListOf<Pair<Long, Long>>()
+        stashViewModel.customSessionRanges.value?.let { selectedRanges.addAll(it) }
+
+        val doneButton = createStashThemedDialogButton("Done", true, android.graphics.Color.parseColor("#98FB98")) {
+            val seshPrefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            val isActive = seshPrefs.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPrefs.getLong("sessionStart", 0L)
+            if (isActive && sessionStartPref > 0L && selectedRanges.any { it.first == sessionStartPref }) {
+                selectedRanges.removeAll { it.first == sessionStartPref }
+                selectedRanges.add(Pair(sessionStartPref, System.currentTimeMillis()))
+            }
+            val finalList = selectedRanges.toList()
+            animateCardSelection(dialog, 400L) { onDone(finalList) }
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginStart = 8.dpToPx() }
+        }
+
+        buttonRow.addView(cancelButton)
+        buttonRow.addView(doneButton)
+        contentLayout.addView(buttonRow)
+        mainCard.addView(contentLayout)
+        rootContainer.addView(mainCard)
+
+        // Click outside to cancel
+        rootContainer.setOnClickListener { v -> if (v == rootContainer) animateCardSelection(dialog, 400L) { onCancel() } }
+
+        dialog.setContentView(rootContainer)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#80000000")))
+            setFlags(android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED)
+        }
+        dialog.setOnDismissListener { isStashCustomDialogShowing = false }
+
+        // Populate session cards
+        val app = requireActivity().application as CloudCounterApplication
+        val repo = app.repository
+        repo.allSummaries.observe(viewLifecycleOwner) { list ->
+            listContainer.removeAllViews()
+
+            // Current session first
+            val seshPrefs = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            val isActive = seshPrefs.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPrefs.getLong("sessionStart", 0L)
+            val currentRoomName = seshPrefs.getString("currentRoomName", null)
+            if (isActive && sessionStartPref > 0L) {
+                val endNow = System.currentTimeMillis()
+                val initiallySelected = selectedRanges.any { it.first == sessionStartPref }
+                val currentItem = createCurrentSessionListItemView(
+                    title = currentRoomName ?: "Current Session",
+                    start = sessionStartPref,
+                    end = endNow,
+                    initiallySelected = initiallySelected
+                ) { view, isSelected ->
+                    if (isSelected) {
+                        selectedRanges.removeAll { it.first == sessionStartPref }
+                        selectedRanges.add(Pair(sessionStartPref, System.currentTimeMillis()))
+                        setNeonBorder(view, true)
+                    } else {
+                        selectedRanges.removeAll { it.first == sessionStartPref }
+                        setNeonBorder(view, false)
+                    }
+                }
+                listContainer.addView(currentItem)
+            }
+
+            val sessions = list.sortedByDescending { it.timestamp }
+            sessions.forEach { summary ->
+                val start = (summary.timestamp - summary.sessionLength).coerceAtLeast(0)
+                val end = summary.timestamp
+                val initiallySelected = selectedRanges.contains(Pair(start, end))
+                val item = createStashSessionListItemView(summary, start, end, initiallySelected) { view, isSelected ->
+                    if (isSelected) {
+                        selectedRanges.add(Pair(start, end))
+                        setNeonBorder(view, true)
+                    } else {
+                        selectedRanges.remove(Pair(start, end))
+                        setNeonBorder(view, false)
+                    }
+                }
+                listContainer.addView(item)
+            }
+        }
+
+        // Keep buttons above nav bar
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { _, insets ->
+            val bottomInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            val extra = (12 * resources.displayMetrics.density).toInt()
+            contentLayout.setPadding(
+                contentLayout.paddingLeft,
+                contentLayout.paddingTop,
+                contentLayout.paddingRight,
+                extra + bottomInset
+            )
+            insets
+        }
+
+        // Fade in
+        rootContainer.alpha = 0f
+        dialog.show()
+        performManualFadeIn(rootContainer, 250L)
+    }
+
+    private fun createStashSessionListItemView(
+        summary: SessionSummary,
+        start: Long,
+        end: Long,
+        initiallySelected: Boolean,
+        onToggle: (View, Boolean) -> Unit
+    ): View {
+        val container = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+            background = android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#262626"))
+        }
+
+        val card = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 12.dpToPx().toFloat()
+            cardElevation = 2.dpToPx().toFloat()
+            setCardBackgroundColor(android.graphics.Color.parseColor("#2C2C2C"))
+        }
+
+        val inner = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+        }
+
+        val title = TextView(requireContext()).apply {
+            val name = summary.roomName ?: "Local Session"
+            text = name
+            setTextColor(resources.getColor(R.color.text_on_dark_background))
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        val fmt = java.text.SimpleDateFormat("MMM d, h:mma", java.util.Locale.getDefault())
+        val durationMin = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes((end - start).coerceAtLeast(0))
+        val subtitle = TextView(requireContext()).apply {
+            text = "${fmt.format(java.util.Date(start))} → ${fmt.format(java.util.Date(end))}  •  ${durationMin} min"
+            setTextColor(android.graphics.Color.LTGRAY)
+            textSize = 12f
+        }
+
+        val statsLine = TextView(requireContext()).apply {
+            val total = summary.totalCones
+            text = "Total: ${total}"
+            setTextColor(android.graphics.Color.LTGRAY)
+            textSize = 12f
+        }
+
+        inner.addView(title)
+        inner.addView(subtitle)
+        inner.addView(statsLine)
+        card.addView(inner)
+        container.addView(card)
+
+        var selected = initiallySelected
+        setNeonBorder(card, selected)
+        container.setOnClickListener {
+            selected = !selected
+            onToggle(card, selected)
+        }
+
+        return container
+    }
+
+    private fun setNeonBorder(view: View, selected: Boolean) {
+        val bg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 12.dpToPx().toFloat()
+            setColor(android.graphics.Color.parseColor("#2C2C2C"))
+            val strokeColor = if (selected) android.graphics.Color.parseColor("#98FB98") else android.graphics.Color.parseColor("#303030")
+            setStroke((2 * resources.displayMetrics.density).toInt(), strokeColor)
+        }
+        (view as? androidx.cardview.widget.CardView)?.background = bg
+    }
+
+    private fun createCurrentSessionListItemView(
+        title: String,
+        start: Long,
+        end: Long,
+        initiallySelected: Boolean,
+        onToggle: (View, Boolean) -> Unit
+    ): View {
+        val container = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+            background = android.graphics.drawable.ColorDrawable(android.graphics.Color.parseColor("#262626"))
+        }
+
+        val card = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 12.dpToPx().toFloat()
+            cardElevation = 2.dpToPx().toFloat()
+            setCardBackgroundColor(android.graphics.Color.parseColor("#2C2C2C"))
+        }
+
+        val inner = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+        }
+
+        val titleView = TextView(requireContext()).apply {
+            text = title
+            setTextColor(resources.getColor(R.color.text_on_dark_background))
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        val fmt = java.text.SimpleDateFormat("MMM d, h:mma", java.util.Locale.getDefault())
+        val durationMin = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes((end - start).coerceAtLeast(0))
+        val subtitle = TextView(requireContext()).apply {
+            text = "${fmt.format(java.util.Date(start))} → ${fmt.format(java.util.Date(end))}  •  ${durationMin} min"
+            setTextColor(android.graphics.Color.LTGRAY)
+            textSize = 12f
+        }
+
+        val statsLine = TextView(requireContext()).apply {
+            text = "Live"
+            setTextColor(android.graphics.Color.LTGRAY)
+            textSize = 12f
+        }
+
+        inner.addView(titleView)
+        inner.addView(subtitle)
+        inner.addView(statsLine)
+        card.addView(inner)
+        container.addView(card)
+
+        var selected = initiallySelected
+        setNeonBorder(card, selected)
+        container.setOnClickListener {
+            selected = !selected
+            onToggle(card, selected)
+        }
+
+        return container
+    }
+
+    private fun createStashThemedDialogButton(text: String, isPrimary: Boolean, color: Int, onClick: () -> Unit): View {
+        val ctx = requireContext()
+        val buttonContainer = androidx.cardview.widget.CardView(ctx).apply {
+            radius = 20.dpToPx().toFloat()
+            cardElevation = if (isPrimary) 4.dpToPx().toFloat() else 0f
+            setCardBackgroundColor(if (isPrimary) color else android.graphics.Color.parseColor("#33FFFFFF"))
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 48.dpToPx()).apply {
+                bottomMargin = 12.dpToPx()
+            }
+            isClickable = true
+            isFocusable = true
+        }
+
+        val contentFrame = FrameLayout(ctx).apply {
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+
+        val buttonText = TextView(ctx).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(if (isPrimary) android.graphics.Color.parseColor("#424242") else android.graphics.Color.WHITE)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+
+        contentFrame.addView(buttonText)
+        buttonContainer.addView(contentFrame)
+        buttonContainer.setOnClickListener { onClick() }
+        return buttonContainer
     }
 
 

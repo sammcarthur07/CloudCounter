@@ -54,7 +54,8 @@ class StashStatsCalculator(
         dataScope: DataScope,
         sessionStartTime: Long? = null,
         lastCompletedSessionId: Long? = null,
-        currentUserId: String? = null
+        currentUserId: String? = null,
+        customRanges: List<Pair<Long, Long>> = emptyList()
     ): StashStats {
         val userId = currentUserId ?: "default_user"
 
@@ -72,6 +73,36 @@ class StashStatsCalculator(
         Log.d(TAG, "────────────────────────────────────────────────────────────────")
 
         try {
+            if (customRanges.isNotEmpty()) {
+                Log.d(TAG, "📌 CUSTOM RANGES SELECTED: ${customRanges.size}")
+                val minStart = customRanges.minOf { it.first }
+                val maxEnd = customRanges.maxOf { it.second }
+                Log.d(TAG, "  Custom span: ${java.util.Date(minStart)} → ${java.util.Date(maxEnd)}")
+
+                val activities = activityLogDao.getLogsBetweenTimestamps(minStart, maxEnd)
+                val inRanges = activities.filter { log -> customRanges.any { r -> log.timestamp in r.first..r.second } }
+                Log.d(TAG, "  Activities in ranges: ${inRanges.size}")
+                val filtered = filterActivitiesByScope(inRanges, dataScope, currentUserId)
+                Log.d(TAG, "  After scope filter: ${filtered.size}")
+
+                val result = if (filtered.isEmpty()) {
+                    emptyStats(statsType, StashTimePeriod.CUSTOM, dataScope, minStart, maxEnd)
+                } else {
+                    calculateActualStats(
+                        filtered,
+                        // Treat as CURRENT-type actuals for custom selection
+                        StatsType.CURRENT,
+                        StashTimePeriod.CUSTOM,
+                        dataScope,
+                        minStart,
+                        maxEnd,
+                        currentUserId
+                    )
+                }
+                Log.d(TAG, "📊 CUSTOM RESULT: ${result.counts[ActivityType.CONE] ?: 0}C ${result.counts[ActivityType.BOWL] ?: 0}B = ${result.totalGrams}g")
+                Log.d(TAG, "════════════════════════════════════════════════════════════════")
+                return result
+            }
             if (timePeriod == StashTimePeriod.THIS_SESH) {
                 Log.d(TAG, "📌 SESSION STATS REQUESTED")
                 val result = calculateSessionStats(statsType, dataScope, sessionStartTime, lastCompletedSessionId, userId)

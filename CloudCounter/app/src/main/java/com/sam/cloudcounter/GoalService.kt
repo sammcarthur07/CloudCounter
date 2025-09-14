@@ -195,6 +195,112 @@ class GoalService(private val application: Application) {
         }
     }
 
+    // New: reverse progress for goals that track a specific selected activity (including custom)
+    fun reverseGoalProgressForSelectedActivity(
+        activityType: ActivityType,
+        customActivityId: String? = null,
+        customActivityName: String? = null,
+        sessionShareCode: String? = null,
+        currentSmokerName: String
+    ) {
+        scope.launch {
+            try {
+                Log.d(TAG, "🎯↩️ SELECTED Reverse for $currentSmokerName - $activityType customId=$customActivityId")
+
+                val prefs = application.getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+                val currentSessionId = prefs.getLong("current_session_id", 0L)
+                val isSessionActive = prefs.getBoolean("session_active", false)
+
+                val goals = goalDao.getActiveGoals().first()
+
+                goals.forEach { goal ->
+                    if (!shouldUpdateGoalFixed(goal, sessionShareCode, currentSessionId, isSessionActive, currentSmokerName)) {
+                        return@forEach
+                    }
+
+                    val tracksThis = when {
+                        customActivityId != null -> goal.selectedActivityType == customActivityId
+                        activityType == ActivityType.JOINT -> goal.selectedActivityType == "joints"
+                        activityType == ActivityType.CONE  -> goal.selectedActivityType == "cones"
+                        activityType == ActivityType.BOWL  -> goal.selectedActivityType == "bowls"
+                        else -> false
+                    }
+
+                    if (!tracksThis) return@forEach
+
+                    // For "selected activity" goals (including custom-selected), we track currentValue.
+                    // So always decrement the selected-activity currentValue.
+                    reverseSingleGoalForSelectedActivity(goal.goalId)
+
+                    // Optional: also adjust custom aggregates if this goal tracks a custom ID
+                    if (customActivityId != null) {
+                        reverseSingleGoalProgressForCustomActivity(goal.goalId, customActivityId, currentSmokerName)
+                    }
+
+                    // Update notification silently
+                    val updated = goalDao.getGoalById(goal.goalId)
+                    updated?.let { notificationHelper.showPersistentGoalNotification(it, isSilentUpdate = true) }
+                }
+
+                Log.d(TAG, "🎯↩️ SELECTED Reverse complete")
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯↩️ Error in selected reverse: ${e.message}", e)
+            }
+        }
+    }
+
+    private suspend fun reverseSingleGoalProgressForCustomActivity(
+        goalId: Long,
+        customActivityId: String,
+        smokerName: String
+    ) {
+        val goal = goalDao.getGoalById(goalId) ?: return
+
+        // Decrement the aggregate custom count map
+        val currentCustomActivities: MutableMap<String, Int> = if (goal.customActivities.isNotEmpty()) {
+            try {
+                gson.fromJson(goal.customActivities, object : TypeToken<MutableMap<String, Int>>() {}.type) ?: mutableMapOf()
+            } catch (e: Exception) { mutableMapOf() }
+        } else mutableMapOf()
+
+        if (currentCustomActivities.containsKey(customActivityId)) {
+            val newVal = kotlin.math.max(0, (currentCustomActivities[customActivityId] ?: 0) - 1)
+            currentCustomActivities[customActivityId] = newVal
+            goalDao.updateGoalCustomActivities(goalId, gson.toJson(currentCustomActivities))
+        }
+
+        // Decrement the per-smoker custom count
+        val updatedSmokerProgress = reverseSmokerProgressJsonForCustomActivity(goal.smokerProgress, smokerName, customActivityId)
+        goalDao.updateGoalSmokerProgress(goalId, updatedSmokerProgress)
+    }
+
+    private fun reverseSmokerProgressJsonForCustomActivity(
+        existingSmokerProgressJson: String,
+        smokerName: String,
+        customActivityId: String
+    ): String {
+        val progressMap: MutableMap<String, SmokerProgress> = if (existingSmokerProgressJson.isNotEmpty()) {
+            try {
+                gson.fromJson(existingSmokerProgressJson, object : TypeToken<MutableMap<String, SmokerProgress>>() {}.type) ?: mutableMapOf()
+            } catch (e: Exception) { mutableMapOf() }
+        } else mutableMapOf()
+
+        val currentProgress = progressMap[smokerName] ?: SmokerProgress()
+        val updatedCustomActivities = currentProgress.customActivities.toMutableMap()
+        if (updatedCustomActivities.containsKey(customActivityId)) {
+            updatedCustomActivities[customActivityId] = kotlin.math.max(0, (updatedCustomActivities[customActivityId] ?: 0) - 1)
+        }
+        val updatedProgress = currentProgress.copy(customActivities = updatedCustomActivities)
+        progressMap[smokerName] = updatedProgress
+        return gson.toJson(progressMap)
+    }
+
+    private suspend fun reverseSingleGoalForSelectedActivity(goalId: Long) {
+        val goal = goalDao.getGoalById(goalId) ?: return
+        val newValue = kotlin.math.max(0, goal.currentValue - 1)
+        goalDao.updateGoalCurrentValue(goalId, newValue)
+    }
+
     private fun shouldGoalBeAffected(
         goal: Goal,
         sessionShareCode: String?,

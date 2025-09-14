@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Imported from screenshots/cigarette.svg (paths preserved) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M92.5,60h-85C6.119,60,5,61.119,5,62.5v15C5,78.881,6.119,80,7.5,80h85c1.381,0,2.5-1.119,2.5-2.5v-15   C95,61.119,93.881,60,92.5,60z M15,75h-5V65h5V75z M25,75h-5V65h5V75z M90,75H30V65h60V75z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.5,55c1.381,0,2.5-1.119,2.5-2.5c0-11.028,8.972-20,20-20c8.271,0,15-6.729,15-15c0-1.381-1.119-2.5-2.5-2.5   S45,16.119,45,17.5c0,5.514-4.486,10-10,10c-13.785,0-25,11.215-25,25C10,53.881,11.119,55,12.5,55z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M55,17.5c0,11.028-8.972,20-20,20c-8.271,0-15,6.729-15,15c0,1.381,1.119,2.5,2.5,2.5s2.5-1.119,2.5-2.5   c0-5.514,4.486-10,10-10c13.785,0,25-11.215,25-25c0-1.381-1.119-2.5-2.5-2.5S55,16.119,55,17.5z"/>
+</vector>

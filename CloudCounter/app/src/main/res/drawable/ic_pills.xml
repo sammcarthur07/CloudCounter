@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Recentered group so pills appear visually centered in 24x24 -->
+    <group
+        android:translateX="-1"
+        android:translateY="2.5">
+        <!-- Horizontal pill split with a score line (gap) -->
+        <!-- Left half -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M4,11 a2,2 0 0 1 2,-2 h3.8 v4 H6 a2,2 0 0 1 -2,-2 z"/>
+        <!-- Right half -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M10.2,9 H14 a2,2 0 0 1 2,2 a2,2 0 0 1 -2,2 h-3.8 z"/>
+
+        <!-- Tilted pill (also split) -->
+        <group
+            android:pivotX="16"
+            android:pivotY="8"
+            android:rotation="-30">
+            <!-- Left half -->
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M12,6 a2,2 0 0 1 2,-2 h3.8 v4 H14 a2,2 0 0 1 -2,-2 z"/>
+            <!-- Right half -->
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M18.2,4 H22 a2,2 0 0 1 2,2 a2,2 0 0 1 -2,2 h-3.8 z"/>
+        </group>
+    </group>
+</vector>

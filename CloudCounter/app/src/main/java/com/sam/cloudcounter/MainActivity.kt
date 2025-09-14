@@ -2843,12 +2843,35 @@ class MainActivity : AppCompatActivity() {
             strokeWidth = 4 // Same stroke width as other buttons
             cornerRadius = 8.dpToPx(this@MainActivity)
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+
+            // Ensure 6-letter names fit on one line without changing button width
+            // - Reduce inner side padding
+            // - Remove default minWidth constraint
+            // - Force single line to avoid wrapping
+            minimumWidth = 0
+            minWidth = 0
+            // Trim side padding further so 8-char names fit on line 2
+            setPaddingRelative(2.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity), 2.dpToPx(this@MainActivity), 8.dpToPx(this@MainActivity))
+            // Two-line layout: "ADD" on first line, name on second line
+            isSingleLine = false
+            maxLines = 2
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+            gravity = android.view.Gravity.CENTER
+            ellipsize = android.text.TextUtils.TruncateAt.END
             
-            // Add icon if needed
+            // If icon-based: center the icon and show no text inside the button
             activity.iconResId?.let { iconRes ->
-                setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
-                compoundDrawablePadding = 4.dpToPx(this@MainActivity)
-                compoundDrawables[0]?.setTint(getColor(R.color.my_light_primary)) // Green tint
+                text = "" // No ADD text for icon-based buttons
+                setIconResource(iconRes)
+                iconTint = ColorStateList.valueOf(getColor(R.color.my_light_primary))
+                // Center the icon: no text, zero padding, and center gravity.
+                // Use TEXT_START as a safe iconGravity; with empty text and center gravity
+                // the icon renders centered across Material versions.
+                iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_START
+                iconPadding = 0
+                gravity = android.view.Gravity.CENTER
+                // Clear any compound drawables just in case
+                setCompoundDrawablesWithIntrinsicBounds(null, null, null, null)
             }
         }
         
@@ -2947,6 +2970,9 @@ class MainActivity : AppCompatActivity() {
         val etActivityName = view.findViewById<EditText>(R.id.etActivityName)
         val tvIconSelectionLabel = view.findViewById<TextView>(R.id.tvIconSelectionLabel)
         val iconGrid = view.findViewById<GridLayout>(R.id.iconGrid)
+        // Make icon selection always visible and optional
+        tvIconSelectionLabel.visibility = View.VISIBLE
+        iconGrid.visibility = View.VISIBLE
         val btnSave = view.findViewById<Button>(R.id.btnSave)
         val btnCancel = view.findViewById<Button>(R.id.btnCancel)
         val btnReset = view.findViewById<Button>(R.id.btnReset)
@@ -3145,14 +3171,12 @@ class MainActivity : AppCompatActivity() {
             if (!hasSpace) {
                 etActivityName.isEnabled = false
                 etActivityName.hint = "Remove an activity to add custom"
-                btnSave.isEnabled = false
             } else {
                 etActivityName.isEnabled = true
-                etActivityName.hint = "Enter name (max 6 chars)"
-                // Re-evaluate based on current text
-                val text = etActivityName.text.toString()
-                btnSave.isEnabled = text.isNotEmpty() && (text.length <= CustomActivity.MAX_NAME_LENGTH || selectedIconRes != null)
+                etActivityName.hint = "Enter name (8 chars or icon)"
             }
+            // Save button should always be clickable
+            btnSave.isEnabled = true
         }
         
         // Initial load
@@ -3169,15 +3193,15 @@ class MainActivity : AppCompatActivity() {
         )
         
         val iconResources = listOf(
-            R.drawable.ic_leaf,
-            R.drawable.ic_smoke,
-            R.drawable.ic_fire,
-            R.drawable.ic_bolt,
-            android.R.drawable.star_off,
-            R.drawable.ic_wave
+            R.drawable.ic_pills,
+            R.drawable.ic_bong,
+            R.drawable.ic_cough,
+            R.drawable.ic_stretch,
+            R.drawable.ic_cigarette,
+            R.drawable.ic_water_glass
         )
         
-        val iconNames = listOf("Leaf", "Smoke", "Fire", "Bolt", "Star", "Wave")
+        val iconNames = listOf("Pills", "Bong", "Cough", "Stretch", "Cigarette", "Water")
         
         iconOptions.forEachIndexed { index, option ->
             option.setOnClickListener {
@@ -3187,7 +3211,6 @@ class MainActivity : AppCompatActivity() {
                 option.setBackgroundColor(Color.parseColor("#33ff91a4"))
                 selectedIconRes = iconResources[index]
                 selectedIconName = iconNames[index]
-                btnSave.isEnabled = true
                 Log.d("CUSTOM_ACTIVITY", "🎨 Icon selected: ${iconNames[index]}")
             }
         }
@@ -3199,20 +3222,8 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: android.text.Editable?) {
                 val text = s?.toString() ?: ""
                 Log.d("CUSTOM_ACTIVITY", "📝 Text changed: '$text' (length: ${text.length})")
-                
-                if (text.length > CustomActivity.MAX_NAME_LENGTH) {
-                    // Show icon selection
-                    tvIconSelectionLabel.visibility = View.VISIBLE
-                    iconGrid.visibility = View.VISIBLE
-                    btnSave.isEnabled = selectedIconRes != null
-                } else {
-                    // Hide icon selection
-                    tvIconSelectionLabel.visibility = View.GONE
-                    iconGrid.visibility = View.GONE
-                    selectedIconRes = null
-                    selectedIconName = null
-                    btnSave.isEnabled = text.isNotEmpty()
-                }
+                // Icon selection remains visible; do not auto-clear any selection
+                btnSave.isEnabled = true
             }
         })
         
@@ -3238,53 +3249,57 @@ class MainActivity : AppCompatActivity() {
         
         btnSave.setOnClickListener {
             val name = etActivityName.text.toString().trim()
-            if (name.isEmpty()) {
-                Toast.makeText(this, "Please enter an activity name", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            // Check if we're at the limit
+
+            // Attempt to save if a name is provided and there is capacity
             val maxCustom = customActivityManager.getMaxCustomActivities()
-            if (customActivityManager.getCustomActivities().size >= maxCustom) {
-                Toast.makeText(this, "Remove an activity first to add custom", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            // Create custom activity
-            val displayName = if (name.length > CustomActivity.MAX_NAME_LENGTH && selectedIconName != null) {
-                "ADD $selectedIconName".uppercase()
-            } else {
-                "ADD ${name.uppercase()}"
-            }
-            
-            val customActivity = CustomActivity(
-                name = if (name.length > CustomActivity.MAX_NAME_LENGTH && selectedIconName != null) selectedIconName!! else name,
-                displayName = displayName,
-                iconResId = if (name.length > CustomActivity.MAX_NAME_LENGTH) selectedIconRes else null
-            )
-            
-            Log.d("CUSTOM_ACTIVITY", "💾 Saving custom activity: ${customActivity.name}")
-            
-            if (customActivityManager.addCustomActivity(customActivity)) {
-                Toast.makeText(this, "Custom activity added: ${customActivity.name}", Toast.LENGTH_SHORT).show()
-                setupActivityButtons() // Refresh buttons
-                
-                // Clear the input field and refresh list
-                etActivityName.setText("")
-                selectedIconRes = null
-                selectedIconName = null
-                refreshActivityList()
-                
-                // Broadcast that custom activities have changed
-                broadcastCustomActivitiesChanged()
-                
-                // Sync to cloud if in session
-                currentShareCode?.let { code ->
-                    syncCustomActivityToCloud(customActivity, code)
+            val hasSpace = customActivityManager.getCustomActivities().size < maxCustom
+
+            if (name.isNotEmpty() && hasSpace) {
+                // If name exceeds max length and no icon chosen, pick a default icon
+                var finalIconRes = selectedIconRes
+                var finalIconName = selectedIconName
+                if (name.length > CustomActivity.MAX_NAME_LENGTH && finalIconRes == null) {
+                    finalIconRes = CustomActivity.AVAILABLE_ICONS.firstOrNull()
+                    finalIconName = CustomActivity.ICON_NAMES.firstOrNull()
                 }
-            } else {
-                Toast.makeText(this, "Failed to add custom activity", Toast.LENGTH_SHORT).show()
+
+                val isIconBased = (finalIconRes != null) || (name.length > CustomActivity.MAX_NAME_LENGTH)
+                val displayName = if (isIconBased) {
+                    "ADD"
+                } else {
+                    "ADD ${name.uppercase()}"
+                }
+
+                val customActivity = CustomActivity(
+                    // Always keep the full typed name (even when icon is used)
+                    name = name,
+                    displayName = displayName,
+                    // Use icon if selected, or auto-assigned for long names
+                    iconResId = finalIconRes
+                )
+
+                Log.d("CUSTOM_ACTIVITY", "💾 Saving custom activity: ${customActivity.name}")
+
+                if (customActivityManager.addCustomActivity(customActivity)) {
+                    Toast.makeText(this, "Custom activity added: ${customActivity.name}", Toast.LENGTH_SHORT).show()
+                    setupActivityButtons() // Refresh buttons
+
+                    // Broadcast that custom activities have changed
+                    broadcastCustomActivitiesChanged()
+
+                    // Sync to cloud if in session
+                    currentShareCode?.let { code ->
+                        syncCustomActivityToCloud(customActivity, code)
+                    }
+                } else {
+                    Toast.makeText(this, "Failed to add custom activity", Toast.LENGTH_SHORT).show()
+                }
+            } else if (!hasSpace) {
+                Toast.makeText(this, "Remove an activity first to add custom", Toast.LENGTH_SHORT).show()
             }
+
+            // Close the dialog regardless of state — Save is always clickable
+            dialog.dismiss()
         }
         
         dialog.show()
@@ -3636,11 +3651,40 @@ class MainActivity : AppCompatActivity() {
             refreshLocalSessionStatsIfNeeded()
         }
         
-        // Get the current spinner position BEFORE any changes
-        val currentSpinnerPosition = binding.spinnerSmoker.selectedItemPosition
-        
-        // Handle post-hit actions with the CAPTURED smoker and position
-        handlePostHitActionsWithPayerAndSmoker(capturedSmoker, currentSpinnerPosition, ActivityType.JOINT, adjustedNow, payerStashOwnerId)
+        // Add to activity history for undo functionality
+        if (sessionActive) {
+            Log.d("CUSTOM_ACTIVITY", "🎯 UNDO FIX: Adding custom activity to activityHistory")
+            Log.d("CUSTOM_ACTIVITY", "🎯 UNDO FIX: type=CUSTOM, customId=${activity.id}, customName=${activity.name}")
+            
+            // Create a copy of the activity log for history (with the inserted ID if needed)
+            val historyLog = activityLog.copy()
+            
+            activityHistory.add(historyLog)
+            if (activityHistory.size > 10) {
+                activityHistory.removeAt(0)
+            }
+            Log.d("CUSTOM_ACTIVITY", "🎯 UNDO FIX: Activity history size after add: ${activityHistory.size}")
+            
+            // Update timestamps
+            activitiesTimestamps.add(adjustedNow)
+            activitiesTimestamps.sort()
+            actualLastLogTime = activitiesTimestamps.maxOrNull() ?: adjustedNow
+            lastLogTime = adjustedNow
+            
+            // Update intervals
+            val activitiesBeforeThis = activitiesTimestamps.filter { it < adjustedNow }
+            if (activitiesBeforeThis.isNotEmpty()) {
+                val prevActivity = activitiesBeforeThis.last()
+                val interval = adjustedNow - prevActivity
+                lastIntervalMillis = interval
+                intervalsList.add(interval)
+            } else {
+                intervalsList.add(0L)
+            }
+            
+            // Update undo button visibility
+            updateUndoButtonVisibility()
+        }
         
         // Update goals tracking for custom activities
         updateCustomActivityGoals(activity)
@@ -6354,6 +6398,10 @@ class MainActivity : AppCompatActivity() {
         editingSummaryId = null
         lastLoadedSummary = null
         
+        // UNDO FIX: Clear recently undone activities when starting new session
+        recentlyUndoneActivities.clear()
+        Log.d(TAG, "🔙 UNDO FIX: Cleared recently undone activities for new session")
+        
         // Clear carried-over stats when starting a fresh session
         sessionStatsVM.clearCarriedOverStats()
 
@@ -6422,6 +6470,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun endSession() {
+        // UNDO FIX: Clear recently undone activities when ending session
+        recentlyUndoneActivities.clear()
+        Log.d(TAG, "🔙 UNDO FIX: Cleared recently undone activities for session end")
+        
         // CRITICAL: Store the session ID and times before clearing anything
         val completedSessionId = if (sessionActive && sessionStart > 0) {
             sessionStart
@@ -7147,7 +7199,18 @@ class MainActivity : AppCompatActivity() {
                 val customActivities = roomActivities.filter { it.type.startsWith("CUSTOM_") }
                 Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Found ${customActivities.size} custom activities in room")
                 
-                val customByType = customActivities.groupBy { activity ->
+                // UNDO FIX: Filter out recently undone custom activities
+                val filteredCustomActivities = customActivities.filter { activity ->
+                    val customId = activity.type.removePrefix("CUSTOM_")
+                    val activityKey = "CUSTOM_${customId}:${activity.timestamp}"
+                    val isRecentlyUndone = recentlyUndoneActivities.contains(activityKey)
+                    if (isRecentlyUndone) {
+                        Log.d(TAG, "🌟 UNDO FIX: Filtering out recently undone custom activity from room stats: $activityKey")
+                    }
+                    !isRecentlyUndone
+                }
+                
+                val customByType = filteredCustomActivities.groupBy { activity ->
                     activity.type.removePrefix("CUSTOM_")
                 }
                 
@@ -7216,7 +7279,14 @@ class MainActivity : AppCompatActivity() {
                     val customActivityStats = mutableMapOf<String, CustomActivityStat>()
                     val smokerCustomActivities = smokerActivities.filter { it.type.startsWith("CUSTOM_") }
                     
-                    val smokerCustomByType = smokerCustomActivities.groupBy { activity ->
+                    // UNDO FIX: Filter out recently undone custom activities for per-smoker stats
+                    val filteredSmokerCustomActivities = smokerCustomActivities.filter { activity ->
+                        val customId = activity.type.removePrefix("CUSTOM_")
+                        val activityKey = "CUSTOM_${customId}:${activity.timestamp}"
+                        !recentlyUndoneActivities.contains(activityKey)
+                    }
+                    
+                    val smokerCustomByType = filteredSmokerCustomActivities.groupBy { activity ->
                         activity.type.removePrefix("CUSTOM_")
                     }
                     
@@ -7568,10 +7638,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Add flag to track if we're performing an undo operation  
+    private var isPerformingUndo = false
+    
+    // UNDO FIX: Track recently undone activities to filter them from room rebuilds
+    // Store as Set of "type:timestamp" strings for efficient lookup
+    private val recentlyUndoneActivities = mutableSetOf<String>()
+    
     // Move handleRoomUpdate to be a separate method in the class
     private fun handleRoomUpdate(room: RoomData) {
         Log.d(TAG, "🎧 Room updated!")
         Log.d(TAG, "     Activities: ${room.safeActivities().size}")
+        Log.d(TAG, "     Is performing undo: $isPerformingUndo")
         
         // Check for turn changes and show notification if needed
         currentShareCode?.let { shareCode ->
@@ -7609,6 +7687,13 @@ class MainActivity : AppCompatActivity() {
         lastJointTimestamp = jointLogs.maxOfOrNull { it.timestamp } ?: 0L
         lastBowlTimestamp = bowlLogs.maxOfOrNull { it.timestamp } ?: 0L
 
+        // UNDO FIX: Don't rebuild activity history if we're performing an undo
+        // The local activityHistory is the source of truth during undo operations
+        if (isPerformingUndo) {
+            Log.d(TAG, "🎧 UNDO FIX: Skipping activity history rebuild during undo operation")
+            return
+        }
+
         // Rebuild activity history from room activities for current session
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -7618,6 +7703,13 @@ class MainActivity : AppCompatActivity() {
 
                 // Convert to ActivityLog objects
                 val activityLogs = sessionActivities.mapNotNull { activity ->
+                    // UNDO FIX: Check if this activity was recently undone
+                    val activityKey = "${activity.type}:${activity.timestamp}"
+                    if (recentlyUndoneActivities.contains(activityKey)) {
+                        Log.d(TAG, "🎧 UNDO FIX: Filtering out recently undone activity: $activityKey")
+                        return@mapNotNull null
+                    }
+                    
                     // Find the smoker by UID
                     val smoker = smokers.find { smoker ->
                         val smokerUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
@@ -9404,9 +9496,31 @@ class MainActivity : AppCompatActivity() {
 
                 val sessionLogs = allLogs.filter { it.timestamp >= sessionStart && it.timestamp <= now }
 
-                val cones = sessionLogs.count { it.type == ActivityType.CONE && it.customActivityId.isNullOrEmpty() }
-                val joints = sessionLogs.count { it.type == ActivityType.JOINT }
-                val bowls = sessionLogs.count { it.type == ActivityType.BOWL }
+                // UNDO FIX: Filter out recently undone activities when counting
+                val cones = sessionLogs.count { log -> 
+                    if (log.type == ActivityType.CONE && log.customActivityId.isNullOrEmpty()) {
+                        val activityKey = "${log.type}:${log.timestamp}"
+                        !recentlyUndoneActivities.contains(activityKey)
+                    } else {
+                        false
+                    }
+                }
+                val joints = sessionLogs.count { log ->
+                    if (log.type == ActivityType.JOINT) {
+                        val activityKey = "${log.type}:${log.timestamp}"
+                        !recentlyUndoneActivities.contains(activityKey)
+                    } else {
+                        false
+                    }
+                }
+                val bowls = sessionLogs.count { log ->
+                    if (log.type == ActivityType.BOWL) {
+                        val activityKey = "${log.type}:${log.timestamp}"
+                        !recentlyUndoneActivities.contains(activityKey)
+                    } else {
+                        false
+                    }
+                }
 
                 // Check if this smoker should get carried-over bowls
                 val continueBowlSmokerId = sessionStatsVM.getContinueBowlSmokerId()
@@ -9423,7 +9537,19 @@ class MainActivity : AppCompatActivity() {
                 
                 // Calculate custom activity stats for this smoker
                 val customActivityStats = mutableMapOf<String, CustomActivityStat>()
-                val customLogs = sessionLogs.filter { !it.customActivityId.isNullOrEmpty() }
+                val customLogs = sessionLogs.filter { log ->
+                    if (log.customActivityId.isNullOrEmpty()) {
+                        false
+                    } else {
+                        // UNDO FIX: Filter out recently undone custom activities
+                        val activityKey = "CUSTOM_${log.customActivityId}:${log.timestamp}"
+                        val isRecentlyUndone = recentlyUndoneActivities.contains(activityKey)
+                        if (isRecentlyUndone) {
+                            Log.d(TAG, "🌟 UNDO FIX: Filtering out recently undone custom activity from stats: $activityKey")
+                        }
+                        !isRecentlyUndone
+                    }
+                }
                 
                 Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Found ${customLogs.size} custom activities for ${smoker.name}")
                 customLogs.forEach { log ->
@@ -10848,29 +10974,54 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "🔙 Activity history size: ${activityHistory.size}")
         Log.d(TAG, "🔙 Retroactive activities size: ${retroactiveActivities.size}")
         Log.d(TAG, "🔙 Current share code: $currentShareCode")
+        
+        // UNDO FIX: Set flag to prevent activity history rebuild during undo
+        isPerformingUndo = true
+        Log.d(TAG, "🔙 UNDO FIX: Setting isPerformingUndo = true")
+        
+        // Log detailed activity history
+        Log.d(TAG, "🔙 UNDO FIX: Activity history contents:")
+        activityHistory.forEachIndexed { index, activity ->
+            Log.d(TAG, "🔙 UNDO FIX:   [$index] type=${activity.type}, customId=${activity.customActivityId}, customName=${activity.customActivityName}, timestamp=${activity.timestamp}")
+        }
 
         // Check if we should undo bulk retroactive activities
         if (retroactiveActivities.isNotEmpty()) {
+            Log.d(TAG, "🔙 UNDO FIX: Retroactive activities detected, calling undoBulkRetroactiveActivities")
             // Undo all retroactive activities from the last bulk add
             undoBulkRetroactiveActivities()
             return
         }
 
         if (activityHistory.isEmpty()) {
+            Log.d(TAG, "🔙 UNDO FIX: Activity history is empty - nothing to undo")
+            isPerformingUndo = false
             Toast.makeText(this, "No recent activity to undo", Toast.LENGTH_SHORT).show()
             return
         }
 
         val lastActivity = activityHistory.removeLastOrNull()
         if (lastActivity == null) {
+            Log.d(TAG, "🔙 UNDO FIX: removeLastOrNull returned null")
+            isPerformingUndo = false
             Toast.makeText(this, "No activity to undo", Toast.LENGTH_SHORT).show()
             return
         }
 
         Log.d(TAG, "🔙 Undoing: ${lastActivity.type} for smoker ${lastActivity.smokerId} at ${lastActivity.timestamp}")
+        Log.d(TAG, "🔙 UNDO FIX: Custom fields - ID: ${lastActivity.customActivityId}, Name: ${lastActivity.customActivityName}")
         Log.d(TAG, "🔙 PayerStashOwnerId: '${lastActivity.payerStashOwnerId}'")
         Log.d(TAG, "🔙 gramsAtLog: ${lastActivity.gramsAtLog}, pricePerGramAtLog: ${lastActivity.pricePerGramAtLog}")
         Log.d(TAG, "🔙 Activities remaining: ${activityHistory.size}")
+        
+        // UNDO FIX: Track this activity as recently undone
+        val activityKey = if (lastActivity.type == ActivityType.CUSTOM && lastActivity.customActivityId != null) {
+            "CUSTOM_${lastActivity.customActivityId}:${lastActivity.timestamp}"
+        } else {
+            "${lastActivity.type}:${lastActivity.timestamp}"
+        }
+        recentlyUndoneActivities.add(activityKey)
+        Log.d(TAG, "🔙 UNDO FIX: Added to recently undone: $activityKey")
 
         // Store the current smoker before undo
         val currentSmokerId = binding.spinnerSmoker.selectedItemPosition.let { pos ->
@@ -10899,11 +11050,21 @@ class MainActivity : AppCompatActivity() {
                     val sessionShareCode = if (sessionActive) currentShareCode else null
 
                     try {
-                        goalService.reverseGoalProgressForActivity(
-                            activityType = lastActivity.type,
-                            sessionShareCode = sessionShareCode,
-                            smokerName = smoker.name
-                        )
+                        if (lastActivity.type == ActivityType.CUSTOM && !lastActivity.customActivityId.isNullOrEmpty()) {
+                            goalService.reverseGoalProgressForSelectedActivity(
+                                activityType = lastActivity.type,
+                                customActivityId = lastActivity.customActivityId,
+                                customActivityName = lastActivity.customActivityName,
+                                sessionShareCode = sessionShareCode,
+                                currentSmokerName = smoker.name
+                            )
+                        } else {
+                            goalService.reverseGoalProgressForActivity(
+                                activityType = lastActivity.type,
+                                sessionShareCode = sessionShareCode,
+                                smokerName = smoker.name
+                            )
+                        }
                         Log.d(TAG, "🔙🎯 Goal progress reversed successfully")
                     } catch (e: Exception) {
                         Log.e(TAG, "🔙🎯 Error reversing goal progress: ${e.message}", e)
@@ -10931,9 +11092,22 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "🔙 Stash tracking not active, skipping stash undo")
                 }
 
-                // Delete from local database
-                repo.delete(lastActivity)
-                Log.d(TAG, "🔙 Deleted from local database")
+                // UNDO FIX: Delete from local database by finding the actual record with ID
+                // The lastActivity from activityHistory has id=0, so we need to find the real one
+                val allActivities = repo.getLogsInTimeRange(lastActivity.timestamp, lastActivity.timestamp + 1)
+                val actualActivity = allActivities.find { 
+                    it.smokerId == lastActivity.smokerId && 
+                    it.type == lastActivity.type &&
+                    it.timestamp == lastActivity.timestamp
+                }
+                if (actualActivity != null) {
+                    repo.delete(actualActivity)
+                    Log.d(TAG, "🔙 UNDO FIX: Deleted from local database (ID: ${actualActivity.id})")
+                } else {
+                    // Fallback: try to delete using the activity as-is (might work if Room matches by unique constraint)
+                    repo.delete(lastActivity)
+                    Log.w(TAG, "🔙 UNDO FIX: WARNING - Using fallback delete without ID")
+                }
 
                 // Remove from cloud room if in shared session
                 if (!currentShareCode.isNullOrEmpty()) {
@@ -10961,8 +11135,8 @@ class MainActivity : AppCompatActivity() {
                                 withContext(Dispatchers.Main) {
                                     handleRoomUpdate(roomData)
                                     onRoomUpdated(roomData)
-                                    val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
-                                    sessionStatsVM.applyRoomStats(roomData.safeCurrentStats(), roomData.startTime, smokerDisplayOrder)
+                                    // Apply full stats (including custom activities) immediately to avoid UI flicker
+                                    applyRoomStatsWithCustom(roomData)
                                 }
                             }
                         } else {
@@ -10974,7 +11148,11 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     // For local sessions, immediately update the session stats
                     withContext(Dispatchers.Main) {
-                        sessionStatsVM.decrementActivityCount(smoker.name, lastActivity.type)
+                        sessionStatsVM.decrementActivityCount(
+                            smokerName = smoker.name,
+                            activityType = lastActivity.type,
+                            customActivityId = lastActivity.customActivityId
+                        )
                     }
                 }
 
@@ -10982,7 +11160,13 @@ class MainActivity : AppCompatActivity() {
                 val remainingActivities = withContext(Dispatchers.IO) {
                     repo.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
                 }
-                Log.d(TAG, "🔙 Remaining activities in session: ${remainingActivities.size}")
+                Log.d(TAG, "🔙 UNDO FIX: Remaining activities in session: ${remainingActivities.size}")
+                Log.d(TAG, "🔙 UNDO FIX: Activity history size: ${activityHistory.size}")
+                
+                // Log details of remaining activities for debugging
+                remainingActivities.forEach { activity ->
+                    Log.d(TAG, "🔙 UNDO FIX: Remaining in DB - ID:${activity.id}, Type:${activity.type}, Time:${activity.timestamp}, CustomId:${activity.customActivityId}")
+                }
 
                 // Update intervals list
                 if (intervalsList.isNotEmpty()) {
@@ -11063,6 +11247,19 @@ class MainActivity : AppCompatActivity() {
 
                     updateUndoButtonVisibility()
                     Log.d(TAG, "🔙 Undo button visible: ${binding.btnUndoLastActivity.visibility == View.VISIBLE}")
+                    
+                    // UNDO FIX: Reset the flag after undo completes
+                    isPerformingUndo = false
+                    Log.d(TAG, "🔙 UNDO FIX: Setting isPerformingUndo = false")
+                    
+                    // UNDO FIX: Clean up old entries from recentlyUndoneActivities (keep only last 50)
+                    if (recentlyUndoneActivities.size > 50) {
+                        val toKeep = recentlyUndoneActivities.toList().takeLast(50)
+                        recentlyUndoneActivities.clear()
+                        recentlyUndoneActivities.addAll(toKeep)
+                        Log.d(TAG, "🔙 UNDO FIX: Cleaned up recently undone activities, kept ${toKeep.size}")
+                    }
+                    
                     Log.d(TAG, "🔙 === UNDO COMPLETE ===")
 
                     Toast.makeText(this@MainActivity, "Activity removed, stash restored, and goals updated", Toast.LENGTH_SHORT).show()
@@ -11070,10 +11267,169 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "🔙 Error undoing activity", e)
                 withContext(Dispatchers.Main) {
+                    // UNDO FIX: Reset flag on error too
+                    isPerformingUndo = false
+                    Log.d(TAG, "🔙 UNDO FIX: Setting isPerformingUndo = false (error case)")
                     Toast.makeText(this@MainActivity, "Error undoing activity", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+    }
+
+    // Apply room stats to ViewModel including custom-activity per-smoker/group stats
+    private fun applyRoomStatsWithCustom(updatedRoom: RoomData) {
+        // Calculate gaps from activities
+        val roomActivities = updatedRoom.safeActivities()
+        val sortedActivities = roomActivities.sortedBy { it.timestamp }
+
+        var lastGapMs: Long? = null
+        var previousGapMs: Long? = null
+
+        if (sortedActivities.size >= 2) {
+            val lastActivity = sortedActivities[sortedActivities.size - 1]
+            val secondLastActivity = sortedActivities[sortedActivities.size - 2]
+            lastGapMs = lastActivity.timestamp - secondLastActivity.timestamp
+
+            if (sortedActivities.size >= 3) {
+                val thirdLastActivity = sortedActivities[sortedActivities.size - 3]
+                previousGapMs = secondLastActivity.timestamp - thirdLastActivity.timestamp
+            }
+        }
+
+        val roomStats = updatedRoom.safeCurrentStats()
+
+        // Build custom activity group stats, filtering recently undone
+        val customActivityGroupStats = mutableMapOf<String, CustomActivityGroupStat>()
+        val currentTime = System.currentTimeMillis()
+        val filteredCustomActivities = roomActivities.filter { it.type.startsWith("CUSTOM_") }.filter { activity ->
+            val customId = activity.type.removePrefix("CUSTOM_")
+            val activityKey = "CUSTOM_${customId}:${activity.timestamp}"
+            !recentlyUndoneActivities.contains(activityKey)
+        }
+        val customByType = filteredCustomActivities.groupBy { it.type.removePrefix("CUSTOM_") }
+        customByType.forEach { (customId, activities) ->
+            if (activities.isNotEmpty()) {
+                val lastActivity = activities.maxByOrNull { it.timestamp }!!
+                val activityName = lastActivity.customActivityName ?: "Custom"
+                customActivityGroupStats[customId] = CustomActivityGroupStat(
+                    activityName = activityName,
+                    total = activities.size,
+                    lastSmokerName = lastActivity.smokerName,
+                    sinceLastMs = currentTime - lastActivity.timestamp
+                )
+            }
+        }
+
+        // Create GroupStats mirroring onChange path
+        val groupStats = GroupStats(
+            totalCones = roomStats.totalCones,
+            totalJoints = roomStats.totalJoints,
+            totalBowls = roomStats.totalBowls,
+            longestGapMs = roomStats.longestGapMs,
+            shortestGapMs = roomStats.shortestGapMs,
+            sinceLastGapMs = roomStats.sinceLastConeMs,
+            sinceLastJointMs = roomStats.sinceLastJointMs,
+            sinceLastBowlMs = roomStats.sinceLastBowlMs,
+            totalRounds = if (isAutoMode) roomStats.totalRounds else (sessionStatsVM.groupStats.value?.totalRounds ?: 0),
+            hitsInCurrentRound = if (isAutoMode) roomStats.hitsInCurrentRound else (sessionStatsVM.groupStats.value?.hitsInCurrentRound ?: 0),
+            participantCount = roomStats.participantCount,
+            lastConeSmokerName = roomStats.lastConeSmokerName,
+            lastJointSmokerName = roomStats.lastJointSmokerName,
+            lastBowlSmokerName = roomStats.lastBowlSmokerName,
+            conesSinceLastBowl = roomStats.conesSinceLastBowl,
+            lastGapMs = lastGapMs,
+            previousGapMs = previousGapMs,
+            customActivityGroupStats = customActivityGroupStats
+        )
+
+        // Build per-smoker stats with custom activity breakdowns
+        val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
+        val perSmokerStatsWithGaps = roomStats.perSmokerStats.values.map { serverData ->
+            val smokerActivities = roomActivities.filter { it.smokerName == serverData.smokerName }.sortedBy { it.timestamp }
+
+            val coneActivities = smokerActivities.filter { it.type == "CONE" }
+            val jointActivities = smokerActivities.filter { it.type == "JOINT" }
+            val bowlActivities = smokerActivities.filter { it.type == "BOWL" }
+
+            // Per-smoker custom activities (filter recently undone)
+            val customActivityStats = mutableMapOf<String, CustomActivityStat>()
+            val smokerCustom = smokerActivities.filter { it.type.startsWith("CUSTOM_") }.filter { activity ->
+                val customId = activity.type.removePrefix("CUSTOM_")
+                val activityKey = "CUSTOM_${customId}:${activity.timestamp}"
+                !recentlyUndoneActivities.contains(activityKey)
+            }
+            val byCustom = smokerCustom.groupBy { it.type.removePrefix("CUSTOM_") }
+            byCustom.forEach { (customId, activities) ->
+                if (activities.isNotEmpty()) {
+                    val sorted = activities.sortedBy { it.timestamp }
+                    val gaps = if (sorted.size >= 2) sorted.zipWithNext { a, b -> b.timestamp - a.timestamp } else emptyList()
+                    val lastTime = sorted.last().timestamp
+                    val activityName = sorted.last().customActivityName ?: "Custom"
+                    customActivityStats[customId] = CustomActivityStat(
+                        activityName = activityName,
+                        total = activities.size,
+                        avgGapMs = if (gaps.isNotEmpty()) gaps.average().toLong() else 0L,
+                        longestGapMs = gaps.maxOrNull() ?: 0L,
+                        shortestGapMs = gaps.minOrNull() ?: 0L,
+                        lastGapMs = if (gaps.isNotEmpty()) gaps.last() else 0L,
+                        lastActivityTime = lastTime
+                    )
+                }
+            }
+
+            val lastConeGap = if (coneActivities.size >= 2) {
+                val last = coneActivities.takeLast(2)
+                last[1].timestamp - last[0].timestamp
+            } else 0L
+            val lastJointGap = if (jointActivities.size >= 2) {
+                val last = jointActivities.takeLast(2)
+                last[1].timestamp - last[0].timestamp
+            } else 0L
+            val lastBowlGap = if (bowlActivities.size >= 2) {
+                val last = bowlActivities.takeLast(2)
+                last[1].timestamp - last[0].timestamp
+            } else 0L
+
+            val lastConeTime = coneActivities.lastOrNull()?.timestamp ?: 0L
+            val lastJointTime = jointActivities.lastOrNull()?.timestamp ?: 0L
+            val lastBowlTime = bowlActivities.lastOrNull()?.timestamp ?: 0L
+            val lastActivityTime = smokerActivities.lastOrNull()?.timestamp ?: 0L
+
+            PerSmokerStats(
+                smokerName = serverData.smokerName,
+                totalCones = serverData.totalCones,
+                totalJoints = serverData.totalJoints,
+                totalBowls = serverData.totalBowls,
+                avgGapMs = serverData.avgGapMs,
+                longestGapMs = serverData.longestGapMs,
+                shortestGapMs = serverData.shortestGapMs,
+                lastGapMs = lastConeGap,
+                lastConeTime = lastConeTime,
+                avgJointGapMs = serverData.avgJointGapMs,
+                longestJointGapMs = serverData.longestJointGapMs,
+                shortestJointGapMs = serverData.shortestJointGapMs,
+                lastJointGapMs = lastJointGap,
+                lastJointTime = lastJointTime,
+                avgBowlGapMs = serverData.avgBowlGapMs,
+                longestBowlGapMs = serverData.longestBowlGapMs,
+                shortestBowlGapMs = serverData.shortestBowlGapMs,
+                lastBowlGapMs = lastBowlGap,
+                lastBowlTime = lastBowlTime,
+                lastActivityTime = lastActivityTime,
+                customActivityStats = customActivityStats
+            )
+        }.let { list ->
+            list.sortedBy { smokerDisplayOrder[it.smokerName] ?: Int.MAX_VALUE }
+        }
+
+        sessionStatsVM.applyLocalStats(
+            perSmokerStatsWithGaps,
+            groupStats,
+            updatedRoom.startTime,
+            roomStats.lastConeSmokerName,
+            roomStats.conesSinceLastBowl,
+            smokerDisplayOrder
+        )
     }
 
     // Undo all retroactive activities from the last bulk add
@@ -11082,6 +11438,8 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "🔙 Undoing ${retroactiveActivities.size} retroactive activities")
         
         if (retroactiveActivities.isEmpty()) {
+            // UNDO FIX: Reset flag if nothing to undo
+            isPerformingUndo = false
             return
         }
         
@@ -11129,12 +11487,18 @@ class MainActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
                     
+                    // UNDO FIX: Reset flag after bulk undo completes
+                    isPerformingUndo = false
+                    Log.d(TAG, "🔙 UNDO FIX: Setting isPerformingUndo = false (bulk undo complete)")
                     Log.d(TAG, "🔙 === BULK UNDO COMPLETE ===")
                 }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "🔙 Error undoing bulk activities", e)
                 withContext(Dispatchers.Main) {
+                    // UNDO FIX: Reset flag on error
+                    isPerformingUndo = false
+                    Log.d(TAG, "🔙 UNDO FIX: Setting isPerformingUndo = false (bulk undo error)")
                     Toast.makeText(this@MainActivity, "Error undoing activities", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -11214,7 +11578,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnUndoLastActivity.setOnClickListener {
             confettiHelper.showMiniConfettiFromButton(binding.btnUndoLastActivity)
-            undoLastActivity()
+            showConfirmUndoDialog { undoLastActivity() }
         }
 
         // Add notification toggle button listener
@@ -11306,6 +11670,111 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "🔘 Sticky mode enabled")
             }
         }
+    }
+
+    private fun showConfirmUndoDialog(onConfirm: () -> Unit) {
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+        currentDialog = dialog
+
+        // Root container with fade-in
+        val rootContainer = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        // Main card styled similar to offline dialog
+        val mainCard = androidx.cardview.widget.CardView(this).apply {
+            radius = 16.dpToPx(this@MainActivity).toFloat()
+            cardElevation = 8.dpToPx(this@MainActivity).toFloat()
+            setCardBackgroundColor(Color.parseColor("#E64A4A4A"))
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.CENTER
+                setMargins(32.dpToPx(this@MainActivity), 0, 32.dpToPx(this@MainActivity), 0)
+            }
+        }
+
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.dpToPx(this@MainActivity), 20.dpToPx(this@MainActivity), 20.dpToPx(this@MainActivity), 20.dpToPx(this@MainActivity))
+            layoutParams = ViewGroup.LayoutParams(280.dpToPx(this@MainActivity), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val titleText = TextView(this).apply {
+            text = "CONFIRM UNDO"
+            textSize = 18f
+            setTextColor(Color.parseColor("#98FB98"))
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            letterSpacing = 0.1f
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(titleText)
+
+        val messageText = TextView(this).apply {
+            text = "Do you want to remove the last activity?"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 16.dpToPx(this@MainActivity)
+            }
+        }
+        contentLayout.addView(messageText)
+
+        val divider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2.dpToPx(this@MainActivity)).apply {
+                topMargin = 4.dpToPx(this@MainActivity)
+                bottomMargin = 16.dpToPx(this@MainActivity)
+            }
+            setBackgroundColor(Color.parseColor("#3398FB98"))
+        }
+        contentLayout.addView(divider)
+
+        val buttonRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val noButton = createThemedDialogButton("No", false, Color.WHITE) {
+            animateCardSelection(dialog) {}
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(this@MainActivity), 1f).apply {
+                marginEnd = 8.dpToPx(this@MainActivity)
+            }
+        }
+        val yesButton = createThemedDialogButton("Yes", true, Color.parseColor("#98FB98")) {
+            animateCardSelection(dialog) { onConfirm() }
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(this@MainActivity), 1f).apply {
+                marginStart = 8.dpToPx(this@MainActivity)
+            }
+        }
+
+        buttonRow.addView(noButton)
+        buttonRow.addView(yesButton)
+        contentLayout.addView(buttonRow)
+        mainCard.addView(contentLayout)
+        rootContainer.addView(mainCard)
+
+        // Dismiss when tapping outside
+        rootContainer.setOnClickListener { v ->
+            if (v == rootContainer) animateCardSelection(dialog) {}
+        }
+
+        dialog.setContentView(rootContainer)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(ColorDrawable(Color.parseColor("#80000000")))
+            setFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED)
+        }
+        dialog.setOnDismissListener { currentDialog = null }
+
+        rootContainer.alpha = 0f
+        dialog.show()
+        performManualFadeIn(rootContainer, 250L)
     }
 
 
@@ -14095,7 +14564,11 @@ class MainActivity : AppCompatActivity() {
             button.setBackgroundColor(ContextCompat.getColor(this, R.color.my_light_primary))
             button.setTextColor(Color.BLACK)
             // Remove stroke for filled state
-            (button as? com.google.android.material.button.MaterialButton)?.strokeWidth = 0
+            (button as? com.google.android.material.button.MaterialButton)?.apply {
+                strokeWidth = 0
+                // If this is an icon-only custom button, invert icon to black on green background
+                iconTint = ColorStateList.valueOf(Color.BLACK)
+            }
         } else {
             // Outlined state - transparent background, green text and border
             button.setBackgroundColor(Color.TRANSPARENT)
@@ -14104,6 +14577,8 @@ class MainActivity : AppCompatActivity() {
             (button as? com.google.android.material.button.MaterialButton)?.apply {
                 strokeColor = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.my_light_primary))
                 strokeWidth = 4
+                // Restore icon tint to green when not selected
+                iconTint = ColorStateList.valueOf(ContextCompat.getColor(this@MainActivity, R.color.my_light_primary))
             }
         }
     }

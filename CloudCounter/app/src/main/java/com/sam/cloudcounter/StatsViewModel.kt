@@ -15,6 +15,7 @@ data class CalculatedStats(
 class StatsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = (application as CloudCounterApplication).repository
+    private val seshPreferences = application.getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
 
     // Selected smoker IDs (empty = all)
     private val _selectedSmokerIds = MutableLiveData<Set<Long>>(emptySet())
@@ -74,11 +75,29 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
     private val _calculatedStats = MediatorLiveData<CalculatedStats>()
     val calculatedStats: LiveData<CalculatedStats> = _calculatedStats
 
+    // Custom session selection mode for Stats tab
+    private val _useCustomSessions = MutableLiveData(false)
+    val useCustomSessions: LiveData<Boolean> = _useCustomSessions
+
+    // List of custom session windows to include (start..end inclusive)
+    private val _customSessionRanges = MutableLiveData<List<Pair<Long, Long>>>(emptyList())
+    val customSessionRanges: LiveData<List<Pair<Long, Long>>> = _customSessionRanges
+
+    fun setUseCustomSessions(enabled: Boolean) {
+        _useCustomSessions.value = enabled
+    }
+
+    fun setCustomSessions(ranges: List<Pair<Long, Long>>) {
+        _customSessionRanges.value = ranges
+    }
+
     init {
         _calculatedStats.addSource(smokerLogs) { recalc() }
         _calculatedStats.addSource(_selectedTimePeriod) { recalc() }
         _calculatedStats.addSource(_selectedActivityType) { recalc() }
         _calculatedStats.addSource(_selectedCustomActivityId) { recalc() }
+        _calculatedStats.addSource(_useCustomSessions) { recalc() }
+        _calculatedStats.addSource(_customSessionRanges) { recalc() }
     }
 
     private fun recalc() {
@@ -86,22 +105,32 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
         val period = _selectedTimePeriod.value ?: TimePeriod.ALL_TIME
         val typeFilter = _selectedActivityType.value
         val customActivityId = _selectedCustomActivityId.value
+        val useCustom = _useCustomSessions.value == true
+        val rawRanges = _customSessionRanges.value.orEmpty()
+        // If current session is selected, keep its end as 'now' while active so stats live-update
+        val ranges = if (useCustom && rawRanges.isNotEmpty()) {
+            val isActive = seshPreferences.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPreferences.getLong("sessionStart", 0L)
+            if (isActive && sessionStartPref > 0L && rawRanges.any { it.first == sessionStartPref }) {
+                rawRanges.map { r -> if (r.first == sessionStartPref) Pair(r.first, System.currentTimeMillis()) else r }
+            } else rawRanges
+        } else rawRanges
 
         val byType = if (customActivityId != null) {
-            // Filter by custom activity ID
             logs.filter { it.customActivityId == customActivityId }
         } else if (typeFilter == ActivityType.CUSTOM) {
-            // Filter for all custom activities (when CUSTOM type is selected but no specific ID)
             logs.filter { !it.customActivityId.isNullOrEmpty() }
         } else {
-            // Filter by regular activity type
             typeFilter?.let { tf -> logs.filter { it.type == tf } } ?: logs
         }
 
-        val (start, end) = timeRange(period)
-        val byTime = if (start != null && end != null) {
-            byType.filter { it.timestamp in start..end }
-        } else byType
+        val byTime = if (useCustom && ranges.isNotEmpty()) {
+            // Keep only logs inside any selected session window
+            byType.filter { log -> ranges.any { r -> log.timestamp in r.first..r.second } }
+        } else {
+            val (start, end) = timeRange(period)
+            if (start != null && end != null) byType.filter { it.timestamp in start..end } else byType
+        }
 
         if (byTime.isEmpty()) {
             _calculatedStats.value = CalculatedStats()
@@ -109,14 +138,60 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val total = byTime.size
-        val avg = calculateAverage(byTime, period, start, end)
-        val freq = calculateFrequency(byTime)
+
+        val avg = if (useCustom && ranges.isNotEmpty()) {
+            // Custom mode: Always compute per-day average from total selected duration only
+            calculateAveragePerDayForCustom(byTime, ranges)
+        } else {
+            val (start, end) = timeRange(period)
+            calculateAverage(byTime, period, start, end)
+        }
+
+        val freq = if (useCustom && ranges.isNotEmpty()) {
+            // Custom mode: only within-session intervals
+            calculateFrequencyWithinRanges(byTime, ranges)
+        } else {
+            calculateFrequency(byTime)
+        }
 
         _calculatedStats.value = CalculatedStats(
             totalCount = total,
             averagePerTimeUnit = avg,
             frequencyMillis = freq
         )
+    }
+
+    private fun calculateAveragePerDayForCustom(
+        logs: List<ActivityLog>,
+        ranges: List<Pair<Long, Long>>
+    ): Double {
+        if (logs.isEmpty() || ranges.isEmpty()) return 0.0
+        val totalDurationMs = ranges.fold(0L) { acc, r -> acc + (r.second - r.first).coerceAtLeast(0) }
+        if (totalDurationMs <= 0) return logs.size.toDouble()
+        val days = TimeUnit.MILLISECONDS.toMinutes(totalDurationMs).toDouble() / (60.0 * 24.0)
+        if (days <= 0.0) return logs.size.toDouble()
+        return logs.size / days
+    }
+
+    private fun calculateFrequencyWithinRanges(
+        logs: List<ActivityLog>,
+        ranges: List<Pair<Long, Long>>
+    ): Long? {
+        if (logs.size < 2) return null
+        val sorted = logs.sortedBy { it.timestamp }
+        val intervals = mutableListOf<Long>()
+        // For each contiguous segment within the same selected range, compute diffs
+        for (range in ranges) {
+            val seg = sorted.filter { it.timestamp in range.first..range.second }
+            if (seg.size >= 2) {
+                for (i in 0 until seg.size - 1) {
+                    intervals.add(seg[i + 1].timestamp - seg[i].timestamp)
+                }
+            }
+        }
+        if (intervals.isEmpty()) return null
+        val total = intervals.fold(0L) { acc, v -> acc + v }
+        return total / intervals.size
     }
 
     private fun timeRange(period: TimePeriod): Pair<Long?, Long?> {

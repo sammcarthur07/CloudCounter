@@ -44,6 +44,10 @@ import kotlin.random.Random
 import android.app.AlertDialog
 import android.widget.ArrayAdapter
 import androidx.core.content.res.ResourcesCompat
+import android.app.Dialog
+import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
+import android.view.WindowManager
 
 
 class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
@@ -194,6 +198,126 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         // Initialize
         initializeComponents()
         loadCurrentData()
+    }
+
+    private fun showConfirmUndoDialog(onConfirm: () -> Unit) {
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+
+        val rootContainer = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        val mainCard = androidx.cardview.widget.CardView(this).apply {
+            radius = 16.dpToPx().toFloat()
+            cardElevation = 8.dpToPx().toFloat()
+            setCardBackgroundColor(Color.parseColor("#E64A4A4A"))
+            layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.CENTER
+                setMargins(32.dpToPx(), 0, 32.dpToPx(), 0)
+            }
+        }
+
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20.dpToPx(), 20.dpToPx(), 20.dpToPx(), 20.dpToPx())
+            layoutParams = ViewGroup.LayoutParams(280.dpToPx(), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val titleText = TextView(this).apply {
+            text = "CONFIRM UNDO"
+            textSize = 18f
+            setTextColor(Color.parseColor("#98FB98"))
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            letterSpacing = 0.1f
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 12.dpToPx()
+            }
+        }
+        contentLayout.addView(titleText)
+
+        val messageText = TextView(this).apply {
+            text = "Do you want to remove the last activity?"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 16.dpToPx()
+            }
+        }
+        contentLayout.addView(messageText)
+
+        val divider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2.dpToPx()).apply {
+                topMargin = 4.dpToPx()
+                bottomMargin = 16.dpToPx()
+            }
+            setBackgroundColor(Color.parseColor("#3398FB98"))
+        }
+        contentLayout.addView(divider)
+
+        val buttonRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        fun themedButton(text: String, isPrimary: Boolean, color: Int, onClick: () -> Unit): View {
+            val card = androidx.cardview.widget.CardView(this).apply {
+                radius = 20.dpToPx().toFloat()
+                cardElevation = if (isPrimary) 4.dpToPx().toFloat() else 0f
+                setCardBackgroundColor(if (isPrimary) color else Color.parseColor("#33FFFFFF"))
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 48.dpToPx()).apply {
+                    bottomMargin = 12.dpToPx()
+                }
+                isClickable = true
+                isFocusable = true
+            }
+            val txt = TextView(this).apply {
+                this.text = text
+                textSize = 14f
+                setTextColor(if (isPrimary) Color.parseColor("#424242") else Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            }
+            val frame = FrameLayout(this)
+            frame.addView(txt)
+            card.addView(frame)
+            card.setOnClickListener { onClick() }
+            return card
+        }
+
+        val noButton = themedButton("No", false, Color.WHITE) { dialog.dismiss() }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginEnd = 8.dpToPx() }
+        }
+        val yesButton = themedButton("Yes", true, Color.parseColor("#98FB98")) {
+            dialog.dismiss()
+            onConfirm()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginStart = 8.dpToPx() }
+        }
+
+        buttonRow.addView(noButton)
+        buttonRow.addView(yesButton)
+        contentLayout.addView(buttonRow)
+        mainCard.addView(contentLayout)
+        rootContainer.addView(mainCard)
+
+        rootContainer.setOnClickListener { if (it == rootContainer) dialog.dismiss() }
+
+        dialog.setContentView(rootContainer)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(ColorDrawable(Color.parseColor("#80000000")))
+            setFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED)
+        }
+
+        rootContainer.alpha = 0f
+        dialog.show()
+        // Simple fade-in
+        rootContainer.animate().alpha(1f).setDuration(250L).start()
     }
     
     private fun createLayout() {
@@ -858,7 +982,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         
         // Undo button
         btnUndo.setOnClickListener {
-            undoLastActivity()
+            showConfirmUndoDialog { undoLastActivity() }
         }
         
         // Rewind button
@@ -1062,7 +1186,8 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: updateUI() - currentActivityName: $currentActivityName")
         Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: updateUI() - displayActivityName: $displayActivityName")
         
-        if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
+        // Always show the last smoker + stat if available, even if it's the current smoker
+        if (recentSmoker.isNotEmpty()) {
             recentStatsText.text = "$recentSmoker: $recentSmokerCount $displayActivityName"
         } else {
             recentStatsText.text = displayActivityName
@@ -1625,41 +1750,116 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         lifecycleScope.launch {
             try {
                 val lastActivityId = activityHistory.removeAt(activityHistory.size - 1)
-                
+
+                // Load the activity to undo (we need its smoker and type before delete)
+                val undoneActivity = withContext(Dispatchers.IO) {
+                    val dao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).activityLogDao()
+                    dao.getActivityById(lastActivityId)
+                }
+
+                if (undoneActivity == null) {
+                    Log.w(TAG, "$LOG_PREFIX 🔙 Activity not found for ID: $lastActivityId")
+                    return@launch
+                }
+
                 // Delete from database
                 withContext(Dispatchers.IO) {
                     val dao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).activityLogDao()
-                    val activity = dao.getActivityById(lastActivityId)
-                    if (activity != null) {
-                        dao.delete(activity)
-                    }
+                    dao.delete(undoneActivity)
                 }
-                
-                Log.d(TAG, "$LOG_PREFIX 🔙 Undid activity with ID: $lastActivityId")
-                
+
+                Log.d(TAG, "$LOG_PREFIX 🔙 Undid activity with ID: $lastActivityId (type=${undoneActivity.type}, smokerId=${undoneActivity.smokerId})")
+
                 // Remove from timestamps list
                 if (activitiesTimestamps.isNotEmpty()) {
                     activitiesTimestamps.removeAt(activitiesTimestamps.size - 1)
                 }
-                
+
                 // Update last log time
                 lastLogTime = activitiesTimestamps.lastOrNull() ?: 0L
-                
-                // Decrement count
-                if (currentCount > 0) {
-                    currentCount--
-                    updateUI()
+
+                // Switch back to the smoker who logged the undone activity
+                val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                val undoneSmoker = withContext(Dispatchers.IO) { smokerDao.getSmokerById(undoneActivity.smokerId) }
+                undoneSmoker?.let { s ->
+                    currentSmoker = s.name
+                    currentSmokerIndex = allSmokers.indexOfFirst { it.smokerId == s.smokerId }.takeIf { it >= 0 } ?: 0
                 }
-                
+
+                // Reverse stash consumption if active
+                try {
+                    withContext(Dispatchers.Main) {
+                        stashViewModel.undoStashConsumption(undoneActivity, undoneSmoker?.name ?: currentSmoker)
+                    }
+                    Log.d(TAG, "$LOG_PREFIX 🔙🌿 Stash consumption reversed")
+                } catch (e: Exception) {
+                    Log.e(TAG, "$LOG_PREFIX 🔙🌿 Error reversing stash", e)
+                }
+
+                // Reverse goal progress
+                try {
+                    val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                    val sessionActive = prefs.getBoolean("sessionActive", false)
+                    val currentShareCode = if (sessionActive) prefs.getString("currentShareCode", null) else null
+
+                    if (undoneActivity.type == com.sam.cloudcounter.ActivityType.CUSTOM && !undoneActivity.customActivityId.isNullOrEmpty()) {
+                        goalService.reverseGoalProgressForSelectedActivity(
+                            activityType = com.sam.cloudcounter.ActivityType.CUSTOM,
+                            customActivityId = undoneActivity.customActivityId,
+                            customActivityName = undoneActivity.customActivityName,
+                            sessionShareCode = currentShareCode,
+                            currentSmokerName = undoneSmoker?.name ?: currentSmoker
+                        )
+                    } else {
+                        goalService.reverseGoalProgressForActivity(
+                            activityType = undoneActivity.type,
+                            sessionShareCode = currentShareCode,
+                            smokerName = undoneSmoker?.name ?: currentSmoker
+                        )
+                    }
+                    Log.d(TAG, "$LOG_PREFIX 🔙🎯 Goal progress reversed")
+                } catch (e: Exception) {
+                    Log.e(TAG, "$LOG_PREFIX 🔙🎯 Error reversing goal progress", e)
+                }
+
+                // Recompute currentCount for the current activity type and the selected smoker
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
+                val mappedType = when (currentActivityType) {
+                    "cones" -> com.sam.cloudcounter.ActivityType.CONE
+                    "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                    "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
+                    "custom" -> com.sam.cloudcounter.ActivityType.CUSTOM
+                    else -> com.sam.cloudcounter.ActivityType.CONE
+                }
+                val currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
+                currentCount = if (currentSmokerObj != null) {
+                    sessionActivities.count { it.smokerId == currentSmokerObj.smokerId && it.type == mappedType }
+                } else 0
+
+                // Update the "last smoker" label to reflect the new last activity after undo
+                val newLast = sessionActivities.maxByOrNull { it.timestamp }
+                if (newLast != null) {
+                    val lastSmoker = withContext(Dispatchers.IO) { smokerDao.getSmokerById(newLast.smokerId) }
+                    recentSmoker = lastSmoker?.name ?: ""
+                    // Count for the display activity
+                    if (lastSmoker != null) {
+                        recentSmokerCount = sessionActivities.count { it.smokerId == lastSmoker.smokerId && it.type == mappedType }
+                    }
+                } else {
+                    recentSmoker = ""
+                    recentSmokerCount = 0
+                }
+
                 // Save updated data
                 saveTimerDataToPrefs()
-                
+
                 // Update undo button visibility
-                if (activityHistory.isEmpty()) {
-                    btnUndo.visibility = View.GONE
-                }
-                
-                // Refresh session stats
+                btnUndo.visibility = if (activityHistory.isNotEmpty()) View.VISIBLE else View.GONE
+
+                // Refresh UI and session stats
+                updateUI()
                 refreshSessionStats()
                 
             } catch (e: Exception) {
@@ -1792,6 +1992,43 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                     smokerNameText.setTextColor(globalLockedColor!!)
                     recentStatsText.setTextColor(globalLockedColor!!)
                     smokerFontColor = globalLockedColor!!
+                }
+
+                // Update indices and UI/counts for the new smoker
+                currentSmokerIndex = allSmokers.indexOfFirst { it.name == currentSmoker }.takeIf { it >= 0 } ?: 0
+                // Keep current activity type the same; just refresh the counts/label
+                lifecycleScope.launch {
+                    try {
+                        val sessionActivities = withContext(Dispatchers.IO) {
+                            repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                        }
+                        val mappedType = when (currentActivityType) {
+                            "cones" -> com.sam.cloudcounter.ActivityType.CONE
+                            "joints" -> com.sam.cloudcounter.ActivityType.JOINT
+                            "bowls" -> com.sam.cloudcounter.ActivityType.BOWL
+                            "custom" -> com.sam.cloudcounter.ActivityType.CUSTOM
+                            else -> com.sam.cloudcounter.ActivityType.CONE
+                        }
+                        val currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
+                        currentCount = if (currentSmokerObj != null) {
+                            sessionActivities.count { it.smokerId == currentSmokerObj.smokerId && it.type == mappedType }
+                        } else 0
+
+                        // Keep recentSmoker as the last activity's smoker so the bottom label is correct
+                        val last = sessionActivities.maxByOrNull { it.timestamp }
+                        if (last != null) {
+                            val smokerDao = com.sam.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                            val lastSmoker = withContext(Dispatchers.IO) { smokerDao.getSmokerById(last.smokerId) }
+                            recentSmoker = lastSmoker?.name ?: recentSmoker
+                            if (lastSmoker != null) {
+                                recentSmokerCount = sessionActivities.count { it.smokerId == lastSmoker.smokerId && it.type == mappedType }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "$LOG_PREFIX Error refreshing counts on smoker change", e)
+                    } finally {
+                        updateUI()
+                    }
                 }
             }
         }

@@ -30,6 +30,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sharedPreferences = application.getSharedPreferences("graph_prefs", Context.MODE_PRIVATE)
     private val repository: ActivityRepository
+    private val seshPreferences = application.getSharedPreferences("sesh", Context.MODE_PRIVATE)
 
     // This holds the final data for the UI
     private val _chartUiData = MediatorLiveData<ChartUiData>()
@@ -61,6 +62,14 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _showBowls = MutableLiveData(true)
     val showBowls: LiveData<Boolean> = _showBowls
+    
+    // Custom session selection mode for Graph tab (independent of Stats)
+    private val _useCustomSessions = MutableLiveData(false)
+    val useCustomSessions: LiveData<Boolean> = _useCustomSessions
+
+    // List of custom session windows to include (start..end inclusive)
+    private val _customSessionRanges = MutableLiveData<List<Pair<Long, Long>>>(emptyList())
+    val customSessionRanges: LiveData<List<Pair<Long, Long>>> = _customSessionRanges
     
     // Track visibility of custom activities
     private val _showCustomActivities = mutableMapOf<String, MutableLiveData<Boolean>>()
@@ -105,6 +114,13 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         // Add the new LiveData from the repository as a source.
         // Now, any change in the database will trigger refreshChartData().
         _chartUiData.addSource(allActivities) { refreshChartData() }
+
+        // Add custom-session sources
+        _chartUiData.addSource(_useCustomSessions) { refreshChartData() }
+        _chartUiData.addSource(_customSessionRanges) { refreshChartData() }
+
+        // Load persisted settings
+        loadPersistedGraphPrefs()
     }
 
     fun setChartType(type: ChartType) {
@@ -155,6 +171,18 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         if (_selectedSmokerIds.value != null) _selectedSmokerIds.value = null
     }
 
+    fun setUseCustomSessions(enabled: Boolean) {
+        if (_useCustomSessions.value != enabled) {
+            _useCustomSessions.value = enabled
+            sharedPreferences.edit().putBoolean("use_custom_sessions", enabled).apply()
+        }
+    }
+
+    fun setCustomSessions(ranges: List<Pair<Long, Long>>) {
+        _customSessionRanges.value = ranges
+        persistRanges(ranges)
+    }
+
     private fun refreshChartData() {
         viewModelScope.launch {
             // Get the latest values from all our sources
@@ -163,32 +191,69 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             val smokers = _selectedSmokerIds.value
 
             // Generate the chart data using the latest information
-            val data = generateChartData(currentActivities, period, smokers)
+            val useCustom = _useCustomSessions.value == true
+            val ranges = _customSessionRanges.value.orEmpty()
+            val data = generateChartData(currentActivities, period, smokers, useCustom, ranges)
             _chartUiData.postValue(data)
         }
     }
 
     // This function is now synchronous and takes the activity list as a parameter
-    private fun generateChartData(allLogs: List<ActivityLog>, period: TimePeriod, smokers: Set<Long>?): ChartUiData {
-        val (start, end) = getTimeRangeForPeriod(period)
+    private fun generateChartData(
+        allLogs: List<ActivityLog>,
+        period: TimePeriod,
+        smokers: Set<Long>?,
+        useCustom: Boolean,
+        ranges: List<Pair<Long, Long>>
+    ): ChartUiData {
+        Log.d("GraphViewModel", "generateChartData: useCustom=$useCustom, ranges=${ranges.size}")
+        // If current session is selected, treat its end as 'now' to keep graph live-updating
+        val liveRanges = if (useCustom && ranges.isNotEmpty()) {
+            val isActive = seshPreferences.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPreferences.getLong("sessionStart", 0L)
+            if (isActive && sessionStartPref > 0L && ranges.any { it.first == sessionStartPref }) {
+                val adjusted = ranges.map { r ->
+                    if (r.first == sessionStartPref) Pair(r.first, System.currentTimeMillis()) else r
+                }
+                Log.d("GraphViewModel", "Applied LIVE end to current session range: start=$sessionStartPref, end=now")
+                adjusted
+            } else ranges
+        } else ranges
+
+        val (start, end) = if (useCustom && liveRanges.isNotEmpty()) Pair<Long?, Long?>(null, null) else getTimeRangeForPeriod(period)
 
         // Filter the full list of activities based on the current filters
-        val logs = allLogs.filter { log ->
+        val baseFiltered = allLogs.filter { log ->
             val timeMatch = (start == null || log.timestamp >= start) && (end == null || log.timestamp <= end)
             val smokerMatch = smokers.isNullOrEmpty() || smokers.contains(log.smokerId)
             timeMatch && smokerMatch
         }
 
+        val logs = if (useCustom && liveRanges.isNotEmpty()) {
+            baseFiltered.filter { log -> liveRanges.any { r -> log.timestamp in r.first..r.second } }
+        } else baseFiltered
+
         if (logs.isEmpty()) {
-            return ChartUiData(
-                LineData(), "No activity in this period.", period,
-                _chartType.value ?: ChartType.LINE, Pair(start, end), null
-            )
+            val desc = if (useCustom && liveRanges.isNotEmpty()) "No activity in custom selection." else "No activity in this period."
+            val customSpan = if (useCustom && liveRanges.isNotEmpty()) {
+                val minStart = liveRanges.minOf { it.first }
+                val maxEnd = liveRanges.maxOf { it.second }
+                maxEnd - minStart
+            } else 0L
+            val effective = if (useCustom && liveRanges.isNotEmpty()) determineEffectiveDisplayModeFromSpan(customSpan) else null
+            val processed = if (effective != null) mapEffectiveToTimePeriod(effective) else period
+            return ChartUiData(LineData(), desc, processed, _chartType.value ?: ChartType.LINE, Pair(start, end), effective)
         }
 
         val firstLogTime = logs.minOf { it.timestamp }
         val lastLogTime = logs.maxOf { it.timestamp }
-        val effectiveMode = determineEffectiveDisplayMode(period, lastLogTime - firstLogTime)
+        val effectiveMode = if (useCustom && liveRanges.isNotEmpty()) {
+            val minStart = liveRanges.minOf { it.first }
+            val maxEnd = liveRanges.maxOf { it.second }
+            determineEffectiveDisplayModeFromSpan((maxEnd - minStart).coerceAtLeast(0))
+        } else {
+            determineEffectiveDisplayMode(period, lastLogTime - firstLogTime)
+        }
 
         val dataSets = mutableListOf<ILineDataSet>()
         if (_showJoints.value == true) processLogsForChart(logs, ActivityType.JOINT, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Joints").apply { styleDataSet(this, colorJoints) }) }
@@ -211,10 +276,24 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        val descriptionSuffix = period.name.replace("_", " ").lowercase(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
         val displayModeText = if (effectiveMode.name != period.name) " (as ${effectiveMode.name.lowercase(Locale.getDefault())})" else ""
-        val finalDescription = if (dataSets.isEmpty()) "No data for $descriptionSuffix" else "$descriptionSuffix$displayModeText"
-        return ChartUiData(LineData(dataSets), finalDescription, period, _chartType.value ?: ChartType.LINE, Pair(firstLogTime, lastLogTime), effectiveMode)
+        val finalDescription = if (useCustom && liveRanges.isNotEmpty()) {
+            "Custom selection$displayModeText"
+        } else {
+            val descriptionSuffix = period.name.replace("_", " ").lowercase(Locale.getDefault()).replaceFirstChar { it.titlecase(Locale.getDefault()) }
+            "$descriptionSuffix$displayModeText"
+        }
+
+        val processedPeriod = if (useCustom && liveRanges.isNotEmpty()) mapEffectiveToTimePeriod(effectiveMode) else period
+
+        return ChartUiData(
+            LineData(dataSets),
+            finalDescription,
+            processedPeriod,
+            _chartType.value ?: ChartType.LINE,
+            Pair(firstLogTime, lastLogTime),
+            effectiveMode
+        )
     }
 
     private fun determineEffectiveDisplayMode(period: TimePeriod, dataSpanMillis: Long): EffectiveDisplayMode {
@@ -233,6 +312,70 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             dataSpanDays < 30 -> EffectiveDisplayMode.WEEKLY
             dataSpanDays < 365 -> EffectiveDisplayMode.MONTHLY
             else -> EffectiveDisplayMode.YEARLY
+        }
+    }
+
+    private fun determineEffectiveDisplayModeFromSpan(dataSpanMillis: Long): EffectiveDisplayMode {
+        val dataSpanMinutes = TimeUnit.MILLISECONDS.toMinutes(dataSpanMillis)
+        val dataSpanHours = TimeUnit.MILLISECONDS.toHours(dataSpanMillis)
+        val dataSpanDays = TimeUnit.MILLISECONDS.toDays(dataSpanMillis)
+        return when {
+            dataSpanMinutes < 60 -> EffectiveDisplayMode.MINUTELY
+            dataSpanHours < 24 -> EffectiveDisplayMode.HOURLY
+            dataSpanDays < 7 -> EffectiveDisplayMode.DAILY
+            dataSpanDays < 30 -> EffectiveDisplayMode.WEEKLY
+            dataSpanDays < 365 -> EffectiveDisplayMode.MONTHLY
+            else -> EffectiveDisplayMode.YEARLY
+        }
+    }
+
+    private fun mapEffectiveToTimePeriod(mode: EffectiveDisplayMode): TimePeriod {
+        return when (mode) {
+            EffectiveDisplayMode.MINUTELY -> TimePeriod.MINUTELY
+            EffectiveDisplayMode.HOURLY -> TimePeriod.HOURLY
+            EffectiveDisplayMode.DAILY -> TimePeriod.DAILY
+            EffectiveDisplayMode.WEEKLY -> TimePeriod.WEEKLY
+            EffectiveDisplayMode.MONTHLY -> TimePeriod.MONTHLY
+            EffectiveDisplayMode.YEARLY -> TimePeriod.YEARLY
+        }
+    }
+
+    // Persistence helpers
+    private fun loadPersistedGraphPrefs() {
+        val useCustom = sharedPreferences.getBoolean("use_custom_sessions", false)
+        _useCustomSessions.value = useCustom
+        val ranges = readPersistedRanges()
+        _customSessionRanges.value = ranges
+    }
+
+    private fun persistRanges(ranges: List<Pair<Long, Long>>) {
+        try {
+            val arr = org.json.JSONArray()
+            ranges.forEach { (start, end) ->
+                val obj = org.json.JSONObject()
+                    .put("start", start)
+                    .put("end", end)
+                arr.put(obj)
+            }
+            sharedPreferences.edit().putString("custom_session_ranges", arr.toString()).apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun readPersistedRanges(): List<Pair<Long, Long>> {
+        val json = sharedPreferences.getString("custom_session_ranges", null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            val result = mutableListOf<Pair<Long, Long>>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val start = obj.optLong("start", -1L)
+                val end = obj.optLong("end", -1L)
+                if (start >= 0 && end >= 0) result.add(Pair(start, end))
+            }
+            result
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 

@@ -22,7 +22,8 @@ enum class StashTimePeriod {
     TODAY,         // Calendar day (midnight to midnight)
     WEEK,          // Rolling 7 day window
     MONTH,         // Rolling 30 day window
-    YEAR           // Rolling 365 day window
+    YEAR,          // Rolling 365 day window
+    CUSTOM         // Custom selection of sessions
 }
 
 // DATABASE ENTITY

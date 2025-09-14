@@ -7,6 +7,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer // FIX: Added the missing import for Observer
 import androidx.lifecycle.ViewModelProvider
@@ -25,7 +27,9 @@ import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
+import com.github.mikephil.charting.interfaces.datasets.IBarDataSet
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
+import kotlin.math.floor
 import com.google.android.material.chip.Chip
 import com.sam.cloudcounter.databinding.FragmentGraphBinding
 import kotlinx.coroutines.Job
@@ -49,6 +53,12 @@ class GraphFragment : Fragment() {
     private var allSmokersCache: List<Smoker> = emptyList()
     private var smokerSelectionDebounceJob: Job? = null
     private val selectedSmokersInternal = mutableSetOf<Long>()
+    // Track last non-custom time chip to restore on cancel
+    private var lastNonCustomGraphTimeChipId: Int = R.id.chipGraphAllTime
+    // Track selected sessions count to update chip label
+    private var lastSelectedSessionsCountGraph: Int = 0
+    // Guard to prevent double-opening the custom picker dialog
+    private var isGraphCustomDialogShowing: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -78,9 +88,14 @@ class GraphFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             delay(100) // Small delay for layout
             _binding?.let {
-                // Set time period chip
+                // Set time period chip or custom state
+                val useCustom = graphViewModel.useCustomSessions.value == true
                 val initialPeriod = graphViewModel.selectedTimePeriod.value ?: TimePeriod.ALL_TIME
-                it.chipGroupGraphTimePeriod.check(getChipIdForTimePeriod(initialPeriod))
+                if (useCustom) {
+                    it.chipGroupGraphTimePeriod.check(R.id.chipGraphCustom)
+                } else {
+                    it.chipGroupGraphTimePeriod.check(getChipIdForTimePeriod(initialPeriod))
+                }
 
                 // Set chart type chip based on ViewModel's current value
                 val currentChartType = graphViewModel.chartType.value ?: GraphViewModel.ChartType.BAR
@@ -150,6 +165,20 @@ class GraphFragment : Fragment() {
 
         graphViewModel.selectedSmokerIds.observe(viewLifecycleOwner, Observer { ids ->
             updateSelectionSummary(ids)
+        })
+
+        // Observe custom session selections to update chip label and selection
+        graphViewModel.customSessionRanges.observe(viewLifecycleOwner, Observer { ranges ->
+            lastSelectedSessionsCountGraph = ranges?.size ?: 0
+            updateGraphCustomChipLabel(lastSelectedSessionsCountGraph == 0)
+        })
+        graphViewModel.useCustomSessions.observe(viewLifecycleOwner, Observer { useCustom ->
+            val group = _binding?.chipGroupGraphTimePeriod ?: return@Observer
+            if (useCustom == true) {
+                if (group.checkedChipId != R.id.chipGraphCustom) group.check(R.id.chipGraphCustom)
+            } else {
+                if (group.checkedChipId == R.id.chipGraphCustom) group.check(lastNonCustomGraphTimeChipId)
+            }
         })
     }
 
@@ -227,6 +256,15 @@ class GraphFragment : Fragment() {
         barChart.setExtraOffsets(0f, 0f, 0f, 50f)
     }
 
+    private fun updateGraphCustomChipLabel(reset: Boolean = false) {
+        val chip = binding.chipGroupGraphTimePeriod.findViewById<Chip>(R.id.chipGraphCustom)
+        if (reset || lastSelectedSessionsCountGraph <= 0) {
+            chip?.text = "Custom"
+        } else {
+            chip?.text = "${lastSelectedSessionsCountGraph} sesh's selected"
+        }
+    }
+
     private fun showBarChart(chartUiData: ChartUiData) {
         Log.d("GraphDebug", "=== SHOWING BAR CHART ===")
 
@@ -234,93 +272,97 @@ class GraphFragment : Fragment() {
         barChart.visibility = View.VISIBLE
 
         if (chartUiData.lineData != null && chartUiData.lineData.entryCount > 0) {
-            Log.d("GraphDebug", "Converting line data to bar data")
+            Log.d("GraphDebug", "Converting line data to GROUPED bar data")
             Log.d("GraphDebug", "Line data has ${chartUiData.lineData.dataSetCount} datasets")
 
-            // Convert LineData to BarData
-            val barDataSets = mutableListOf<BarDataSet>()
-
-            for (dataSet in chartUiData.lineData.dataSets) {
-                val lineDataSet = dataSet as? LineDataSet ?: continue
-                val barEntries = mutableListOf<BarEntry>()
-
-                Log.d("GraphDebug", "Converting dataset: ${lineDataSet.label} with ${lineDataSet.entryCount} entries")
-
-                for (i in 0 until lineDataSet.entryCount) {
-                    val entry = lineDataSet.getEntryForIndex(i)
-                    barEntries.add(BarEntry(entry.x, entry.y))
+            // 1) Build a sorted list of unique time buckets from all datasets
+            val timestampSet = mutableSetOf<Long>()
+            chartUiData.lineData.dataSets.forEach { ds ->
+                val lds = ds as? LineDataSet ?: return@forEach
+                for (i in 0 until lds.entryCount) {
+                    val e = lds.getEntryForIndex(i)
+                    timestampSet.add(e.x.toLong())
                 }
+            }
+            val timestamps = timestampSet.toList().sorted()
+            val indexByTimestamp = timestamps.withIndex().associate { it.value to it.index }
+            val groupCount = timestamps.size
 
-                val barDataSet = BarDataSet(barEntries, lineDataSet.label)
-                barDataSet.color = lineDataSet.color
-                barDataSet.valueTextColor = Color.WHITE
-                barDataSet.setDrawValues(false)
-
-                barDataSets.add(barDataSet)
+            // 2) For each dataset, create a BarDataSet with one entry per group index (fill 0f for missing)
+            val barDataSets = mutableListOf<BarDataSet>()
+            chartUiData.lineData.dataSets.forEach { ds ->
+                val lds = ds as? LineDataSet ?: return@forEach
+                val yByIndex = FloatArray(groupCount) { 0f }
+                for (i in 0 until lds.entryCount) {
+                    val e = lds.getEntryForIndex(i)
+                    val idx = indexByTimestamp[e.x.toLong()] ?: continue
+                    yByIndex[idx] = e.y
+                }
+                val bars = ArrayList<BarEntry>(groupCount)
+                for (i in 0 until groupCount) {
+                    bars.add(BarEntry(i.toFloat(), yByIndex[i]))
+                }
+                val bds = BarDataSet(bars, lds.label)
+                bds.color = lds.color
+                bds.valueTextColor = Color.WHITE
+                bds.setDrawValues(false)
+                barDataSets.add(bds)
             }
 
-            if (barDataSets.isNotEmpty()) {
-                val barData = BarData(barDataSets.toList())
+            if (barDataSets.isNotEmpty() && groupCount > 0) {
+                val iSets: List<IBarDataSet> = barDataSets.map { it as IBarDataSet }
+                val barData = BarData(iSets)
 
-                // Bar width calculation based on effective display mode
-                val entryCount = barDataSets.maxOfOrNull { it.entryCount } ?: 1
-                val effectiveMode = chartUiData.effectiveDisplayMode
-                val period = chartUiData.processedPeriod
+                // 3) Configure grouped bars: define space distribution inside each group
+                val dataSetCount = barDataSets.size
+                val groupSpace = 0.20f
+                val barSpace = 0.02f
+                val barWidth = ((1f - groupSpace) / dataSetCount) - barSpace
+                barData.barWidth = barWidth.coerceAtLeast(0.02f)
 
-                val barWidth = when (effectiveMode) {
-                    EffectiveDisplayMode.MINUTELY -> 180000f // 3 minutes
-                    EffectiveDisplayMode.HOURLY -> 1800000f // 30 minutes
-                    EffectiveDisplayMode.DAILY -> 3600000f // 1 hour
-                    EffectiveDisplayMode.WEEKLY -> 43200000f // 12 hours
-                    EffectiveDisplayMode.MONTHLY -> 86400000f // 1 day
-                    EffectiveDisplayMode.YEARLY -> 2592000000f // 30 days
-                    else -> {
-                        // Fallback to period-based width
-                        when (period) {
-                            TimePeriod.MINUTELY -> 180000f // 3 minutes
-                            TimePeriod.HOURLY -> 1800000f
-                            TimePeriod.DAILY -> 3600000f
-                            TimePeriod.WEEKLY -> 43200000f
-                            TimePeriod.FORTNIGHTLY -> 43200000f
-                            TimePeriod.MONTHLY -> 86400000f
-                            TimePeriod.YEARLY -> 2592000000f
-                            TimePeriod.ALL_TIME -> {
-                                val range = barData.xMax - barData.xMin
-                                if (range > 0) {
-                                    (range / (entryCount * 3)).toFloat()
-                                } else {
-                                    86400000f
-                                }
-                            }
-                        }
-                    }
+                // 4) Axis: switch to index-based groups with timestamp labels
+                val xAxis = barChart.xAxis
+                xAxis.setCenterAxisLabels(true)
+                // Set axis range to fit all groups
+                val startX = 0f
+                val groupWidth = barData.getGroupWidth(groupSpace, barSpace)
+                // Use group width for granularity so ticks align with groups
+                xAxis.granularity = groupWidth
+                xAxis.isGranularityEnabled = true
+                xAxis.setAvoidFirstLastClipping(false)
+                // Aim for ~8 labels or fewer
+                val desiredLabels = if (groupCount > 8) 8 else groupCount
+                xAxis.setLabelCount(desiredLabels, true)
+
+                // Use index->timestamp formatter for labels with grouping geometry
+                xAxis.valueFormatter = IndexTimestampAxisValueFormatter(timestamps, chartUiData.processedPeriod, startX, groupWidth)
+
+                xAxis.axisMinimum = startX
+                xAxis.axisMaximum = startX + groupWidth * groupCount
+
+                // Apply grouping
+                try {
+                    barData.groupBars(startX, groupSpace, barSpace)
+                } catch (e: Exception) {
+                    Log.w("GraphDebug", "groupBars failed: ${e.message}")
                 }
 
-                barData.barWidth = barWidth
-
-                Log.d("GraphDebug", "Bar data created: ${barDataSets.size} datasets, width: $barWidth, period: $period, effective: $effectiveMode")
-
-                // Dynamic height
+                // 5) Dynamic height based on group count
                 val baseHeightPx = (300 * resources.displayMetrics.density).toInt()
-                val extraPerEntryPx = (0.5f * resources.displayMetrics.density).toInt()
-                val computedHeight = baseHeightPx + entryCount * extraPerEntryPx
+                val extraPerGroupPx = (0.5f * resources.displayMetrics.density).toInt()
+                val computedHeight = baseHeightPx + groupCount * extraPerGroupPx
                 val maxHeight = (resources.displayMetrics.heightPixels * 0.8).toInt()
                 val finalHeight = computedHeight.coerceAtMost(maxHeight)
-
-                barChart.layoutParams = barChart.layoutParams.apply {
-                    height = finalHeight
-                }
+                barChart.layoutParams = barChart.layoutParams.apply { height = finalHeight }
                 barChart.requestLayout()
 
-                barChart.xAxis.valueFormatter = TimestampXAxisValueFormatter(chartUiData.processedPeriod)
-                configureXAxisLabelCount(barChart.xAxis, barData, chartUiData.processedPeriod, chartUiData.effectiveDisplayMode)
-
+                // 6) Assign data and refresh
                 barChart.data = barData
                 barChart.description.text = chartUiData.descriptionText
                 barChart.animateY(750)
                 barChart.invalidate()
 
-                Log.d("GraphDebug", "Bar chart updated successfully")
+                Log.d("GraphDebug", "Grouped Bar chart updated: groups=$groupCount, sets=${dataSetCount}, barWidth=$barWidth")
             } else {
                 Log.d("GraphDebug", "No bar datasets created")
                 barChart.clear()
@@ -355,12 +397,19 @@ class GraphFragment : Fragment() {
             }
             lineChart.requestLayout()
 
-            customizeDataSetsInFragment(chartUiData.lineData)
+            // Build a jittered copy so overlapping datasets are visible
+            val jitteredData = buildJitteredLineData(
+                chartUiData.lineData,
+                chartUiData.effectiveDisplayMode,
+                chartUiData.processedPeriod
+            )
+
+            customizeDataSetsInFragment(jitteredData)
 
             lineChart.xAxis.valueFormatter = TimestampXAxisValueFormatter(chartUiData.processedPeriod)
-            configureXAxisLabelCount(lineChart.xAxis, chartUiData.lineData, chartUiData.processedPeriod, chartUiData.effectiveDisplayMode)
+            configureXAxisLabelCount(lineChart.xAxis, jitteredData, chartUiData.processedPeriod, chartUiData.effectiveDisplayMode)
 
-            lineChart.data = chartUiData.lineData
+            lineChart.data = jitteredData
             lineChart.description.text = chartUiData.descriptionText
             lineChart.animateX(750)
             lineChart.invalidate()
@@ -372,6 +421,56 @@ class GraphFragment : Fragment() {
         }
 
         Log.d("GraphFragment", "=== LINE CHART COMPLETE ===")
+    }
+
+    // Create a copy of LineData with per-dataset x-jitter so overlapping values are visible.
+    private fun buildJitteredLineData(
+        source: LineData,
+        effectiveMode: EffectiveDisplayMode?,
+        processedPeriod: TimePeriod
+    ): LineData {
+        val dataSetCount = source.dataSetCount
+        if (dataSetCount <= 1) return source
+
+        val effMode = effectiveMode ?: runCatching { EffectiveDisplayMode.valueOf(processedPeriod.name) }.getOrNull()
+        val bucketWidthMs = when (effMode) {
+            EffectiveDisplayMode.MINUTELY -> 60_000f
+            EffectiveDisplayMode.HOURLY -> 3_600_000f
+            EffectiveDisplayMode.DAILY -> 86_400_000f
+            EffectiveDisplayMode.WEEKLY -> 86_400_000f // daily buckets across a week
+            EffectiveDisplayMode.MONTHLY -> 86_400_000f // daily buckets across a month
+            EffectiveDisplayMode.YEARLY -> 2_592_000_000f // ~30 days
+            else -> 86_400_000f
+        }
+
+        // Spread datasets within a fraction of the bucket (smaller for larger buckets)
+        val jitterFraction = when (effMode) {
+            EffectiveDisplayMode.MINUTELY -> 0.6f
+            EffectiveDisplayMode.HOURLY -> 0.5f
+            EffectiveDisplayMode.DAILY, EffectiveDisplayMode.WEEKLY, EffectiveDisplayMode.MONTHLY -> 0.25f
+            EffectiveDisplayMode.YEARLY -> 0.10f
+            else -> 0.25f
+        }
+        val totalJitter = bucketWidthMs * jitterFraction
+        val step = if (dataSetCount > 1) totalJitter / (dataSetCount - 1) else 0f
+        val center = -totalJitter / 2f
+
+        val newSets = mutableListOf<LineDataSet>()
+        for ((idx, ds) in source.dataSets.withIndex()) {
+            val lds = ds as? LineDataSet ?: continue
+            val offset = center + step * idx
+            val newEntries = ArrayList<com.github.mikephil.charting.data.Entry>(lds.entryCount)
+            for (i in 0 until lds.entryCount) {
+                val e = lds.getEntryForIndex(i)
+                newEntries.add(com.github.mikephil.charting.data.Entry(e.x + offset, e.y))
+            }
+            val copy = LineDataSet(newEntries, lds.label)
+            // Preserve color; styling will be applied later
+            copy.color = lds.color
+            copy.setCircleColor(lds.color)
+            newSets.add(copy)
+        }
+        return LineData(newSets as List<com.github.mikephil.charting.interfaces.datasets.ILineDataSet>)
     }
 
     fun refreshGraph() {
@@ -620,9 +719,11 @@ class GraphFragment : Fragment() {
         for (iDataSet: ILineDataSet in data.dataSets) {
             if (iDataSet is LineDataSet) {
                 // Common styling for all lines
-                iDataSet.circleRadius = 3.0f
-                iDataSet.setDrawCircleHole(false)
-                iDataSet.lineWidth = 2.0f
+                iDataSet.circleRadius = 4.0f
+                iDataSet.setDrawCircleHole(true)
+                iDataSet.circleHoleRadius = 2.2f
+                iDataSet.setCircleHoleColor(Color.WHITE)
+                iDataSet.lineWidth = 2.2f
                 iDataSet.setDrawValues(false)
                 iDataSet.valueTextColor = ContextCompat.getColor(requireContext(), R.color.text_on_dark_background)
                 iDataSet.mode = LineDataSet.Mode.HORIZONTAL_BEZIER
@@ -668,7 +769,31 @@ class GraphFragment : Fragment() {
         binding.chipGroupGraphTimePeriod.setOnCheckedStateChangeListener { group, checkedIds ->
             if (checkedIds.isNotEmpty()) {
                 val chipId = checkedIds.first()
-                if (group.findViewById<View>(chipId) != null) {
+                if (chipId == R.id.chipGraphCustom) {
+                    // Enter custom session selection mode
+                    showCustomSessionPickerDialog(
+                        onDone = { selectedRanges ->
+                            if (selectedRanges.isEmpty()) {
+                                graphViewModel.setUseCustomSessions(false)
+                                group.check(lastNonCustomGraphTimeChipId)
+                                if (lastSelectedSessionsCountGraph == 0) updateGraphCustomChipLabel(true)
+                            } else {
+                                graphViewModel.setCustomSessions(selectedRanges)
+                                graphViewModel.setUseCustomSessions(true)
+                                lastSelectedSessionsCountGraph = selectedRanges.size
+                                updateGraphCustomChipLabel(false)
+                            }
+                        },
+                        onCancel = {
+                            graphViewModel.setUseCustomSessions(false)
+                            group.check(lastNonCustomGraphTimeChipId)
+                            if (lastSelectedSessionsCountGraph == 0) updateGraphCustomChipLabel(true)
+                        }
+                    )
+                } else if (group.findViewById<View>(chipId) != null) {
+                    // Record non-custom selection and disable custom mode
+                    lastNonCustomGraphTimeChipId = chipId
+                    graphViewModel.setUseCustomSessions(false)
                     val period = when (chipId) {
                         R.id.chipGraphMinutely -> TimePeriod.MINUTELY
                         R.id.chipGraphHourly -> TimePeriod.HOURLY
@@ -688,6 +813,39 @@ class GraphFragment : Fragment() {
                 } else {
                     Log.e("GraphFragment", "Selected chip ID not found in group: $chipId")
                 }
+            }
+        }
+
+        // Allow tapping the Custom chip again to reopen and edit selection
+        binding.root.post {
+            val customChip = binding.chipGroupGraphTimePeriod.findViewById<Chip>(R.id.chipGraphCustom)
+            customChip?.setOnClickListener {
+                val alreadyChecked = binding.chipGroupGraphTimePeriod.checkedChipId == R.id.chipGraphCustom
+                if (!alreadyChecked) return@setOnClickListener
+                showCustomSessionPickerDialog(
+                    onDone = { selectedRanges ->
+                        if (selectedRanges.isEmpty()) {
+                            graphViewModel.setUseCustomSessions(false)
+                            if (binding.chipGroupGraphTimePeriod.checkedChipId == R.id.chipGraphCustom) {
+                                binding.chipGroupGraphTimePeriod.check(lastNonCustomGraphTimeChipId)
+                            }
+                            if (lastSelectedSessionsCountGraph == 0) updateGraphCustomChipLabel(true)
+                        } else {
+                            graphViewModel.setCustomSessions(selectedRanges)
+                            graphViewModel.setUseCustomSessions(true)
+                            lastSelectedSessionsCountGraph = selectedRanges.size
+                            if (binding.chipGroupGraphTimePeriod.checkedChipId != R.id.chipGraphCustom) {
+                                binding.chipGroupGraphTimePeriod.check(R.id.chipGraphCustom)
+                            }
+                            updateGraphCustomChipLabel(false)
+                        }
+                    },
+                    onCancel = {
+                        if (lastSelectedSessionsCountGraph == 0 && binding.chipGroupGraphTimePeriod.checkedChipId == R.id.chipGraphCustom) {
+                            binding.chipGroupGraphTimePeriod.check(lastNonCustomGraphTimeChipId)
+                        }
+                    }
+                )
             }
         }
     }
@@ -799,6 +957,410 @@ class GraphFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
+    // ===== Custom Session Picker Dialog (1:1 styling with Stats) =====
+    private fun showCustomSessionPickerDialog(
+        onDone: (List<Pair<Long, Long>>) -> Unit,
+        onCancel: () -> Unit
+    ) {
+        // Prevent double-opening due to both ChipGroup state change and chip click firing
+        if (isGraphCustomDialogShowing) return
+        isGraphCustomDialogShowing = true
+
+        val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+
+        val rootContainer = android.widget.FrameLayout(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        val mainCard = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 16.dpToPx().toFloat()
+            cardElevation = 8.dpToPx().toFloat()
+            setCardBackgroundColor(Color.parseColor("#E64A4A4A"))
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).let {
+                android.widget.FrameLayout.LayoutParams(it.width, it.height).apply {
+                    gravity = android.view.Gravity.CENTER
+                    setMargins(16.dpToPx(), 0, 16.dpToPx(), 0)
+                }
+            }
+        }
+
+        val contentLayout = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(20.dpToPx(), 20.dpToPx(), 20.dpToPx(), 12.dpToPx())
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+
+        val titleText = android.widget.TextView(requireContext()).apply {
+            text = "SELECT SESSIONS"
+            textSize = 18f
+            setTextColor(Color.parseColor("#98FB98"))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            letterSpacing = 0.1f
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+        }
+        contentLayout.addView(titleText)
+
+        val subtitle = android.widget.TextView(requireContext()).apply {
+            text = "Tap to select multiple sessions"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            gravity = android.view.Gravity.CENTER
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 12.dpToPx()
+            }
+        }
+        contentLayout.addView(subtitle)
+
+        val divider = View(requireContext()).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2.dpToPx()).apply {
+                topMargin = 4.dpToPx()
+                bottomMargin = 12.dpToPx()
+            }
+            setBackgroundColor(Color.parseColor("#3398FB98"))
+        }
+        contentLayout.addView(divider)
+
+        val scroll = android.widget.ScrollView(requireContext()).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        val listContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        scroll.addView(listContainer)
+        contentLayout.addView(scroll)
+
+        val buttonRow = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = 12.dpToPx()
+            }
+        }
+
+        val cancelButton = createGraphThemedDialogButton("Cancel", false, Color.WHITE) {
+            animateCardSelectionQuick(dialog) { onCancel() }
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginEnd = 8.dpToPx() }
+        }
+
+        val selectedRanges = mutableListOf<Pair<Long, Long>>()
+        graphViewModel.customSessionRanges.value?.let { selectedRanges.addAll(it) }
+
+        val doneButton = createGraphThemedDialogButton("Done", true, Color.parseColor("#98FB98")) {
+            // If current session is selected, refresh its end time to 'now' before returning
+            val seshPrefs = requireContext().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+            val isActive = seshPrefs.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPrefs.getLong("sessionStart", 0L)
+            if (isActive && sessionStartPref > 0L && selectedRanges.any { it.first == sessionStartPref }) {
+                selectedRanges.removeAll { it.first == sessionStartPref }
+                selectedRanges.add(Pair(sessionStartPref, System.currentTimeMillis()))
+            }
+            val finalList = selectedRanges.toList()
+            animateCardSelectionQuick(dialog) { onDone(finalList) }
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, 44.dpToPx(), 1f).apply { marginStart = 8.dpToPx() }
+        }
+
+        buttonRow.addView(cancelButton)
+        buttonRow.addView(doneButton)
+        contentLayout.addView(buttonRow)
+        mainCard.addView(contentLayout)
+        rootContainer.addView(mainCard)
+
+        // Dismiss when tapping outside
+        rootContainer.setOnClickListener { v -> if (v == rootContainer) animateCardSelectionQuick(dialog) { onCancel() } }
+
+        dialog.setContentView(rootContainer)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.parseColor("#80000000")))
+            setFlags(android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, android.view.WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED)
+        }
+
+        // Reset guard when dialog is dismissed from any path
+        dialog.setOnDismissListener { isGraphCustomDialogShowing = false }
+
+        // Populate sessions list (most recent first)
+        val app = requireActivity().application as CloudCounterApplication
+        val repo = app.repository
+        repo.allSummaries.observe(viewLifecycleOwner) { list ->
+            listContainer.removeAllViews()
+            // Add current session card if active
+            val seshPrefs = requireContext().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+            val isActive = seshPrefs.getBoolean("sessionActive", false)
+            val sessionStartPref = seshPrefs.getLong("sessionStart", 0L)
+            val currentRoomName = seshPrefs.getString("currentRoomName", null)
+            if (isActive && sessionStartPref > 0L) {
+                val endNow = System.currentTimeMillis()
+                val initiallySelected = selectedRanges.any { it.first == sessionStartPref }
+                val currentItem = createGraphCurrentSessionListItemView(
+                    title = currentRoomName ?: "Current Session",
+                    start = sessionStartPref,
+                    end = endNow,
+                    initiallySelected = initiallySelected
+                ) { view, isSelected ->
+                    if (isSelected) {
+                        // Replace or add with up-to-date end time
+                        selectedRanges.removeAll { it.first == sessionStartPref }
+                        selectedRanges.add(Pair(sessionStartPref, System.currentTimeMillis()))
+                        setNeonBorder(view, true)
+                    } else {
+                        selectedRanges.removeAll { it.first == sessionStartPref }
+                        setNeonBorder(view, false)
+                    }
+                }
+                listContainer.addView(currentItem)
+            }
+            val sessions = list.sortedByDescending { it.timestamp }
+            sessions.forEach { summary ->
+                val start = (summary.timestamp - summary.sessionLength).coerceAtLeast(0)
+                val end = summary.timestamp
+                val initiallySelected = selectedRanges.contains(Pair(start, end))
+                val item = createGraphSessionListItemView(summary, start, end, initiallySelected) { view, isSelected ->
+                    if (isSelected) {
+                        selectedRanges.add(Pair(start, end))
+                        setNeonBorder(view, true)
+                    } else {
+                        selectedRanges.remove(Pair(start, end))
+                        setNeonBorder(view, false)
+                    }
+                }
+                listContainer.addView(item)
+            }
+        }
+
+        // Ensure buttons remain above the system bottom navigation bar (match Stats)
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { _, insets ->
+            val bottomInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            val extra = (12 * resources.displayMetrics.density).toInt()
+            contentLayout.setPadding(
+                contentLayout.paddingLeft,
+                contentLayout.paddingTop,
+                contentLayout.paddingRight,
+                extra + bottomInset
+            )
+            insets
+        }
+
+        // Fade in
+        rootContainer.alpha = 0f
+        dialog.show()
+        performManualFadeIn(rootContainer, 250L)
+    }
+
+    private fun createGraphSessionListItemView(
+        summary: SessionSummary,
+        start: Long,
+        end: Long,
+        initiallySelected: Boolean,
+        onToggle: (View, Boolean) -> Unit
+    ): View {
+        val container = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+            background = android.graphics.drawable.ColorDrawable(Color.parseColor("#262626"))
+        }
+
+        val card = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 12.dpToPx().toFloat()
+            cardElevation = 2.dpToPx().toFloat()
+            setCardBackgroundColor(Color.parseColor("#2C2C2C"))
+        }
+
+        val inner = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+        }
+
+        val title = android.widget.TextView(requireContext()).apply {
+            val name = summary.roomName ?: "Local Session"
+            text = name
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        val fmt = java.text.SimpleDateFormat("MMM d, h:mma", java.util.Locale.getDefault())
+        val durationMin = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes((end - start).coerceAtLeast(0))
+        val subtitle = android.widget.TextView(requireContext()).apply {
+            text = "${fmt.format(java.util.Date(start))} → ${fmt.format(java.util.Date(end))}  •  ${durationMin} min"
+            setTextColor(Color.LTGRAY)
+            textSize = 12f
+        }
+
+        val statsLine = android.widget.TextView(requireContext()).apply {
+            val total = summary.totalCones
+            text = "Total: ${total}"
+            setTextColor(Color.LTGRAY)
+            textSize = 12f
+        }
+
+        inner.addView(title)
+        inner.addView(subtitle)
+        inner.addView(statsLine)
+        card.addView(inner)
+        container.addView(card)
+
+        var selected = initiallySelected
+        setNeonBorder(card, selected)
+        container.setOnClickListener {
+            selected = !selected
+            onToggle(card, selected)
+        }
+
+        return container
+    }
+
+    private fun createGraphCurrentSessionListItemView(
+        title: String,
+        start: Long,
+        end: Long,
+        initiallySelected: Boolean,
+        onToggle: (View, Boolean) -> Unit
+    ): View {
+        val container = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+            background = android.graphics.drawable.ColorDrawable(Color.parseColor("#262626"))
+        }
+
+        val card = androidx.cardview.widget.CardView(requireContext()).apply {
+            radius = 12.dpToPx().toFloat()
+            cardElevation = 2.dpToPx().toFloat()
+            setCardBackgroundColor(Color.parseColor("#2C2C2C"))
+        }
+
+        val inner = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 12.dpToPx())
+        }
+
+        val titleView = android.widget.TextView(requireContext()).apply {
+            text = title
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+
+        val fmt = java.text.SimpleDateFormat("MMM d, h:mma", java.util.Locale.getDefault())
+        val durationMin = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes((end - start).coerceAtLeast(0))
+        val subtitle = android.widget.TextView(requireContext()).apply {
+            text = "${fmt.format(java.util.Date(start))} → ${fmt.format(java.util.Date(end))}  •  ${durationMin} min"
+            setTextColor(Color.LTGRAY)
+            textSize = 12f
+        }
+
+        val statsLine = android.widget.TextView(requireContext()).apply {
+            text = "Live"
+            setTextColor(Color.LTGRAY)
+            textSize = 12f
+        }
+
+        inner.addView(titleView)
+        inner.addView(subtitle)
+        inner.addView(statsLine)
+        card.addView(inner)
+        container.addView(card)
+
+        var selected = initiallySelected
+        setNeonBorder(card, selected)
+        container.setOnClickListener {
+            selected = !selected
+            onToggle(card, selected)
+        }
+
+        return container
+    }
+
+    private fun setNeonBorder(view: View, selected: Boolean) {
+        val bg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 12.dpToPx().toFloat()
+            setColor(Color.parseColor("#2C2C2C"))
+            val strokeColor = if (selected) Color.parseColor("#98FB98") else Color.parseColor("#303030")
+            setStroke((2 * resources.displayMetrics.density).toInt(), strokeColor)
+        }
+        (view as? androidx.cardview.widget.CardView)?.background = bg
+    }
+
+    private fun performManualFadeIn(view: View, durationMs: Long) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val startTime = System.currentTimeMillis()
+        val endTime = startTime + durationMs
+        val frameDelayMs = 16L
+        val runnable = object : Runnable {
+            override fun run() {
+                val now = System.currentTimeMillis()
+                val progress = ((now - startTime).toFloat() / durationMs).coerceIn(0f, 1f)
+                val eased = 1f - (1f - progress) * (1f - progress)
+                view.alpha = eased
+                if (now < endTime) handler.postDelayed(this, frameDelayMs) else view.alpha = 1f
+            }
+        }
+        handler.post(runnable)
+    }
+
+    private fun createGraphThemedDialogButton(text: String, isPrimary: Boolean, color: Int, onClick: () -> Unit): View {
+        val ctx = requireContext()
+        val buttonContainer = androidx.cardview.widget.CardView(ctx).apply {
+            radius = 20.dpToPx().toFloat()
+            cardElevation = if (isPrimary) 4.dpToPx().toFloat() else 0f
+            setCardBackgroundColor(if (isPrimary) color else Color.parseColor("#33FFFFFF"))
+            layoutParams = android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 48.dpToPx()).apply {
+                bottomMargin = 12.dpToPx()
+            }
+            isClickable = true
+            isFocusable = true
+        }
+
+        val contentFrame = android.widget.FrameLayout(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+
+        val buttonText = android.widget.TextView(ctx).apply {
+            this.text = text
+            textSize = 14f
+            setTextColor(if (isPrimary) Color.parseColor("#424242") else Color.WHITE)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            layoutParams = android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+
+        contentFrame.addView(buttonText)
+        buttonContainer.addView(contentFrame)
+
+        buttonContainer.setOnClickListener { onClick() }
+        return buttonContainer
+    }
+
+    private fun animateCardSelectionQuick(dialog: android.app.Dialog, onComplete: () -> Unit) {
+        val contentView = dialog.window?.decorView?.findViewById<View>(android.R.id.content)
+        val fadeOut = android.animation.ObjectAnimator.ofFloat(contentView, "alpha", 1f, 0f).apply {
+            duration = 400L
+            interpolator = android.view.animation.AccelerateInterpolator()
+        }
+        fadeOut.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                dialog.dismiss()
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ onComplete() }, 100)
+            }
+        })
+        fadeOut.start()
+    }
+
+    private fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 }
 
 class TimestampXAxisValueFormatterWithSkip(
@@ -1034,6 +1596,28 @@ class TimestampXAxisValueFormatter(private var timePeriod: TimePeriod) : ValueFo
         } catch (e: Exception) {
             Log.e("XAxisFormatter", "Error formatting timestamp: $value for period $timePeriod", e)
             value.toLong().toString()
+        }
+    }
+}
+
+// Maps x-index (group index) back to a timestamp label using existing timestamp formatter
+class IndexTimestampAxisValueFormatter(
+    private val timestamps: List<Long>,
+    private val period: TimePeriod,
+    private val startX: Float,
+    private val groupWidth: Float
+) : ValueFormatter() {
+    private val delegate = TimestampXAxisValueFormatter(period)
+
+    override fun getAxisLabel(value: Float, axis: com.github.mikephil.charting.components.AxisBase?): String {
+        if (timestamps.isEmpty()) return ""
+        // Convert chart x back to group index using group geometry
+        val idx = floor(((value - startX) / groupWidth).toDouble()).toInt().coerceIn(0, timestamps.size - 1)
+        val ts = timestamps[idx]
+        return try {
+            delegate.getAxisLabel(ts.toFloat(), axis)
+        } catch (_: Exception) {
+            ""
         }
     }
 }

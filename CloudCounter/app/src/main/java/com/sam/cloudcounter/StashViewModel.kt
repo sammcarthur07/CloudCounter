@@ -73,11 +73,21 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
         private const val PROJECTION_UPDATE_INTERVAL_MS = 3000L // Update every 3 seconds
     }
 
+    // Custom session selection for stash tab (independent)
+    private val sharedPrefs = application.getSharedPreferences("stash_prefs", android.content.Context.MODE_PRIVATE)
+    private val _useCustomSessions = MutableLiveData(false)
+    val useCustomSessions: LiveData<Boolean> = _useCustomSessions
+    private val _customSessionRanges = MutableLiveData<List<Pair<Long, Long>>>(emptyList())
+    val customSessionRanges: LiveData<List<Pair<Long, Long>>> = _customSessionRanges
+
     init {
         loadCurrentStash()
         loadStashHistory()
         loadRatios()
         calculateConesPerBowl()
+        // Load persisted custom selection
+        _useCustomSessions.value = sharedPrefs.getBoolean("stash_use_custom_sessions", false)
+        _customSessionRanges.value = readPersistedRanges()
     }
 
     fun setCurrentUserId(userId: String) {
@@ -239,6 +249,50 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     fun setLastCompletedSessionId(sessionId: Long?) {
         lastCompletedSessionId = sessionId
         Log.d("STASH_VM", "Last completed session ID set: $sessionId")
+    }
+
+    fun setUseCustomSessions(enabled: Boolean) {
+        if (_useCustomSessions.value == enabled) return
+        _useCustomSessions.value = enabled
+        sharedPrefs.edit().putBoolean("stash_use_custom_sessions", enabled).apply()
+        recalculateStats()
+    }
+
+    fun setCustomSessions(ranges: List<Pair<Long, Long>>) {
+        _customSessionRanges.value = ranges
+        persistRanges(ranges)
+        recalculateStats()
+    }
+
+    private fun persistRanges(ranges: List<Pair<Long, Long>>) {
+        try {
+            val arr = org.json.JSONArray()
+            ranges.forEach { (start, end) ->
+                val obj = org.json.JSONObject()
+                    .put("start", start)
+                    .put("end", end)
+                arr.put(obj)
+            }
+            sharedPrefs.edit().putString("stash_custom_session_ranges", arr.toString()).apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun readPersistedRanges(): List<Pair<Long, Long>> {
+        val json = sharedPrefs.getString("stash_custom_session_ranges", null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            val result = mutableListOf<Pair<Long, Long>>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val start = obj.optLong("start", -1L)
+                val end = obj.optLong("end", -1L)
+                if (start >= 0 && end >= 0) result.add(Pair(start, end))
+            }
+            result
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     fun loadStashHistory() {
@@ -713,13 +767,26 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                 Log.d(TAG, "Recalculating stats: $statsType, $timePeriod, $dataScope")
 
                 // Use the existing statsCalculator instance and pass currentUserId
+                // Prepare custom ranges with live end if current session is included
+                val useCustom = _useCustomSessions.value == true
+                val rawRanges = _customSessionRanges.value.orEmpty()
+                val liveRanges = if (useCustom && rawRanges.isNotEmpty()) {
+                    val seshPrefs = getApplication<Application>().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+                    val isActive = seshPrefs.getBoolean("sessionActive", false)
+                    val sessionStartPref = seshPrefs.getLong("sessionStart", 0L)
+                    if (isActive && sessionStartPref > 0L && rawRanges.any { it.first == sessionStartPref }) {
+                        rawRanges.map { r -> if (r.first == sessionStartPref) Pair(r.first, System.currentTimeMillis()) else r }
+                    } else rawRanges
+                } else rawRanges
+
                 val stats = statsCalculator.calculate(
                     statsType = statsType,
                     timePeriod = timePeriod,
                     dataScope = dataScope,
                     sessionStartTime = sessionStartTime,
                     lastCompletedSessionId = lastCompletedSessionId,
-                    currentUserId = currentUserId  // Pass the stored user ID
+                    currentUserId = currentUserId,  // Pass the stored user ID
+                    customRanges = if (useCustom) liveRanges else emptyList()
                 )
 
                 _stashStats.value = stats
