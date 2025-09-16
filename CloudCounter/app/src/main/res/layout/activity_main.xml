@@ -140,16 +140,13 @@
     </LinearLayout>
 
     <!-- Dynamic activity button container for custom activities -->
-    <LinearLayout
-        android:id="@+id/activityButtonContainer"
+    <FrameLayout
+        android:id="@+id/activityButtonWrapper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingTop="0dp"
-        android:paddingBottom="8dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:visibility="visible" />
+        android:layout_height="wrap_content">
+        
+        <!-- This will be populated dynamically with either a LinearLayout or HorizontalScrollView -->
+    </FrameLayout>
 
     <!-- Original static button layout - now hidden -->
     <LinearLayout

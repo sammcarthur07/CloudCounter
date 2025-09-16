@@ -18,7 +18,7 @@ class CustomActivityManager(private val context: Context) {
         private const val KEY_ACTIVITY_ORDER = "activity_button_order"
         private const val KEY_DISABLED_CORE = "disabled_core_activities"
         private const val DEFAULT_ORDER = "joint,cone,bowl"
-        const val MAX_TOTAL_ACTIVITIES = 4
+        const val MAX_TOTAL_ACTIVITIES = 15
     }
     
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

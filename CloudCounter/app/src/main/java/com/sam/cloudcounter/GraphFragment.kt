@@ -871,40 +871,59 @@ class GraphFragment : Fragment() {
         // Get active custom activities from CustomActivityManager
         val customActivityManager = (requireActivity() as? MainActivity)?.customActivityManager
         if (customActivityManager != null) {
-            // Get currently active custom activities from the manager
-            val activeCustomActivities = customActivityManager.getCustomActivities()
+            // Initial update
+            updateActivityUI(customActivityManager)
             
-            // Update UI with active custom activities
-            updateCustomActivityCheckboxes(activeCustomActivities)
-            updateCustomActivityLegend(activeCustomActivities)
-            
-            // Also observe for changes in logged activities to refresh the graph
-            val repo = (requireActivity().application as CloudCounterApplication).repository
-            repo.allActivities.observe(viewLifecycleOwner) { _ ->
-                // Refresh UI when activities change
-                val currentCustomActivities = customActivityManager.getCustomActivities()
-                updateCustomActivityCheckboxes(currentCustomActivities)
-                updateCustomActivityLegend(currentCustomActivities)
+            // Listen for custom activity changes broadcast from MainActivity using LocalBroadcastManager
+            val filter = android.content.IntentFilter("com.sam.cloudcounter.CUSTOM_ACTIVITIES_CHANGED")
+            val receiver = object : android.content.BroadcastReceiver() {
+                override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                    Log.d("GraphFragment", "📡 Received custom activities changed broadcast")
+                    // Refresh UI when custom activities change
+                    updateActivityUI(customActivityManager)
+                    // Trigger chart refresh to update with new activities
+                    graphViewModel.refreshChartData()
+                }
             }
+            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(requireContext())
+                .registerReceiver(receiver, filter)
+            
+            // Store receiver to unregister later
+            customActivityReceiver = receiver
         }
     }
     
+    private fun updateActivityUI(customActivityManager: CustomActivityManager) {
+        val activeCustomActivities = customActivityManager.getCustomActivities()
+        updateCustomActivityCheckboxes(activeCustomActivities)
+        updateCustomActivityLegend(activeCustomActivities)
+    }
+    
+    // Store the receiver to unregister it later
+    private var customActivityReceiver: android.content.BroadcastReceiver? = null
+    
     private fun updateCustomActivityCheckboxes(customActivities: List<CustomActivity>) {
-        // Get the parent container of the checkboxes
-        val checkboxContainer = binding.checkBoxShowJoints.parent as? LinearLayout ?: return
+        // Get the toggle lines container (now using the new ID)
+        val checkboxContainer = binding.toggleLinesContainer
         
         // Remove any existing custom activity checkboxes (keep first 3 for joints/cones/bowls)
         while (checkboxContainer.childCount > 3) {
             checkboxContainer.removeViewAt(3)
         }
         
-        // Add checkbox for each custom activity
+        // Add checkbox for each custom activity (support up to 12 custom = 15 total)
         customActivities.forEach { activity ->
             val checkbox = CheckBox(requireContext()).apply {
                 text = activity.name
                 isChecked = graphViewModel.getShowCustomActivity(activity.id)
                 setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                isSingleLine = true // Ensure text stays on one line
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginEnd = 16 * resources.displayMetrics.density.toInt()
+                }
                 
                 setOnCheckedChangeListener { _, isChecked ->
                     graphViewModel.setShowCustomActivity(activity.id, isChecked)
@@ -916,26 +935,25 @@ class GraphFragment : Fragment() {
     
     private fun updateCustomActivityLegend(customActivities: List<CustomActivity>) {
         // Get the legend container
-        val legendContainer = binding.root.findViewById<LinearLayout>(R.id.custom_legend_container) ?: return
+        val legendContainer = binding.customLegendContainer
         
         // Remove any existing custom activity legend items (keep first 3 for joints/cones/bowls)
         while (legendContainer.childCount > 3) {
             legendContainer.removeViewAt(3)
         }
         
-        // Add legend item for each custom activity (up to 6 total custom activities)
-        customActivities.take(6).forEachIndexed { index, activity ->
+        // Add legend item for ALL custom activities (not just 6)
+        customActivities.forEach { activity ->
             val legendItem = TextView(requireContext()).apply {
                 text = activity.name
                 setTextColor(ContextCompat.getColor(requireContext(), R.color.text_on_dark_background))
                 textSize = 12f
+                isSingleLine = true
                 
-                // Create colored dot drawable
+                // Create colored dot drawable using new color generation
                 val dot = GradientDrawable().apply {
                     shape = GradientDrawable.OVAL
-                    val color = graphViewModel.customActivityColors.getOrElse(index) { 
-                        graphViewModel.customActivityColors[0] 
-                    }
+                    val color = graphViewModel.getColorForActivity(activity.id)
                     setColor(color)
                     setSize(24, 24)
                 }
@@ -955,6 +973,16 @@ class GraphFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Unregister the broadcast receiver if it was registered
+        customActivityReceiver?.let {
+            try {
+                androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(requireContext())
+                    .unregisterReceiver(it)
+            } catch (e: Exception) {
+                // Receiver might not be registered
+            }
+        }
+        customActivityReceiver = null
         _binding = null
     }
 

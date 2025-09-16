@@ -90,6 +90,19 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewModel = ViewModelProvider(requireActivity()).get(StatsViewModel::class.java)
         
+        // Apply window insets to handle navigation bar
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Add bottom padding to the content layout to account for navigation bar
+            binding.statsContentLayout.setPadding(
+                binding.statsContentLayout.paddingLeft,
+                binding.statsContentLayout.paddingTop,
+                binding.statsContentLayout.paddingRight,
+                systemBars.bottom + (16 * resources.displayMetrics.density).toInt()
+            )
+            insets
+        }
+        
         // Register broadcast receiver for custom activity changes
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(
             customActivityChangeReceiver,
@@ -155,43 +168,41 @@ class StatsFragment : Fragment() {
         }
 
         // Allow tapping the Custom chip again to reopen and edit selection
-        binding.root.post {
-            val customChip = binding.chipGroupTimePeriod.findViewById<Chip>(R.id.chipCustom)
-            customChip?.setOnClickListener {
-                // Only open on tap if Custom is already the selected chip.
-                // If switching from another chip to Custom, let the ChipGroup listener handle it.
-                val alreadyChecked = binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom
-                if (!alreadyChecked) return@setOnClickListener
+        val customChip = binding.chipGroupTimePeriod.findViewById<Chip>(R.id.chipCustom)
+        customChip?.setOnClickListener {
+            // Only open on tap if Custom is already the selected chip.
+            // If switching from another chip to Custom, let the ChipGroup listener handle it.
+            val alreadyChecked = binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom
+            if (!alreadyChecked) return@setOnClickListener
 
-                showCustomSessionPickerDialog(
-                    onDone = { selectedRanges ->
-                        if (selectedRanges.isEmpty()) {
-                            // Treat as cancel if nothing selected
-                            viewModel.setUseCustomSessions(false)
-                            if (binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
-                                binding.chipGroupTimePeriod.check(lastNonCustomTimeChipId)
-                            }
-                            if (lastSelectedSessionsCount == 0) updateCustomChipLabel(reset = true)
-                        } else {
-                            viewModel.setCustomSessions(selectedRanges)
-                            viewModel.setUseCustomSessions(true)
-                            lastSelectedSessionsCount = selectedRanges.size
-                            // Ensure the Custom chip appears selected and labeled
-                            if (binding.chipGroupTimePeriod.checkedChipId != R.id.chipCustom) {
-                                binding.chipGroupTimePeriod.check(R.id.chipCustom)
-                            }
-                            updateCustomChipLabel()
-                        }
-                    },
-                    onCancel = {
-                        // No changes on cancel when reopening; keep existing state
-                        if (lastSelectedSessionsCount == 0 && binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
-                            // If no selection exists, revert visual selection to last non-custom
+            showCustomSessionPickerDialog(
+                onDone = { selectedRanges ->
+                    if (selectedRanges.isEmpty()) {
+                        // Treat as cancel if nothing selected
+                        viewModel.setUseCustomSessions(false)
+                        if (binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
                             binding.chipGroupTimePeriod.check(lastNonCustomTimeChipId)
                         }
+                        if (lastSelectedSessionsCount == 0) updateCustomChipLabel(reset = true)
+                    } else {
+                        viewModel.setCustomSessions(selectedRanges)
+                        viewModel.setUseCustomSessions(true)
+                        lastSelectedSessionsCount = selectedRanges.size
+                        // Ensure the Custom chip appears selected and labeled
+                        if (binding.chipGroupTimePeriod.checkedChipId != R.id.chipCustom) {
+                            binding.chipGroupTimePeriod.check(R.id.chipCustom)
+                        }
+                        updateCustomChipLabel()
                     }
-                )
-            }
+                },
+                onCancel = {
+                    // No changes on cancel when reopening; keep existing state
+                    if (lastSelectedSessionsCount == 0 && binding.chipGroupTimePeriod.checkedChipId == R.id.chipCustom) {
+                        // If no selection exists, revert visual selection to last non-custom
+                        binding.chipGroupTimePeriod.check(lastNonCustomTimeChipId)
+                    }
+                }
+            )
         }
 
         // Set up the listener first, before adding chips

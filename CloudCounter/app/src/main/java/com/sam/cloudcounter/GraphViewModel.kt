@@ -79,7 +79,105 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     val colorCones: Int = Color.parseColor("#FF9800")
     val colorBowls: Int = Color.parseColor("#2196F3")
     
-    // Neon colors for custom activities
+    /**
+     * Apply small vertical jitter to overlapping data points
+     * This helps visualize multiple lines that have identical values
+     */
+    private fun applyJitterToOverlappingData(dataSets: List<ILineDataSet>) {
+        if (dataSets.size <= 1) return // No need for jitter with single dataset
+        
+        // Group entries by x-value across all datasets
+        val entriesByX = mutableMapOf<Float, MutableList<Pair<ILineDataSet, Entry>>>()
+        
+        dataSets.forEach { dataSet ->
+            // Access entries through the proper method
+            for (i in 0 until dataSet.entryCount) {
+                val entry = dataSet.getEntryForIndex(i)
+                if (entry != null) {
+                    val x = entry.x
+                    entriesByX.getOrPut(x) { mutableListOf() }.add(dataSet to entry)
+                }
+            }
+        }
+        
+        // Apply jitter where multiple datasets have same x and y values
+        entriesByX.forEach { (x, entries) ->
+            // Group by y-value to find overlapping points
+            val entriesByY = entries.groupBy { it.second.y }
+            
+            entriesByY.forEach { (y, overlappingEntries) ->
+                if (overlappingEntries.size > 1) {
+                    // Calculate jitter amount based on y-value magnitude
+                    // Use 1% of the value or minimum of 0.5 for small values
+                    val jitterBase = if (y > 0) {
+                        maxOf(y * 0.01f, 0.5f)
+                    } else {
+                        0.5f
+                    }
+                    
+                    // Apply consistent jitter based on dataset index
+                    overlappingEntries.forEachIndexed { index, (dataSet, entry) ->
+                        // Create jitter offset that spreads lines evenly
+                        val jitterOffset = if (overlappingEntries.size > 1) {
+                            val spacing = index - (overlappingEntries.size - 1) / 2f
+                            spacing * jitterBase * 0.5f // Reduce jitter magnitude
+                        } else {
+                            0f
+                        }
+                        
+                        // Apply jitter to the entry's y-value
+                        entry.y = y + jitterOffset
+                    }
+                }
+            }
+        }
+    }
+    
+    // Generate neon color based on activity ID for consistent colors
+    fun getColorForActivity(activityId: String): Int {
+        // Core activities have fixed colors
+        return when (activityId) {
+            "joint" -> colorJoints
+            "cone" -> colorCones
+            "bowl" -> colorBowls
+            else -> generateNeonColor(activityId)
+        }
+    }
+    
+    // Generate a consistent neon color based on activity ID
+    private fun generateNeonColor(activityId: String): Int {
+        // Use hashCode for deterministic color generation
+        val hash = activityId.hashCode()
+        
+        // Generate hue from 0-360 based on hash
+        // Avoid greens (80-140), oranges (20-40) and blues (200-240) to not conflict with core colors
+        val hueRanges = listOf(
+            0f to 20f,     // Reds
+            40f to 80f,    // Yellows
+            140f to 200f,  // Cyans/Teals
+            240f to 360f   // Purples/Magentas
+        )
+        
+        // Pick a range based on hash
+        val rangeIndex = Math.abs(hash) % hueRanges.size
+        val range = hueRanges[rangeIndex]
+        
+        // Generate hue within the selected range
+        val hueOffset = (Math.abs(hash * 7) % 100) / 100f // Use multiplier for better distribution
+        val hue = range.first + (range.second - range.first) * hueOffset
+        
+        // High saturation for neon effect (80-100%)
+        val saturation = 0.8f + (Math.abs(hash * 13) % 20) / 100f
+        
+        // High brightness for visibility on dark background (70-90%)
+        val brightness = 0.7f + (Math.abs(hash * 17) % 20) / 100f
+        
+        // Convert HSV to RGB color
+        val hsv = floatArrayOf(hue, saturation, brightness)
+        return Color.HSVToColor(hsv)
+    }
+    
+    // Legacy list for backward compatibility if needed
     val customActivityColors = listOf(
         Color.parseColor("#FF91A4"), // neon_candy (pink)
         Color.parseColor("#BF7EFF"), // neon_purple
@@ -106,7 +204,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         // Add all sources that should trigger a chart refresh
         _chartUiData.addSource(_selectedTimePeriod) { refreshChartData() }
         _chartUiData.addSource(_selectedSmokerIds) { refreshChartData() }
-        _chartUiData.addSource(_showJoints) { refreshChartData() }
+        _chartUiData
+            .addSource(_showJoints) { refreshChartData() }
         _chartUiData.addSource(_showCones) { refreshChartData() }
         _chartUiData.addSource(_showBowls) { refreshChartData() }
         _chartUiData.addSource(_chartType) { refreshChartData() }
@@ -183,7 +282,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         persistRanges(ranges)
     }
 
-    private fun refreshChartData() {
+    fun refreshChartData() {
         viewModelScope.launch {
             // Get the latest values from all our sources
             val currentActivities = allActivities.value ?: emptyList()
@@ -264,17 +363,19 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         val customActivities = logs.filter { !it.customActivityId.isNullOrEmpty() }
             .groupBy { it.customActivityId }
         
-        var colorIndex = 0
         customActivities.forEach { (customId, customLogs) ->
             if (customId != null && getShowCustomActivity(customId)) {
                 val activityName = customLogs.firstOrNull()?.customActivityName ?: "Custom"
                 processCustomLogsForChart(customLogs, effectiveMode).takeIf { it.isNotEmpty() }?.let {
-                    val color = customActivityColors.getOrElse(colorIndex % customActivityColors.size) { customActivityColors[0] }
+                    // Use the new color generation based on activity ID
+                    val color = getColorForActivity(customId)
                     dataSets.add(LineDataSet(it, activityName).apply { styleDataSet(this, color) })
-                    colorIndex++
                 }
             }
         }
+        
+        // Apply jitter to overlapping data points
+        applyJitterToOverlappingData(dataSets)
 
         val displayModeText = if (effectiveMode.name != period.name) " (as ${effectiveMode.name.lowercase(Locale.getDefault())})" else ""
         val finalDescription = if (useCustom && liveRanges.isNotEmpty()) {

@@ -53,6 +53,8 @@ import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.widget.GridLayout
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
+import android.widget.ScrollView
 import androidx.core.content.res.ResourcesCompat
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -2731,8 +2733,10 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupActivityButtons() {
         Log.d("CUSTOM_ACTIVITY", "🔄 Setting up activity buttons")
-        val container = binding.activityButtonContainer
-        container.removeAllViews()
+        
+        // Clear the wrapper first
+        val wrapper = binding.activityButtonWrapper
+        wrapper.removeAllViews()
         
         // Clear button references
         customActivityButtons.clear()
@@ -2745,12 +2749,36 @@ class MainActivity : AppCompatActivity() {
         Log.d("CUSTOM_ACTIVITY", "📊 Button order: $order")
         Log.d("CUSTOM_ACTIVITY", "📋 Custom activities: ${customActivities.size}")
         
-        // Calculate button width based on number of buttons
+        val numberOfButtons = order.size // Total number of buttons to display
+        
+        // Create the appropriate container based on button count
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setPadding(
+                8.dpToPx(this@MainActivity),
+                0,
+                8.dpToPx(this@MainActivity),
+                8.dpToPx(this@MainActivity)
+            )
+        }
+        
+        // Calculate button width for when we have more than 4 buttons
         val displayWidth = resources.displayMetrics.widthPixels
-        val containerPadding = (16 * resources.displayMetrics.density).toInt() * 2
+        val containerPadding = (16 * resources.displayMetrics.density).toInt() // Total horizontal padding (8dp each side)
         val availableWidth = displayWidth - containerPadding
-        val numberOfButtons = 3 + customActivities.size // 3 core + custom
-        val buttonWidth = availableWidth / numberOfButtons
+        
+        // Calculate button width only for fixed-width mode (5+ buttons)
+        // For 1-4 buttons, we'll use weight=1f to distribute evenly
+        val buttonMargins = (4 * resources.displayMetrics.density).toInt() * (4 - 1) // 3 margins between 4 buttons
+        val buttonWidth = if (numberOfButtons > 4) {
+            (availableWidth - buttonMargins) / 4 // Fixed width based on 4 buttons
+        } else {
+            0 // Not used when weight=1f
+        }
         
         Log.d("BUTTON_RESIZE", "📏 Display width: $displayWidth")
         Log.d("BUTTON_RESIZE", "📏 Available width: $availableWidth")  
@@ -2772,13 +2800,42 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        
+        // Add the container to the wrapper, with or without scroll view
+        if (numberOfButtons > 4) {
+            // Wrap in HorizontalScrollView for 5+ buttons
+            val scrollView = HorizontalScrollView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                isHorizontalScrollBarEnabled = false
+            }
+            scrollView.addView(container)
+            wrapper.addView(scrollView)
+        } else {
+            // Add LinearLayout directly for 1-4 buttons
+            wrapper.addView(container)
+        }
     }
     
     private fun addActivityButton(container: LinearLayout, text: String, type: ActivityType, width: Int) {
+        val numberOfButtons = customActivityManager.getActivityOrder().size
+        val useFixedWidth = numberOfButtons > 4
+        
         val buttonContainer = LinearLayout(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
-                marginEnd = 4.dpToPx(this@MainActivity)
+            layoutParams = if (useFixedWidth) {
+                // For 5+ buttons: use fixed width
+                LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                    marginEnd = if (container.childCount == numberOfButtons - 1) 4.dpToPx(this@MainActivity) else 0
+                }
+            } else {
+                // For 1-4 buttons: use weight to fill available space evenly
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                    // No marginEnd when using weight - let weight distribution handle spacing
+                }
             }
             orientation = LinearLayout.VERTICAL
         }
@@ -2826,10 +2883,22 @@ class MainActivity : AppCompatActivity() {
     private fun addCustomActivityButton(container: LinearLayout, activity: CustomActivity, width: Int) {
         Log.d("CUSTOM_ACTIVITY", "➕ Adding custom button: ${activity.name}")
         
+        val numberOfButtons = customActivityManager.getActivityOrder().size
+        val useFixedWidth = numberOfButtons > 4
+        
         val buttonContainer = LinearLayout(this).apply {
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
-                marginEnd = 4.dpToPx(this@MainActivity)
+            layoutParams = if (useFixedWidth) {
+                // For 5+ buttons: use fixed width
+                LinearLayout.LayoutParams(width, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                    marginEnd = if (container.childCount == numberOfButtons - 1) 4.dpToPx(this@MainActivity) else 0
+                }
+            } else {
+                // For 1-4 buttons: use weight to fill available space evenly
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = if (container.childCount > 0) 4.dpToPx(this@MainActivity) else 0
+                    // No marginEnd when using weight - let weight distribution handle spacing
+                }
             }
             orientation = LinearLayout.VERTICAL
         }
@@ -2976,6 +3045,7 @@ class MainActivity : AppCompatActivity() {
         val btnSave = view.findViewById<Button>(R.id.btnSave)
         val btnCancel = view.findViewById<Button>(R.id.btnCancel)
         val btnReset = view.findViewById<Button>(R.id.btnReset)
+        val btnAdd = view.findViewById<Button>(R.id.btnAdd)
         val layoutCurrentActivities = view.findViewById<LinearLayout>(R.id.layoutCurrentActivities)
         val tvCurrentActivitiesLabel = view.findViewById<TextView>(R.id.tvCurrentActivitiesLabel)
         
@@ -3014,6 +3084,15 @@ class MainActivity : AppCompatActivity() {
             }
             
             Log.d("CUSTOM_ACTIVITY_REORDER", "📋 All activities in order: ${allOrderedActivities.map { it.second }}")
+            
+            // Create a container for activity items
+            val activityItemsContainer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
             
             // Display ALL activities in the saved order (not just core activities separately)
             allOrderedActivities.forEachIndexed { orderIndex, (activityId, activityName, isCore) ->
@@ -3160,7 +3239,33 @@ class MainActivity : AppCompatActivity() {
                     itemView.addView(deleteButton)
                 }
                 
-                layoutCurrentActivities.addView(itemView)
+                activityItemsContainer.addView(itemView)
+            }
+            
+            // Decide whether to wrap in ScrollView based on activity count
+            if (allOrderedActivities.size > 3) {
+                // Calculate height for 3.5 items
+                // Item height = 48dp (button) + 16dp (padding) = 64dp + 8dp margin = 72dp per item
+                val itemHeightWithMargin = (48 + 16 + 8).dpToPx(this@MainActivity)
+                val scrollHeight = (itemHeightWithMargin * 3.5).toInt()
+                
+                val scrollView = ScrollView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        scrollHeight
+                    )
+                    
+                    // Always show scrollbar when scrolling is enabled
+                    isVerticalScrollBarEnabled = true
+                    scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
+                    isScrollbarFadingEnabled = false
+                }
+                
+                scrollView.addView(activityItemsContainer)
+                layoutCurrentActivities.addView(scrollView)
+            } else {
+                // Add items directly without ScrollView for 3 or fewer activities
+                layoutCurrentActivities.addView(activityItemsContainer)
             }
             
             // All activities are now displayed above in the correct order
@@ -3177,6 +3282,8 @@ class MainActivity : AppCompatActivity() {
             }
             // Save button should always be clickable
             btnSave.isEnabled = true
+            // Add button is disabled initially
+            btnAdd.isEnabled = false
         }
         
         // Initial load
@@ -3224,6 +3331,8 @@ class MainActivity : AppCompatActivity() {
                 Log.d("CUSTOM_ACTIVITY", "📝 Text changed: '$text' (length: ${text.length})")
                 // Icon selection remains visible; do not auto-clear any selection
                 btnSave.isEnabled = true
+                // Enable Add button only when there's text
+                btnAdd.isEnabled = text.isNotEmpty()
             }
         })
         
@@ -3245,6 +3354,71 @@ class MainActivity : AppCompatActivity() {
         // Button listeners
         btnCancel.setOnClickListener {
             dialog.dismiss()
+        }
+        
+        // Add button listener - adds activity without closing dialog
+        btnAdd.setOnClickListener {
+            val name = etActivityName.text.toString().trim()
+            
+            // Attempt to add if a name is provided and there is capacity
+            val maxCustom = customActivityManager.getMaxCustomActivities()
+            val hasSpace = customActivityManager.getCustomActivities().size < maxCustom
+            
+            if (name.isNotEmpty() && hasSpace) {
+                // If name exceeds max length and no icon chosen, pick a default icon
+                var finalIconRes = selectedIconRes
+                var finalIconName = selectedIconName
+                if (name.length > CustomActivity.MAX_NAME_LENGTH && finalIconRes == null) {
+                    finalIconRes = CustomActivity.AVAILABLE_ICONS.firstOrNull()
+                    finalIconName = CustomActivity.ICON_NAMES.firstOrNull()
+                }
+                
+                val isIconBased = (finalIconRes != null) || (name.length > CustomActivity.MAX_NAME_LENGTH)
+                val displayName = if (isIconBased) {
+                    "ADD"
+                } else {
+                    "ADD ${name.uppercase()}"
+                }
+                
+                val customActivity = CustomActivity(
+                    // Always keep the full typed name (even when icon is used)
+                    name = name,
+                    displayName = displayName,
+                    // Use icon if selected, or auto-assigned for long names
+                    iconResId = finalIconRes
+                )
+                
+                Log.d("CUSTOM_ACTIVITY", "💾 Adding custom activity: ${customActivity.name}")
+                
+                if (customActivityManager.addCustomActivity(customActivity)) {
+                    Toast.makeText(this, "Custom activity added: ${customActivity.name}", Toast.LENGTH_SHORT).show()
+                    
+                    // Clear the input field and icon selection
+                    etActivityName.setText("")
+                    selectedIconRes = null
+                    selectedIconName = null
+                    iconOptions.forEach { it.setBackgroundColor(Color.TRANSPARENT) }
+                    
+                    // Refresh the activity list in the dialog
+                    refreshActivityList()
+                    
+                    // Refresh main screen buttons
+                    setupActivityButtons()
+                    
+                    // Broadcast that custom activities have changed
+                    broadcastCustomActivitiesChanged()
+                    
+                    // Sync to cloud if in session
+                    currentShareCode?.let { code ->
+                        syncCustomActivityToCloud(customActivity, code)
+                    }
+                } else {
+                    Toast.makeText(this, "Failed to add custom activity", Toast.LENGTH_SHORT).show()
+                }
+            } else if (!hasSpace) {
+                Toast.makeText(this, "Remove an activity first to add custom", Toast.LENGTH_SHORT).show()
+            }
+            // Dialog stays open after adding
         }
         
         btnSave.setOnClickListener {

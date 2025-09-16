@@ -15,6 +15,8 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.sam.cloudcounter.databinding.FragmentSeshBinding
@@ -56,6 +58,19 @@ class SeshFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // Apply window insets to handle navigation bar
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Add bottom padding to the content container to account for navigation bar
+            binding.seshContainer.setPadding(
+                binding.seshContainer.paddingLeft,
+                binding.seshContainer.paddingTop,
+                binding.seshContainer.paddingRight,
+                systemBars.bottom + (16 * resources.displayMetrics.density).toInt()
+            )
+            insets
+        }
 
         // Fixed: Use simplified factory
         val factory = SessionStatsViewModelFactory()

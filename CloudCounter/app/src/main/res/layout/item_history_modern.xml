@@ -44,14 +44,29 @@
                 android:gravity="center_vertical">
 
                 <!-- Icon container -->
-                <TextView
-                    android:id="@+id/iconEmoji"
+                <FrameLayout
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/option_icon_background"
-                    android:gravity="center"
-                    android:text="🌿"
-                    android:textSize="24sp" />
+                    android:background="@drawable/option_icon_background">
+                    
+                    <!-- TextView for emoji icons -->
+                    <TextView
+                        android:id="@+id/iconEmoji"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:text="🌿"
+                        android:textSize="24sp" />
+                    
+                    <!-- ImageView for drawable icons -->
+                    <ImageView
+                        android:id="@+id/iconDrawable"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_gravity="center"
+                        android:tint="@color/my_light_primary"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <!-- Text container -->
                 <LinearLayout
