@@ -428,6 +428,25 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                     notes = "Added to stash"
                 )
                 stashDao.insertStashEntry(entry)
+
+                // Also insert a ledger entry into ActivityLog so it appears in History
+                val smokerId = resolveSmokerIdForLedger()
+                if (smokerId != null && grams > 0) {
+                    val ledger = ActivityLog(
+                        smokerId = smokerId,
+                        consumerId = smokerId,
+                        payerStashOwnerId = null, // My Stash
+                        type = ActivityType.CUSTOM,
+                        timestamp = System.currentTimeMillis(),
+                        sessionId = null,
+                        sessionStartTime = null,
+                        customActivityId = MY_STASH_LEDGER_ID,
+                        customActivityName = "My Stash +${String.format("%.2f", grams)}g ($${String.format("%.2f", grams * pricePerGram)})",
+                        gramsAtLog = grams,
+                        pricePerGramAtLog = pricePerGram
+                    )
+                    activityLogDao.insert(ledger)
+                }
             }
             _currentStash.postValue(updated)
             loadStashHistory()
@@ -844,6 +863,26 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                     notes = "Manually removed from stash"
                 )
                 stashDao.insertStashEntry(entry)
+
+                // Also insert a ledger entry into ActivityLog so it appears in History
+                val smokerId = resolveSmokerIdForLedger()
+                if (smokerId != null && gramsToRemove > 0) {
+                    val ppg = if (gramsToRemove > 0) costToRemove / gramsToRemove else 0.0
+                    val ledger = ActivityLog(
+                        smokerId = smokerId,
+                        consumerId = smokerId,
+                        payerStashOwnerId = null, // My Stash
+                        type = ActivityType.CUSTOM,
+                        timestamp = System.currentTimeMillis(),
+                        sessionId = null,
+                        sessionStartTime = null,
+                        customActivityId = MY_STASH_LEDGER_ID,
+                        customActivityName = "My Stash −${String.format("%.2f", gramsToRemove)}g ($${String.format("%.2f", costToRemove)})",
+                        gramsAtLog = -gramsToRemove,
+                        pricePerGramAtLog = ppg
+                    )
+                    activityLogDao.insert(ledger)
+                }
             }
             _currentStash.postValue(updated)
             loadStashHistory()
@@ -875,6 +914,25 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                     notes = "Removed all from stash"
                 )
                 stashDao.insertStashEntry(entry)
+
+                // Also insert a ledger entry in ActivityLog so it appears in History
+                val smokerId = resolveSmokerIdForLedger()
+                if (smokerId != null && current.currentGrams > 0) {
+                    val ledger = ActivityLog(
+                        smokerId = smokerId,
+                        consumerId = smokerId,
+                        payerStashOwnerId = null,
+                        type = ActivityType.CUSTOM,
+                        timestamp = System.currentTimeMillis(),
+                        sessionId = null,
+                        sessionStartTime = null,
+                        customActivityId = MY_STASH_LEDGER_ID,
+                        customActivityName = "My Stash Reset",
+                        gramsAtLog = -current.currentGrams,
+                        pricePerGramAtLog = current.pricePerGram
+                    )
+                    activityLogDao.insert(ledger)
+                }
             }
             _currentStash.postValue(updated)
             loadStashHistory()
@@ -929,6 +987,102 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             delay(100)
             recalculateStats(currentStatsType, currentTimePeriod, currentDataScope)
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // THEIR STASH LEDGER OPERATIONS (act independently from My Stash)
+    // Persist +/−/Remove All using ActivityLog rows flagged with payerStashOwnerId='their_stash'
+    // These appear in History and power the all-time Their Stash counter.
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fun addTheirStashAdjustment(grams: Double, totalCost: Double, label: String? = null) {
+        if (grams <= 0.0) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val smokerId = resolveSmokerIdForLedger() ?: return@withContext
+                val pricePerGram = if (grams != 0.0) totalCost / grams else 0.0
+                val title = label ?: "Their Stash +${String.format("%.2f", grams)}g ($${String.format("%.2f", totalCost)})"
+
+                val entry = ActivityLog(
+                    smokerId = smokerId,
+                    consumerId = smokerId,
+                    payerStashOwnerId = "their_stash",
+                    type = ActivityType.CUSTOM,
+                    timestamp = System.currentTimeMillis(),
+                    sessionId = null,
+                    sessionStartTime = null,
+                    customActivityId = THEIR_STASH_LEDGER_ID,
+                    customActivityName = title,
+                    gramsAtLog = grams,
+                    pricePerGramAtLog = pricePerGram
+                )
+                activityLogDao.insert(entry)
+            }
+            // force recalculation and UI refresh
+            recalculateStats()
+        }
+    }
+
+    fun removeTheirStashAdjustment(grams: Double, totalCost: Double, label: String? = null) {
+        if (grams <= 0.0) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val smokerId = resolveSmokerIdForLedger() ?: return@withContext
+                val pricePerGram = if (grams != 0.0) totalCost / grams else 0.0
+                val title = label ?: "Their Stash −${String.format("%.2f", grams)}g ($${String.format("%.2f", totalCost)})"
+
+                val entry = ActivityLog(
+                    smokerId = smokerId,
+                    consumerId = smokerId,
+                    payerStashOwnerId = "their_stash",
+                    type = ActivityType.CUSTOM,
+                    timestamp = System.currentTimeMillis(),
+                    sessionId = null,
+                    sessionStartTime = null,
+                    customActivityId = THEIR_STASH_LEDGER_ID,
+                    customActivityName = title,
+                    gramsAtLog = -grams,                    // negative ledger to reduce owed balance
+                    pricePerGramAtLog = pricePerGram
+                )
+                activityLogDao.insert(entry)
+            }
+            recalculateStats()
+        }
+    }
+
+    fun zeroTheirStashBalance() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val totals = activityLogDao.getTheirStashTotals() ?: TheirStashTotals()
+                if (totals.totalGrams == 0.0 && totals.totalCost == 0.0) return@withContext
+
+                val smokerId = resolveSmokerIdForLedger() ?: return@withContext
+                val gramsToOffset = -totals.totalGrams      // add the inverse to zero balance
+                val pricePerGram = if (totals.totalGrams != 0.0) totals.totalCost / totals.totalGrams else 0.0
+
+                val entry = ActivityLog(
+                    smokerId = smokerId,
+                    consumerId = smokerId,
+                    payerStashOwnerId = "their_stash",
+                    type = ActivityType.CUSTOM,
+                    timestamp = System.currentTimeMillis(),
+                    sessionId = null,
+                    sessionStartTime = null,
+                    customActivityId = THEIR_STASH_LEDGER_ID,
+                    customActivityName = "Their Stash Reset",
+                    gramsAtLog = gramsToOffset,
+                    pricePerGramAtLog = pricePerGram
+                )
+                activityLogDao.insert(entry)
+            }
+            recalculateStats()
+        }
+    }
+
+    private suspend fun resolveSmokerIdForLedger(): Long? {
+        // Try to map the current Firebase user to a smoker record, else fallback to first available smoker
+        return smokerDao.getSmokerByCloudUserId(currentUserId ?: "")?.smokerId
+            ?: smokerDao.getAllSmokersList().firstOrNull()?.smokerId
     }
 
     fun onActivityLogged(activityType: ActivityType) {

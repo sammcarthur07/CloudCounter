@@ -121,6 +121,7 @@ class HistoryAdapter(
 
     inner class ActivityLogViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val iconEmoji: TextView = itemView.findViewById(R.id.iconEmoji)
+        private val iconDrawable: android.widget.ImageView = itemView.findViewById(R.id.iconDrawable)
         private val textTitle: TextView = itemView.findViewById(R.id.textTitle)
         private val textSubtitle: TextView = itemView.findViewById(R.id.textSubtitle)
         private val btnDelete: ImageButton = itemView.findViewById(R.id.btnDelete)
@@ -132,13 +133,68 @@ class HistoryAdapter(
             // Check if this is a custom activity
             val isCustomActivity = !log.customActivityId.isNullOrEmpty()
             
+            // Reset visibility first
+            iconEmoji.visibility = View.VISIBLE
+            iconDrawable.visibility = View.GONE
+            
             // Set icon based on activity type or custom activity
-            iconEmoji.text = when {
-                isCustomActivity -> "🌟"  // Special icon for custom activities
-                log.type == ActivityType.CONE -> "🍦"
-                log.type == ActivityType.JOINT -> "🚀"
-                log.type == ActivityType.BOWL -> "🥣"
-                else -> "🌿"
+            when {
+                isCustomActivity -> {
+                    // Try to get the custom activity from the manager to retrieve its icon
+                    val context = itemView.context
+                    val customActivityManager = (context as? MainActivity)?.customActivityManager
+                    val customActivity = customActivityManager?.getCustomActivities()
+                        ?.find { it.id == log.customActivityId }
+                    
+                    // Special handling: Their Stash ledger entries should use the About tab icon
+                    if (
+                        log.customActivityId == THEIR_STASH_LEDGER_ID ||
+                        log.customActivityId == MY_STASH_LEDGER_ID ||
+                        log.payerStashOwnerId == "their_stash"
+                    ) {
+                        iconEmoji.visibility = View.GONE
+                        iconDrawable.visibility = View.VISIBLE
+                        // Use the same icon as About tab title
+                        iconDrawable.setImageResource(R.drawable.ic_about_colored)
+                    } else {
+                    
+                    // Handle icons - use drawables for bong, cough, stretch
+                    when (customActivity?.iconResId) {
+                        R.drawable.ic_bong, 
+                        R.drawable.ic_cough, 
+                        R.drawable.ic_stretch -> {
+                            // Use drawable for these three
+                            iconEmoji.visibility = View.GONE
+                            iconDrawable.visibility = View.VISIBLE
+                            iconDrawable.setImageResource(customActivity.iconResId)
+                        }
+                        R.drawable.ic_pills -> {
+                            iconEmoji.text = "💊"
+                        }
+                        R.drawable.ic_cigarette -> {
+                            iconEmoji.text = "🚬"
+                        }
+                        R.drawable.ic_water_glass -> {
+                            iconEmoji.text = "💧"
+                        }
+                        else -> {
+                            iconEmoji.text = "🌟" // Default star if no icon or not found
+                        }
+                    }
+                    }
+                }
+                log.type == ActivityType.CONE -> {
+                    iconEmoji.text = "🍦"
+                }
+                log.type == ActivityType.JOINT -> {
+                    iconEmoji.text = "🚀"
+                }
+                log.type == ActivityType.BOWL -> {
+                    iconEmoji.text = "🥣"
+                }
+                else -> {
+                    iconEmoji.text = "🌿"
+                }
             }
 
             // Get smoker name asynchronously

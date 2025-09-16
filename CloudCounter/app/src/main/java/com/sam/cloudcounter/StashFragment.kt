@@ -563,19 +563,10 @@ class StashFragment : Fragment() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getDatabase(requireContext())
-            val activities = if (currentSessionStart > 0) {
-                db.activityLogDao().getLogsBetweenTimestamps(currentSessionStart, System.currentTimeMillis())
-            } else {
-                db.activityLogDao().getRecentActivities(50)
-            }
-
-            val theirStashActivities = activities.filter {
-                it.payerStashOwnerId == "their_stash" ||
-                        (it.payerStashOwnerId != null && it.payerStashOwnerId!!.startsWith("other_"))
-            }
-
-            theirStashTotalGrams = theirStashActivities.sumOf { it.gramsAtLog }
-            theirStashTotalCost = theirStashActivities.sumOf { it.cost }
+            // All-time owed balance for Their Stash (only 'their_stash' payer)
+            val totals = db.activityLogDao().getTheirStashTotals()
+            theirStashTotalGrams = totals?.totalGrams ?: 0.0
+            theirStashTotalCost = totals?.totalCost ?: 0.0
 
             withContext(Dispatchers.Main) {
                 binding.textTheirStashGrams.text = "${decimalFormat.format(theirStashTotalGrams)}g"
@@ -1162,7 +1153,7 @@ class StashFragment : Fragment() {
                     stashViewModel.addToStash(grams, finalPricePerGram)
                     Toast.makeText(requireContext(), "Added ${decimalFormat.format(grams)}g to My Stash", Toast.LENGTH_SHORT).show()
                 } else {
-                    addToTheirStash(grams, totalPrice)
+                    stashViewModel.addTheirStashAdjustment(grams, totalPrice)
                     Toast.makeText(requireContext(), "Added ${decimalFormat.format(grams)}g to Their Stash", Toast.LENGTH_SHORT).show()
                 }
                 recalculateStats()
@@ -1172,18 +1163,6 @@ class StashFragment : Fragment() {
         }
     }
 
-    private fun addToTheirStash(grams: Double, cost: Double) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            theirStashTotalGrams += grams
-            theirStashTotalCost += cost
-
-            withContext(Dispatchers.Main) {
-                binding.textTheirStashGrams.text = "${decimalFormat.format(theirStashTotalGrams)}g"
-                binding.textTheirStashValue.text = currencyFormat.format(theirStashTotalCost)
-                recalculateStats()
-            }
-        }
-    }
 
     private fun showSetRatioDialog() {
         Log.d(TAG, "🎯 showSetRatioDialog: Starting")
@@ -2902,7 +2881,7 @@ class StashFragment : Fragment() {
                 stashViewModel.removeFromStash(grams, cost)
                 Toast.makeText(requireContext(), "Removed ${decimalFormat.format(grams)}g from My Stash", Toast.LENGTH_SHORT).show()
             } else {
-                removeFromTheirStash(grams, cost)
+                stashViewModel.removeTheirStashAdjustment(grams, cost)
                 Toast.makeText(requireContext(), "Removed ${decimalFormat.format(grams)}g from Their Stash", Toast.LENGTH_SHORT).show()
             }
             recalculateStats()
@@ -2911,30 +2890,9 @@ class StashFragment : Fragment() {
         }
     }
 
-    private fun removeFromTheirStash(grams: Double, cost: Double) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            theirStashTotalGrams = kotlin.math.max(0.0, theirStashTotalGrams - grams)
-            theirStashTotalCost = kotlin.math.max(0.0, theirStashTotalCost - cost)
-
-            withContext(Dispatchers.Main) {
-                binding.textTheirStashGrams.text = "${decimalFormat.format(theirStashTotalGrams)}g"
-                binding.textTheirStashValue.text = currencyFormat.format(theirStashTotalCost)
-                recalculateStats()
-            }
-        }
-    }
-
     private fun removeAllFromTheirStash() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            theirStashTotalGrams = 0.0
-            theirStashTotalCost = 0.0
-
-            withContext(Dispatchers.Main) {
-                binding.textTheirStashGrams.text = "0.0g"
-                binding.textTheirStashValue.text = "$0.00"
-                recalculateStats()
-            }
-        }
+        // Insert a compensating ledger entry to zero all-time owed balance
+        stashViewModel.zeroTheirStashBalance()
     }
 
     fun setAttributionRadioSilently(source: StashSource) {

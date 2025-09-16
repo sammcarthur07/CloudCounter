@@ -3,6 +3,10 @@ package com.sam.cloudcounter
 import androidx.room.*
 import java.util.Date
 
+// Global constant IDs used to tag special history rows for stash ledger adjustments
+const val THEIR_STASH_LEDGER_ID: String = "THEIR_STASH_LEDGER"
+const val MY_STASH_LEDGER_ID: String = "MY_STASH_LEDGER"
+
 // DATA CLASS FOR QUERY RESULTS
 data class ActivityCount(
     val activityType: ActivityType,
@@ -103,4 +107,10 @@ data class StashDistribution(
     val totalCost: Double,
     val totalValue: Double = 0.0,
     val percentage: Double
+)
+
+// Aggregate for Their Stash all-time totals
+data class TheirStashTotals(
+    val totalGrams: Double = 0.0,
+    val totalCost: Double = 0.0
 )

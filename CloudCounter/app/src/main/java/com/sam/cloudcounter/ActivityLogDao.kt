@@ -238,4 +238,18 @@ interface ActivityLogDao {
         timestamp: Long,
         tolerance: Long
     ): ActivityLog?
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Their Stash All-time totals (acts like a ledger separate from My Stash)
+    // ─────────────────────────────────────────────────────────────────────────────
+    @Query(
+        """
+        SELECT 
+            COALESCE(SUM(gramsAtLog), 0.0)                    AS totalGrams,
+            COALESCE(SUM(gramsAtLog * pricePerGramAtLog), 0.0) AS totalCost
+        FROM activity_logs
+        WHERE payerStashOwnerId = 'their_stash'
+        """
+    )
+    suspend fun getTheirStashTotals(): TheirStashTotals?
 }
