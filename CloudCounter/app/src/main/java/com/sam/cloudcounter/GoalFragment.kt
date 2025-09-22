@@ -72,7 +72,7 @@ class GoalFragment : Fragment() {
     }
     
     // Public method for showing dialog from outside the fragment
-    fun showAddGoalDialogPublic() {
+    fun showAddGoalDialogPublic(onDismiss: () -> Unit = {}) {
         Log.d("WELCOME_DEBUG", "🎯 GoalFragment.showAddGoalDialogPublic() called")
         val dialog = AddGoalDialog()
 
@@ -83,6 +83,11 @@ class GoalFragment : Fragment() {
                 confettiHelper?.showRainConfetti()
                 Log.d("GoalFragment", "🎯 Created new goal: ${newGoal.goalName} for ${newGoal.selectedSmokers}")
             }
+            onDismiss()
+        }
+        
+        dialog.setOnDismissListener {
+            onDismiss()
         }
 
         dialog.show(childFragmentManager, "AddGoalDialog")

@@ -367,6 +367,7 @@ class SessionSyncService(
         return@withContext try {
             val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
             val snapshot = roomsCollection.get().await()
+            Log.d(TAG, "getActiveRooms: fetched ${snapshot.documents.size} total room docs")
             val rooms = mutableListOf<RoomData>()
 
             snapshot.documents.forEach { doc ->
@@ -383,6 +384,8 @@ class SessionSyncService(
                         if (hasActiveParticipants || userIsParticipant) {
                             rooms.add(room)
                             Log.d(TAG, "✅ Compatible room: ${room.name} (${room.shareCode})")
+                        } else {
+                            Log.d(TAG, "⏭️ Skipping inactive room: ${room.name} (${room.shareCode}) active=${room.activeParticipants.size} userIsParticipant=$userIsParticipant")
                         }
                     }
                 } catch (e: Exception) {

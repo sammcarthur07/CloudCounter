@@ -63,6 +63,10 @@ class HistoryAdapter(
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
         super.onViewRecycled(holder)
         stopShimmerAnimation(holder)
+        // Stop timer if this is a SummaryViewHolder
+        if (holder is SummaryViewHolder) {
+            holder.stopTimer()
+        }
     }
 
     private fun startShimmerAnimation(holder: RecyclerView.ViewHolder) {
@@ -325,14 +329,135 @@ class HistoryAdapter(
         private val pulseDot: View = itemView.findViewById(R.id.pulseDot)
         private val cardContainer: CardView = itemView.findViewById(R.id.cardContainer)
         private val fmt = SimpleDateFormat("MMM dd, yyyy, hh:mm a", Locale.getDefault())
+        
+        private var timerHandler: Handler? = null
+        private var timerRunnable: Runnable? = null
 
+        fun stopTimer() {
+            timerRunnable?.let { runnable ->
+                timerHandler?.removeCallbacks(runnable)
+            }
+            timerHandler = null
+            timerRunnable = null
+        }
+        
+        private fun startLiveUpdates(summary: SessionSummary, sessionTitle: String) {
+            // Update UI immediately
+            updateActiveSessionUI(summary, sessionTitle)
+            
+            // Set up timer for live duration updates
+            timerHandler = Handler(Looper.getMainLooper())
+            timerRunnable = object : Runnable {
+                override fun run() {
+                    updateActiveSessionUI(summary, sessionTitle)
+                    // Update approximately every second
+                    timerHandler?.postDelayed(this, 1000)
+                }
+            }
+            // Start timer after 1 second
+            timerHandler?.postDelayed(timerRunnable!!, 1000)
+        }
+        
+        private fun updateActiveSessionUI(summary: SessionSummary, sessionTitle: String) {
+            // Calculate live duration
+            val currentTime = System.currentTimeMillis()
+            val sessionStart = summary.timestamp - summary.sessionLength  // Original start time
+            val liveDuration = currentTime - sessionStart
+            
+            // Parse activity breakdown to get total count
+            val totalActivities = if (!summary.activityBreakdown.isNullOrEmpty()) {
+                try {
+                    val breakdown = org.json.JSONObject(summary.activityBreakdown)
+                    var total = 0
+                    breakdown.keys().forEach { key ->
+                        total += breakdown.getInt(key)
+                    }
+                    total
+                } catch (e: Exception) {
+                    0
+                }
+            } else {
+                0
+            }
+            
+            textTitle.text = "$sessionTitle - $totalActivities activities"
+            
+            // Build subtitle with live duration and activity breakdown
+            val subtitleText = StringBuilder()
+            
+            if (!summary.activityBreakdown.isNullOrEmpty()) {
+                try {
+                    val breakdown = org.json.JSONObject(summary.activityBreakdown)
+                    val activities = mutableListOf<String>()
+                    
+                    breakdown.keys().forEach { key ->
+                        val count = breakdown.getInt(key)
+                        if (count > 0) {
+                            val displayName = when {
+                                key.contains("Stash +") && key.contains("($") -> {
+                                    key.substringBefore(" ($")
+                                }
+                                else -> key
+                            }
+                            val pluralName = when {
+                                count > 1 && displayName == "Joint" -> "${count} Joints"
+                                count > 1 && displayName == "Cone" -> "${count} Cones"
+                                count > 1 && displayName == "Bowl" -> "${count} Bowls"
+                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl") -> "${count} $displayName"
+                                else -> "${count} $displayName"
+                            }
+                            activities.add(pluralName)
+                        }
+                    }
+                    
+                    if (activities.isNotEmpty()) {
+                        subtitleText.append(activities.joinToString("\n"))
+                        subtitleText.append("\n")
+                    }
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+            
+            // Add live duration
+            val durText = formatInterval(liveDuration / 1000)
+            subtitleText.append("Duration: $durText (ACTIVE)")
+            
+            textSubtitle.text = subtitleText.toString()
+        }
+        
         private fun formatInterval(sec: Long): String {
-            val m = sec / 60
-            val s = sec % 60
-            return if (m > 0) "${m}m ${s.toString().padStart(2,'0')}s" else "${s}s"
+            if (sec <= 0) return "0s"
+            
+            val years = sec / 31536000 // 365 days
+            val months = (sec % 31536000) / 2592000 // 30 days
+            val weeks = (sec % 2592000) / 604800 // 7 days
+            val days = (sec % 604800) / 86400 // 24 hours
+            val hours = (sec % 86400) / 3600
+            val minutes = (sec % 3600) / 60
+            val seconds = sec % 60
+            
+            val parts = mutableListOf<String>()
+            
+            if (years > 0) parts.add("${years}y")
+            if (months > 0) parts.add("${months}mo")
+            if (weeks > 0) parts.add("${weeks}w")
+            if (days > 0) parts.add("${days}d")
+            if (hours > 0) parts.add("${hours}h")
+            if (minutes > 0) parts.add("${minutes}m")
+            if (seconds > 0) parts.add("${seconds}s")
+            
+            // If no parts (shouldn't happen with the check above), return 0s
+            if (parts.isEmpty()) return "0s"
+            
+            // Join all parts with spaces
+            return parts.joinToString(" ")
         }
 
         fun bind(summary: SessionSummary) {
+            // Stop any existing timer
+            stopTimer()
+            
             iconEmoji.text = "📊"
 
             // Use room name if available, otherwise "Local Session"
@@ -341,16 +466,100 @@ class HistoryAdapter(
             } else {
                 "Local Session"
             }
-            textTitle.text = "$sessionTitle - ${summary.totalCones} cones"
-
-            // Format subtitle with duration and timestamp
-            val durText = formatInterval(summary.sessionLength / 1000)
-            val timestampText = fmt.format(Date(summary.timestamp))
-            textSubtitle.text = if (!summary.shareCode.isNullOrEmpty()) {
-                "$durText • Code: ${summary.shareCode}"
-            } else {
-                "$durText • $timestampText"
+            
+            // If this is an active session, start live updates
+            android.util.Log.d(
+                "SeshFlow",
+                "HistoryAdapter.SummaryViewHolder.bind: summaryId=${summary.id}, isActive=${summary.isActive}, room=${summary.roomName}, code=${summary.shareCode}"
+            )
+            if (summary.isActive) {
+                android.util.Log.d(
+                    "SeshFlow",
+                    "HistoryAdapter: Active summary - attaching click listener and starting live updates (id=${summary.id})"
+                )
+                // Attach click listener even for active summaries so tapping navigates to live Sesh
+                cardContainer.setOnClickListener { view ->
+                    android.util.Log.d("SeshFlow", "HistoryAdapter: ACTIVE Summary clicked (id=${summary.id})")
+                    animateCardPress(cardContainer)
+                    confettiHelper?.showMiniConfettiFromButton(view)
+                    onResumeSummary(summary)
+                }
+                startLiveUpdates(summary, sessionTitle)
+                return
             }
+            
+            // Parse activity breakdown to get total count
+            val totalActivities = if (!summary.activityBreakdown.isNullOrEmpty()) {
+                try {
+                    val breakdown = org.json.JSONObject(summary.activityBreakdown)
+                    var total = 0
+                    breakdown.keys().forEach { key ->
+                        total += breakdown.getInt(key)
+                    }
+                    total
+                } catch (e: Exception) {
+                    summary.totalCones // Fallback to cones count
+                }
+            } else {
+                summary.totalCones // Fallback for old sessions
+            }
+            
+            textTitle.text = "$sessionTitle - $totalActivities activities"
+
+            // Build subtitle with activity breakdown or fallback to duration/timestamp
+            val subtitleText = StringBuilder()
+            
+            if (!summary.activityBreakdown.isNullOrEmpty()) {
+                try {
+                    val breakdown = org.json.JSONObject(summary.activityBreakdown)
+                    val activities = mutableListOf<String>()
+                    
+                    breakdown.keys().forEach { key ->
+                        val count = breakdown.getInt(key)
+                        if (count > 0) {
+                            // Format the activity name for display
+                            val displayName = when {
+                                key.contains("Stash +") && key.contains("($") -> {
+                                    // Strip cost from stash activities
+                                    key.substringBefore(" ($")
+                                }
+                                else -> key
+                            }
+                            // Pluralize standard activities
+                            val pluralName = when {
+                                count > 1 && displayName == "Joint" -> "${count} Joints"
+                                count > 1 && displayName == "Cone" -> "${count} Cones"
+                                count > 1 && displayName == "Bowl" -> "${count} Bowls"
+                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl") -> "${count} $displayName"
+                                else -> "${count} $displayName"
+                            }
+                            activities.add(pluralName)
+                        }
+                    }
+                    
+                    if (activities.isNotEmpty()) {
+                        subtitleText.append(activities.joinToString("\n"))
+                    }
+                } catch (e: Exception) {
+                    // Fallback to old format if parsing fails
+                    subtitleText.append("${summary.totalCones} cones")
+                }
+            } else {
+                // Old sessions without breakdown - show cones only
+                subtitleText.append("${summary.totalCones} cones")
+            }
+            
+            // Add duration and share code info on a new line
+            subtitleText.append("\n")
+            val durText = formatInterval(summary.sessionLength / 1000)
+            if (!summary.shareCode.isNullOrEmpty()) {
+                subtitleText.append("$durText • Code: ${summary.shareCode}")
+            } else {
+                val timestampText = fmt.format(Date(summary.timestamp))
+                subtitleText.append("$durText • $timestampText")
+            }
+            
+            textSubtitle.text = subtitleText.toString()
 
             // Add pulsing animation to dot
             startPulsingAnimation(pulseDot)
@@ -361,7 +570,12 @@ class HistoryAdapter(
                 onDeleteSummary(summary)
             }
 
+            android.util.Log.d(
+                "SeshFlow",
+                "HistoryAdapter: Summary click listener ATTACHED (id=${summary.id}, isActive=${summary.isActive})"
+            )
             cardContainer.setOnClickListener { view ->
+                android.util.Log.d("SeshFlow", "HistoryAdapter: Summary clicked (id=${summary.id})")
                 animateCardPress(cardContainer)
                 // Use mini confetti for consistency
                 confettiHelper?.showMiniConfettiFromButton(view)

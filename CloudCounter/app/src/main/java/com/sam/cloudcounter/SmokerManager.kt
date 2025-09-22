@@ -48,7 +48,6 @@ class SmokerManager(
         R.font.rubik_glitch,
         R.font.sankofa_display,
         R.font.silkscreen,
-        R.font.rubik_puddles,
         R.font.rubik_beastly,
         R.font.sixtyfour,
         R.font.monoton,

@@ -5,6 +5,7 @@ import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Context
+import android.content.DialogInterface
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -28,11 +29,21 @@ import kotlin.math.min
 class AddGoalDialog : DialogFragment() {
 
     private lateinit var onGoalCreatedListener: (Goal) -> Unit
+    private var onDismissListener: (() -> Unit)? = null
 
     fun setOnGoalCreatedListener(listener: (Goal) -> Unit) {
         onGoalCreatedListener = listener
     }
+    
+    fun setOnDismissListener(listener: () -> Unit) {
+        onDismissListener = listener
+    }
 
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        onDismissListener?.invoke()
+    }
+    
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = Dialog(requireContext(), R.style.TransparentDialog)
         val view = requireActivity().layoutInflater.inflate(R.layout.dialog_add_goal, null)

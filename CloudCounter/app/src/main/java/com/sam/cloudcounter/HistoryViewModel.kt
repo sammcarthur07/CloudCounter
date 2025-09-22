@@ -39,12 +39,19 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
     private fun combineItems() {
         val logs = logsSource.value.orEmpty().map { HistoryItem.ActivityItem(it) }
         val summaries = summariesSource.value.orEmpty().map { HistoryItem.SummaryItem(it) }
-        val combined = mutableListOf<HistoryItem>().apply {
-            addAll(summaries)
-            addAll(logs)
-        }
-        combined.sortByDescending { it.timestamp }
-        _allItems.value = combined
+        
+        // Separate active and inactive sessions
+        val activeSessions = summaries.filter { it is HistoryItem.SummaryItem && it.summary.isActive }
+        val inactiveSessions = summaries.filter { it is HistoryItem.SummaryItem && !it.summary.isActive }
+        
+        // Sort each section by timestamp
+        // Active sessions should always be at the top, sorted by timestamp (newest first)
+        val sortedActive = activeSessions.sortedByDescending { it.timestamp }
+        // Inactive sessions and logs sorted together by timestamp (newest first)
+        val sortedRest = (inactiveSessions + logs).sortedByDescending { it.timestamp }
+        
+        // Combine with active sessions always at the top
+        _allItems.value = sortedActive + sortedRest
     }
 
     fun deleteLog(log: ActivityLog) {

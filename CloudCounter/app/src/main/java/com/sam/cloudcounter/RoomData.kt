@@ -21,7 +21,8 @@ data class RoomData(
     val sharedSmokers: Map<String, Map<String, Any>> = emptyMap(),
     val passwordHash: String? = null, // NEW: Add password field
     val joinedUsers: List<String> = emptyList(), // NEW: Track users who have successfully joined with password
-    val customActivities: Map<String, Map<String, Any>>? = null // Store custom activity definitions
+    val customActivities: Map<String, Map<String, Any>>? = null, // Store custom activity definitions
+    val isSocialRoom: Boolean = false // Flag to include in Sesh Roulette
 ) {
     // Existing safe methods...
     fun safeActivities(): List<SessionActivity> = activities

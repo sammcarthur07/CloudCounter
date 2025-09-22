@@ -52,10 +52,29 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
                     val summaries = repo.allSummaries.value ?: emptyList()
                     val items = logs.map { HistoryItem.ActivityItem(it) } +
                             summaries.map { HistoryItem.SummaryItem(it) }
-                    val sortedItems = items.sortedByDescending {
-                        when (it) {
-                            is HistoryItem.ActivityItem -> it.log.timestamp
-                            is HistoryItem.SummaryItem  -> it.summary.timestamp
+
+                    // Promote active summary to the top, then sort by timestamp desc
+                    val sortedItems = items.sortedWith(
+                        compareByDescending<HistoryItem> { item ->
+                            (item as? HistoryItem.SummaryItem)?.summary?.isActive == true
+                        }.thenByDescending { item ->
+                            when (item) {
+                                is HistoryItem.ActivityItem -> item.log.timestamp
+                                is HistoryItem.SummaryItem  -> item.summary.timestamp
+                                else -> 0L
+                            }
+                        }
+                    )
+
+                    // Logging: show if we promoted anything
+                    val activeSummaries = summaries.filter { it.isActive }
+                    if (activeSummaries.isNotEmpty()) {
+                        Log.d("SeshFlow", "HistorySort – promoting active summary ids=${activeSummaries.map { it.id }} to top")
+                        val top = sortedItems.firstOrNull()
+                        when (top) {
+                            is HistoryItem.SummaryItem -> Log.d("SeshFlow", "HistorySort – top item summary id=${top.summary.id}, active=${top.summary.isActive}")
+                            is HistoryItem.ActivityItem -> Log.d("SeshFlow", "HistorySort – top item activity id=${top.log.id}")
+                            else -> { /* no-op */ }
                         }
                     }
 
@@ -85,10 +104,29 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
                     val logs = repo.allLogs.value ?: emptyList()
                     val items = logs.map { HistoryItem.ActivityItem(it) } +
                             summaries.map { HistoryItem.SummaryItem(it) }
-                    val sortedItems = items.sortedByDescending {
-                        when (it) {
-                            is HistoryItem.ActivityItem -> it.log.timestamp
-                            is HistoryItem.SummaryItem  -> it.summary.timestamp
+
+                    // Promote active summary to the top, then sort by timestamp desc
+                    val sortedItems = items.sortedWith(
+                        compareByDescending<HistoryItem> { item ->
+                            (item as? HistoryItem.SummaryItem)?.summary?.isActive == true
+                        }.thenByDescending { item ->
+                            when (item) {
+                                is HistoryItem.ActivityItem -> item.log.timestamp
+                                is HistoryItem.SummaryItem  -> item.summary.timestamp
+                                else -> 0L
+                            }
+                        }
+                    )
+
+                    // Logging: show if we promoted anything
+                    val activeSummaries = summaries.filter { it.isActive }
+                    if (activeSummaries.isNotEmpty()) {
+                        Log.d("SeshFlow", "HistorySort – promoting active summary ids=${activeSummaries.map { it.id }} to top")
+                        val top = sortedItems.firstOrNull()
+                        when (top) {
+                            is HistoryItem.SummaryItem -> Log.d("SeshFlow", "HistorySort – top item summary id=${top.summary.id}, active=${top.summary.isActive}")
+                            is HistoryItem.ActivityItem -> Log.d("SeshFlow", "HistorySort – top item activity id=${top.log.id}")
+                            else -> { /* no-op */ }
                         }
                     }
 

@@ -74,8 +74,24 @@ class ActivityRepository(
         }
     }
 
-    suspend fun delete(log: ActivityLog) =
+    suspend fun delete(log: ActivityLog) {
+        try {
+            // Basic trace to catch unexpected deletions
+            android.util.Log.d(
+                "SeshFlow",
+                "Repo.delete Activity id=${log.id}, type=${log.type}, smokerId=${log.smokerId}, ts=${log.timestamp}, sessionId=${log.sessionId}"
+            )
+            // Optional lightweight caller hint (best-effort)
+            val st = Throwable().stackTrace
+            val caller = st.getOrNull(1)
+            if (caller != null) {
+                android.util.Log.d("SeshFlow", "Repo.delete caller: ${caller.className}.${caller.methodName}:${caller.lineNumber}")
+            }
+        } catch (e: Exception) {
+            // Never let logging break deletion
+        }
         activityLogDao.delete(log)
+    }
 
     suspend fun getLastLogByType(type: ActivityType): ActivityLog? =
         activityLogDao.getLastLogByType(type)

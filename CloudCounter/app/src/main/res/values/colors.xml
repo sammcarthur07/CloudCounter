@@ -34,4 +34,10 @@
     <!-- Button color states for sort smokers button -->
     <color name="button_text_color_sort_smokers">#FFFFFF</color>
     <color name="button_background_tint_sort_smokers">#33ff91a4</color>
+    
+    <!-- Calendar colors -->
+    <!-- Use solid black for dialog backgrounds to avoid grey tint -->
+    <color name="dialog_background">#FF000000</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
 </resources>

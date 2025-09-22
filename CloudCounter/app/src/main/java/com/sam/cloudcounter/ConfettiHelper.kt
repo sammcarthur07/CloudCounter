@@ -19,6 +19,14 @@ class ConfettiHelper(private val context: Context) {
 
     private var konfettiView: KonfettiView? = null
     private var activity: MainActivity? = null
+    private var isEnabled = true  // Track whether confetti is enabled
+
+    /**
+     * Set whether confetti animations are enabled
+     */
+    fun setEnabled(enabled: Boolean) {
+        isEnabled = enabled
+    }
 
     /**
      * Initialize the konfetti overlay programmatically
@@ -49,6 +57,7 @@ class ConfettiHelper(private val context: Context) {
      * Show mini confetti from a button (smaller effect for frequent actions)
      */
     fun showMiniConfettiFromButton(button: View) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Get button's position on screen
@@ -85,6 +94,7 @@ class ConfettiHelper(private val context: Context) {
      * Show special confetti for overflow milestones (200%, 300%, etc.)
      */
     fun showOverflowMilestoneConfetti(milestonePercent: Int) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Create a special burst pattern for milestones
@@ -130,6 +140,7 @@ class ConfettiHelper(private val context: Context) {
      * Show success confetti (green burst from center)
      */
     fun showSuccessConfetti() {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Get center of screen
@@ -159,6 +170,7 @@ class ConfettiHelper(private val context: Context) {
      * Show celebration fountains that reach the top of screen and float down
      */
     fun showRainConfetti() {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         val parties = listOf(
@@ -226,6 +238,7 @@ class ConfettiHelper(private val context: Context) {
      * Show confetti from a specific button location
      */
     fun showConfettiFromButton(button: View) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Get button's position on screen
@@ -269,6 +282,7 @@ class ConfettiHelper(private val context: Context) {
      * @param currentTabIndex Current tab position
      */
     fun showCelebrationBurst(button: View, previousTabIndex: Int = -1, currentTabIndex: Int = -1) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Get button's position
@@ -339,6 +353,7 @@ class ConfettiHelper(private val context: Context) {
      * Show explosion confetti effect
      */
     fun showExplosionConfetti(view: View) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         val centerX = konfetti.width / 2f
@@ -369,6 +384,7 @@ class ConfettiHelper(private val context: Context) {
      * Direction changes based on progress percentage (follows the circle)
      */
     fun showProgressTipConfetti(x: Float, y: Float, parentView: View) {
+        if (!isEnabled) return  // Check if confetti is enabled
         val konfetti = konfettiView ?: return
 
         // Get konfetti view's position

@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 24, // Changed from 23 to 24 for custom activities
+    version = 26, // Changed from 25 to 26 for session isActive field
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -440,6 +440,28 @@ abstract class AppDatabase : RoomDatabase() {
                 Log.d("Migration", "Migration 23 to 24 completed successfully")
             }
         }
+        
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 24 to 25 - Adding session activity breakdown")
+                
+                // Add activity breakdown field to session_summaries table
+                database.execSQL("ALTER TABLE session_summaries ADD COLUMN activityBreakdown TEXT")
+                
+                Log.d("Migration", "Migration 24 to 25 completed successfully")
+            }
+        }
+        
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 25 to 26 - Adding session isActive field")
+                
+                // Add isActive field to session_summaries table
+                database.execSQL("ALTER TABLE session_summaries ADD COLUMN isActive INTEGER NOT NULL DEFAULT 0")
+                
+                Log.d("Migration", "Migration 25 to 26 completed successfully")
+            }
+        }
 
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
@@ -464,7 +486,9 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_20_21,
                         MIGRATION_21_TO_22,
                         MIGRATION_22_23, // Added displayOrder migration
-                        MIGRATION_23_24  // Added custom activities migration
+                        MIGRATION_23_24,  // Added custom activities migration
+                        MIGRATION_24_25,  // Added session activity breakdown
+                        MIGRATION_25_26   // Added session isActive field
                     )
                     .fallbackToDestructiveMigration()
                     .build()

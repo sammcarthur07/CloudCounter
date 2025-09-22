@@ -177,6 +177,7 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
                         }
 
                         // Delete the activity
+                        Log.d("SeshFlow", "Notification undo: deleting activity id=${it.id}, smokerId=${it.smokerId}, type=${it.type}, ts=${it.timestamp}")
                         repo.delete(it)
                         Log.d(TAG, "🗑️ Removed last ${type.name} from notification")
 

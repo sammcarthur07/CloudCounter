@@ -39,10 +39,23 @@ class AddSmokerDialog(
 
     private val passwordDialog = PasswordDialog(context)
 
+    private var currentDialog: Dialog? = null
+    private var onSuccessCallback: ((Smoker) -> Unit)? = null
+    private var onCancelCallback: (() -> Unit)? = null
+    
+    fun setOnSuccessCallback(callback: (Smoker) -> Unit) {
+        onSuccessCallback = callback
+    }
+    
+    fun setOnCancelCallback(callback: () -> Unit) {
+        onCancelCallback = callback
+    }
+    
     fun show() {
         Log.d(TAG, "📱 showAddSmokerDialog called")
 
         val dialog = Dialog(context, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+        currentDialog = dialog
 
         val dialogView = createThemedAddSmokerDialog(dialog)
         dialog.setContentView(dialogView)
@@ -639,7 +652,9 @@ class AddSmokerDialog(
 
         // Cancel button
         val cancelButton = createThemedDialogButton("Cancel", false) {
-            animateCardSelection(dialog) {}
+            animateCardSelection(dialog) {
+                onCancelCallback?.invoke()
+            }
         }
         cancelButton.layoutParams = android.widget.LinearLayout.LayoutParams(
             0,
@@ -772,6 +787,7 @@ class AddSmokerDialog(
                     .fold(
                         onSuccess = { smokerFromCloud ->
                             onSmokerAdded(smokerFromCloud)
+                            onSuccessCallback?.invoke(smokerFromCloud)
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(context, "'$name' is ready.", Toast.LENGTH_SHORT).show()
                             }
@@ -790,6 +806,7 @@ class AddSmokerDialog(
                 }
                 val smoker = Smoker(name = name, displayOrder = maxOrder + 1)
                 onSmokerAdded(smoker)
+                onSuccessCallback?.invoke(smoker)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Added local smoker: $name", Toast.LENGTH_SHORT).show()
                 }
@@ -805,6 +822,12 @@ class AddSmokerDialog(
         }
     }
 
+    fun dismiss() {
+        Log.d(TAG, "📱 Dismissing AddSmokerDialog")
+        currentDialog?.dismiss()
+        currentDialog = null
+    }
+    
     fun onGoogleSignInComplete() {
         android.util.Log.d("WELCOME_DEBUG", "🌟 onGoogleSignInComplete() called")
         debugPasswordStorage()
@@ -841,6 +864,9 @@ class AddSmokerDialog(
                 Log.d(TAG, "Smoker already exists and is verified, skipping dialog")
                 android.util.Log.d("WELCOME_DEBUG", "⚠️ Smoker already verified, skipping add dialog")
                 
+                // Dismiss the add smoker dialog
+                dismiss()
+                
                 // Still check if we should show welcome screen for first cloud smoker
                 checkAndShowWelcomeScreen()
                 return@launch
@@ -854,6 +880,8 @@ class AddSmokerDialog(
             // AUTO-LOGIN: If cloud profile exists without password, auto-login without dialog
             if (cloudProfile != null && cloudProfile.passwordHash == null) {
                 android.util.Log.d("WELCOME_DEBUG", "🚀 Auto-login for passwordless cloud profile")
+                // Dismiss the add smoker dialog before handling profile
+                dismiss()
                 handleExistingCloudProfile(cloudProfile, cloudProfile.name, "")
                 return@launch
             }
@@ -899,6 +927,9 @@ class AddSmokerDialog(
                             Log.d(TAG, "Saved password for user $userId")
                         }
 
+                        // Dismiss the add smoker dialog when positive button is clicked
+                        dismiss()
+                        
                         if (isExistingUser) {
                             // For existing cloud profile, create or update local smoker
                             handleExistingCloudProfile(cloudProfile!!, name, password)
@@ -965,6 +996,7 @@ class AddSmokerDialog(
                     repository.updateSmoker(updated)
                 }
                 onSmokerAdded(updated)
+                onSuccessCallback?.invoke(updated)
                 android.util.Log.d("WELCOME_DEBUG", "📝 Updated existing smoker")
             } else {
                 // Create new local entry
@@ -986,7 +1018,9 @@ class AddSmokerDialog(
                 val id = withContext(Dispatchers.IO) {
                     repository.insertSmoker(newSmoker)
                 }
-                onSmokerAdded(newSmoker.copy(smokerId = id))
+                val createdSmoker = newSmoker.copy(smokerId = id)
+                onSmokerAdded(createdSmoker)
+                onSuccessCallback?.invoke(createdSmoker)
                 android.util.Log.d("WELCOME_DEBUG", "✨ Created new cloud smoker: $name")
                 
                 // Check if this was the first cloud smoker and show welcome
@@ -1053,6 +1087,7 @@ class AddSmokerDialog(
                     repository.updateSmoker(updatedSmoker)
                 }
                 onSmokerAdded(updatedSmoker)
+                onSuccessCallback?.invoke(updatedSmoker)
                 Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
                 return@launch
             }
@@ -1071,6 +1106,7 @@ class AddSmokerDialog(
                     repository.updateSmoker(updatedSmoker)
                 }
                 onSmokerAdded(updatedSmoker)
+                onSuccessCallback?.invoke(updatedSmoker)
                 Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(context, "Incorrect password", Toast.LENGTH_SHORT).show()
@@ -1132,6 +1168,7 @@ class AddSmokerDialog(
 
                 withContext(Dispatchers.Main) {
                     onSmokerAdded(finalSmoker)
+                    onSuccessCallback?.invoke(finalSmoker)
                     Toast.makeText(context, "Created cloud smoker: $name", Toast.LENGTH_SHORT).show()
                     android.util.Log.d("WELCOME_DEBUG", "🆕 Created brand new cloud smoker: $name")
 
@@ -1547,6 +1584,7 @@ class AddSmokerDialog(
                 displayOrder = maxOrder + 1
             )
             onSmokerAdded(smoker)
+            onSuccessCallback?.invoke(smoker)
 
             val shareCode = getCurrentShareCode()
             val message = if (shareCode != null && item.userId.isNotEmpty()) {
@@ -1671,7 +1709,9 @@ class AddSmokerDialog(
 
         // Cancel button
         val cancelButton = createThemedDialogButton("Cancel", false) {
-            animateCardSelection(dialog) {}
+            animateCardSelection(dialog) {
+                onCancelCallback?.invoke()
+            }
         }
         cancelButton.layoutParams = android.widget.LinearLayout.LayoutParams(
             0,
@@ -1905,7 +1945,9 @@ class AddSmokerDialog(
 
         // Cancel button
         val cancelButton = createThemedDialogButton("Cancel", false) {
-            animateCardSelection(dialog) {}
+            animateCardSelection(dialog) {
+                onCancelCallback?.invoke()
+            }
         }
         cancelButton.layoutParams = android.widget.LinearLayout.LayoutParams(
             0,

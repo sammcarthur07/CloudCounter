@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".CalendarFragment">
+
+    <!-- Background image layer (match Graph screen) -->
+    <ImageView
+        android:id="@+id/backgroundImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/graph_background"
+        android:scaleType="centerCrop"
+        android:adjustViewBounds="false"
+        android:contentDescription="Background decoration" />
+
+    <!-- Main content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- View mode selector -->
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleViewMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnYearlyView"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Yearly"
+                android:textSize="12sp"
+                android:textColor="@color/calendar_chip_text_color"
+                app:strokeColor="@color/neon_green"
+                app:strokeWidth="1dp"
+                android:backgroundTint="@color/calendar_chip_background" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMonthlyView"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Monthly"
+                android:textSize="12sp"
+                android:textColor="@color/calendar_chip_text_color"
+                app:strokeColor="@color/neon_green"
+                app:strokeWidth="1dp"
+                android:backgroundTint="@color/calendar_chip_background" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnWeeklyView"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Weekly"
+                android:textSize="12sp"
+                android:textColor="@color/calendar_chip_text_color"
+                app:strokeColor="@color/neon_green"
+                app:strokeWidth="1dp"
+                android:backgroundTint="@color/calendar_chip_background" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDailyView"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:text="Daily"
+                android:textSize="12sp"
+                android:textColor="@color/calendar_chip_text_color"
+                app:strokeColor="@color/neon_green"
+                app:strokeWidth="1dp"
+                android:backgroundTint="@color/calendar_chip_background" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        <!-- Date navigation -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <ImageButton
+                android:id="@+id/btnPrevious"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_media_previous"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:tint="@color/neon_green"
+                android:contentDescription="Previous period" />
+
+            <TextView
+                android:id="@+id/tvCurrentPeriod"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="January 2024"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/neon_green"
+                android:gravity="center"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackground" />
+
+            <ImageButton
+                android:id="@+id/btnNext"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_media_next"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:tint="@color/neon_green"
+                android:contentDescription="Next period" />
+
+        </LinearLayout>
+
+        <!-- Calendar grid -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/calendarRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+            tools:spanCount="7" />
+
+    </LinearLayout>
+
+</FrameLayout>

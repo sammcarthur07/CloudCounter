@@ -48,17 +48,20 @@ android {
             }
         }
     }
-
     packagingOptions {
-        pickFirst("META-INF/DEPENDENCIES")
-        pickFirst("META-INF/LICENSE")
-        pickFirst("META-INF/LICENSE.txt")
-        pickFirst("META-INF/license.txt")
-        pickFirst("META-INF/NOTICE")
-        pickFirst("META-INF/NOTICE.txt")
-        pickFirst("META-INF/notice.txt")
-        pickFirst("META-INF/ASL2.0")
-        pickFirst("META-INF/kotlinx-coroutines-core.kotlin_module")
+        resources {
+            pickFirsts += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/kotlinx-coroutines-core.kotlin_module"
+            )
+        }
     }
 
 

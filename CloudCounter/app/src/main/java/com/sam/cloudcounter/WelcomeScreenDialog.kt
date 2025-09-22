@@ -16,7 +16,7 @@ import androidx.cardview.widget.CardView
 
 class WelcomeScreenDialog(
     private val activity: MainActivity,
-    private val onComplete: () -> Unit
+    private val onSelections: (OnboardingFlowController.WelcomeSelections) -> Unit
 ) : Dialog(activity) {
 
     private lateinit var checkboxSetupStash: CheckBox
@@ -39,8 +39,6 @@ class WelcomeScreenDialog(
     private lateinit var cardSetupStash: CardView
     private lateinit var cardSetupRatios: CardView
     private lateinit var cardCreateGoal: CardView
-    
-    private val sharedPreferences: SharedPreferences = activity.getSharedPreferences("CloudCounterPrefs", Context.MODE_PRIVATE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,9 +113,14 @@ class WelcomeScreenDialog(
         
         // Skip button
         buttonSkip.setOnClickListener {
-            // Don't mark as shown - we want it to appear every Google login
+            android.util.Log.d("WELCOME_DEBUG", "⏭️ Skip button clicked")
             dismiss()
-            onComplete()
+            val selections = OnboardingFlowController.WelcomeSelections(
+                setupStash = false,
+                setupRatios = false,
+                setupGoals = false
+            )
+            onSelections(selections)
         }
         
         // Next button - navigate through selected dialogs
@@ -127,19 +130,13 @@ class WelcomeScreenDialog(
             android.util.Log.d("WELCOME_DEBUG", "☑️ Ratios checked: ${checkboxSetupRatios.isChecked}")
             android.util.Log.d("WELCOME_DEBUG", "☑️ Goal checked: ${checkboxCreateGoal.isChecked}")
             
-            if (!checkboxSetupStash.isChecked && 
-                !checkboxSetupRatios.isChecked && 
-                !checkboxCreateGoal.isChecked) {
-                android.util.Log.d("WELCOME_DEBUG", "❌ Nothing selected, closing dialog")
-                // Nothing selected, just close
-                dismiss()
-                onComplete()
-            } else {
-                android.util.Log.d("WELCOME_DEBUG", "✅ Options selected, showing dialogs...")
-                // Show dialogs in sequence based on selections
-                dismiss()
-                showNextDialog()
-            }
+            dismiss()
+            val selections = OnboardingFlowController.WelcomeSelections(
+                setupStash = checkboxSetupStash.isChecked,
+                setupRatios = checkboxSetupRatios.isChecked,
+                setupGoals = checkboxCreateGoal.isChecked
+            )
+            onSelections(selections)
         }
         
         // Button press effects
@@ -171,86 +168,6 @@ class WelcomeScreenDialog(
             }
             false
         }
-    }
-    
-    private fun showNextDialog() {
-        android.util.Log.d("WELCOME_DEBUG", "🚀 showNextDialog() called")
-        
-        // Build list of dialogs to show
-        val stashSelected = checkboxSetupStash.isChecked
-        val ratiosSelected = checkboxSetupRatios.isChecked
-        val goalSelected = checkboxCreateGoal.isChecked
-        
-        android.util.Log.d("WELCOME_DEBUG", "📋 Selections - Stash: $stashSelected, Ratios: $ratiosSelected, Goal: $goalSelected")
-        
-        // Build queue of dialogs to show in REVERSE order so stash ends up on top
-        // We add them in reverse: goal -> ratios -> stash
-        // This way stash will be the last to show and therefore on top
-        val dialogQueue = mutableListOf<() -> Unit>()
-        
-        if (goalSelected) {
-            dialogQueue.add {
-                android.util.Log.d("WELCOME_DEBUG", "🎯 Showing goal dialog (will be at bottom)")
-                showCreateGoalDialog()
-            }
-        }
-        
-        if (ratiosSelected) {
-            dialogQueue.add {
-                android.util.Log.d("WELCOME_DEBUG", "⚖️ Showing ratios dialog (will be in middle)")
-                showSetRatioDialog()
-            }
-        }
-        
-        if (stashSelected) {
-            dialogQueue.add {
-                android.util.Log.d("WELCOME_DEBUG", "📦 Showing stash dialog (will be on top)")
-                showAddStashDialog()
-            }
-        }
-        
-        // Show dialogs with staggered delays
-        // The last one to appear (stash) will be on top and interactive
-        if (dialogQueue.isNotEmpty()) {
-            // Show first dialog (goal) immediately - it will be at the bottom
-            dialogQueue[0]()
-            
-            // Show remaining dialogs with small delays
-            // Each subsequent dialog will appear on top of the previous
-            for (i in 1 until dialogQueue.size) {
-                val delay = i * 300L  // Small delay between each to ensure proper stacking
-                android.util.Log.d("WELCOME_DEBUG", "⏱️ Scheduling dialog ${i+1} with ${delay}ms delay")
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    dialogQueue[i]()
-                }, delay)
-            }
-        }
-        
-        // Call completion callback
-        android.util.Log.d("WELCOME_DEBUG", "🔚 Calling onComplete callback")
-        onComplete()
-    }
-    
-    private fun showAddStashDialog() {
-        android.util.Log.d("WELCOME_DEBUG", "🏦 showAddStashDialog() called")
-        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddStashDialog()")
-        activity.showAddStashDialog()
-    }
-    
-    private fun showSetRatioDialog() {
-        android.util.Log.d("WELCOME_DEBUG", "⚖️ showSetRatioDialog() called")
-        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showSetRatioDialog()")
-        activity.showSetRatioDialog()
-    }
-    
-    private fun showCreateGoalDialog() {
-        android.util.Log.d("WELCOME_DEBUG", "🎯 showCreateGoalDialog() called")
-        android.util.Log.d("WELCOME_DEBUG", "📲 Calling MainActivity.showAddGoalDialog()")
-        activity.showAddGoalDialog()
-    }
-    
-    private fun markWelcomeShown() {
-        sharedPreferences.edit().putBoolean("welcome_screen_shown", true).apply()
     }
     
     companion object {

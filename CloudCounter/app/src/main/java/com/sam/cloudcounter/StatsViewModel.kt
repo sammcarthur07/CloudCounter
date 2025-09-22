@@ -132,26 +132,31 @@ class StatsViewModel(application: Application) : AndroidViewModel(application) {
             if (start != null && end != null) byType.filter { it.timestamp in start..end } else byType
         }
 
-        if (byTime.isEmpty()) {
+        // Exclude stash ledger adjustments from Stats (popup +/− stash)
+        val filtered = byTime.filter { log ->
+            log.customActivityId != MY_STASH_LEDGER_ID && log.customActivityId != THEIR_STASH_LEDGER_ID
+        }
+
+        if (filtered.isEmpty()) {
             _calculatedStats.value = CalculatedStats()
             return
         }
 
-        val total = byTime.size
+        val total = filtered.size
 
         val avg = if (useCustom && ranges.isNotEmpty()) {
             // Custom mode: Always compute per-day average from total selected duration only
-            calculateAveragePerDayForCustom(byTime, ranges)
+            calculateAveragePerDayForCustom(filtered, ranges)
         } else {
             val (start, end) = timeRange(period)
-            calculateAverage(byTime, period, start, end)
+            calculateAverage(filtered, period, start, end)
         }
 
         val freq = if (useCustom && ranges.isNotEmpty()) {
             // Custom mode: only within-session intervals
-            calculateFrequencyWithinRanges(byTime, ranges)
+            calculateFrequencyWithinRanges(filtered, ranges)
         } else {
-            calculateFrequency(byTime)
+            calculateFrequency(filtered)
         }
 
         _calculatedStats.value = CalculatedStats(

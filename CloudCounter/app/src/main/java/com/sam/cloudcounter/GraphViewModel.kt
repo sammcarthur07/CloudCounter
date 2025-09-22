@@ -332,7 +332,12 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             baseFiltered.filter { log -> liveRanges.any { r -> log.timestamp in r.first..r.second } }
         } else baseFiltered
 
-        if (logs.isEmpty()) {
+        // Exclude stash ledger adjustments (popup +/− stash) from graphs
+        val logsNoLedger = logs.filter { log ->
+            log.customActivityId != MY_STASH_LEDGER_ID && log.customActivityId != THEIR_STASH_LEDGER_ID
+        }
+
+        if (logsNoLedger.isEmpty()) {
             val desc = if (useCustom && liveRanges.isNotEmpty()) "No activity in custom selection." else "No activity in this period."
             val customSpan = if (useCustom && liveRanges.isNotEmpty()) {
                 val minStart = liveRanges.minOf { it.first }
@@ -344,8 +349,8 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             return ChartUiData(LineData(), desc, processed, _chartType.value ?: ChartType.LINE, Pair(start, end), effective)
         }
 
-        val firstLogTime = logs.minOf { it.timestamp }
-        val lastLogTime = logs.maxOf { it.timestamp }
+        val firstLogTime = logsNoLedger.minOf { it.timestamp }
+        val lastLogTime = logsNoLedger.maxOf { it.timestamp }
         val effectiveMode = if (useCustom && liveRanges.isNotEmpty()) {
             val minStart = liveRanges.minOf { it.first }
             val maxEnd = liveRanges.maxOf { it.second }
@@ -355,12 +360,12 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val dataSets = mutableListOf<ILineDataSet>()
-        if (_showJoints.value == true) processLogsForChart(logs, ActivityType.JOINT, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Joints").apply { styleDataSet(this, colorJoints) }) }
-        if (_showCones.value == true) processLogsForChart(logs, ActivityType.CONE, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Cones").apply { styleDataSet(this, colorCones) }) }
-        if (_showBowls.value == true) processLogsForChart(logs, ActivityType.BOWL, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Bowls").apply { styleDataSet(this, colorBowls) }) }
+        if (_showJoints.value == true) processLogsForChart(logsNoLedger, ActivityType.JOINT, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Joints").apply { styleDataSet(this, colorJoints) }) }
+        if (_showCones.value == true) processLogsForChart(logsNoLedger, ActivityType.CONE, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Cones").apply { styleDataSet(this, colorCones) }) }
+        if (_showBowls.value == true) processLogsForChart(logsNoLedger, ActivityType.BOWL, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Bowls").apply { styleDataSet(this, colorBowls) }) }
         
         // Process custom activities
-        val customActivities = logs.filter { !it.customActivityId.isNullOrEmpty() }
+        val customActivities = logsNoLedger.filter { !it.customActivityId.isNullOrEmpty() }
             .groupBy { it.customActivityId }
         
         customActivities.forEach { (customId, customLogs) ->

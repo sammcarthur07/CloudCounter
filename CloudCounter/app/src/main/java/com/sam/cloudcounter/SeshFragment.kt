@@ -41,6 +41,7 @@ class SeshFragment : Fragment() {
     private var hasLoadedSummary = false
     private var isSessionActive = false
     private var sessionExplicitlyEnded = false
+    private var isPreviewMode = false // NEW: show Resume even if another session is active
 
     // ADD: Method to receive confetti helper from MainActivity
     fun setConfettiHelper(helper: ConfettiHelper) {
@@ -510,16 +511,23 @@ class SeshFragment : Fragment() {
      * Show/hide resume button based on session state
      */
     private fun updateResumeButtonVisibility() {
-        val shouldShow = hasLoadedSummary && !isSessionActive
+        val shouldShow = hasLoadedSummary && (isPreviewMode || !isSessionActive)
         binding.fabResumeSesh.visibility = if (shouldShow) View.VISIBLE else View.GONE
 
         Log.d("SeshFragment", "=== RESUME BUTTON DEBUG ===")
         Log.d("SeshFragment", "hasLoadedSummary: $hasLoadedSummary")
         Log.d("SeshFragment", "isSessionActive: $isSessionActive")
         Log.d("SeshFragment", "sessionExplicitlyEnded: $sessionExplicitlyEnded")
+        Log.d("SeshFragment", "isPreviewMode: $isPreviewMode")
         Log.d("SeshFragment", "shouldShow: $shouldShow")
         Log.d("SeshFragment", "Button visibility: ${if (shouldShow) "VISIBLE" else "GONE"}")
         Log.d("SeshFragment", "===============================")
+        // Attempt to include a simple origin hint
+        val origin = try { Throwable().stackTrace.getOrNull(1)?.methodName } catch (e: Exception) { null }
+        Log.d(
+            "SeshFlow",
+            "Resume FAB visibility updated: visible=$shouldShow (loaded=$hasLoadedSummary, active=$isSessionActive, preview=$isPreviewMode) origin=${origin ?: "unknown"}"
+        )
     }
 
     /**
@@ -527,9 +535,11 @@ class SeshFragment : Fragment() {
      */
     fun onSessionStarted() {
         Log.d("SeshFragment", "🟢 onSessionStarted() called")
+        Log.d("SeshFlow", "onSessionStarted: forcing live mode (preview=false)")
         isSessionActive = true
         hasLoadedSummary = false
         sessionExplicitlyEnded = false  // Reset the flag
+        isPreviewMode = false
         updateResumeButtonVisibility()
     }
 
@@ -538,8 +548,18 @@ class SeshFragment : Fragment() {
      */
     fun onSummaryLoaded() {
         Log.d("SeshFragment", "🟡 onSummaryLoaded() called")
+        Log.d("SeshFlow", "onSummaryLoaded: BEFORE state loaded=$hasLoadedSummary, active=$isSessionActive, preview=$isPreviewMode, ended=$sessionExplicitlyEnded")
         hasLoadedSummary = true
         sessionExplicitlyEnded = false  // Reset the flag when loading new summary
+        // Always enter preview mode when a summary is loaded, even if a session is active
+        // This allows showing the Resume button while previewing another session
+        isPreviewMode = true
+        if (isSessionActive) {
+            Log.d("SeshFlow", "Preview summary loaded while active; enabling Resume button")
+        } else {
+            Log.d("SeshFlow", "Preview summary loaded; showing Resume button")
+        }
+        Log.d("SeshFlow", "onSummaryLoaded: AFTER state loaded=$hasLoadedSummary, active=$isSessionActive, preview=$isPreviewMode, ended=$sessionExplicitlyEnded")
         updateResumeButtonVisibility()
     }
 
@@ -550,6 +570,7 @@ class SeshFragment : Fragment() {
         Log.d("SeshFragment", "🔴 onSessionEnded() called")
         isSessionActive = false
         sessionExplicitlyEnded = true  // NEW: Set the flag to prevent timer interference
+        isPreviewMode = false
         updateResumeButtonVisibility()
 
         Log.d("SeshFragment", "🔴 Session explicitly ended - timer updates will be ignored")
@@ -559,11 +580,13 @@ class SeshFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        Log.d("SeshFlow", "SeshFragment.onResume: state loaded=$hasLoadedSummary, active=$isSessionActive, preview=$isPreviewMode")
         startTimeUpdateTimer()
     }
     
     override fun onPause() {
         super.onPause()
+        Log.d("SeshFlow", "SeshFragment.onPause: state loaded=$hasLoadedSummary, active=$isSessionActive, preview=$isPreviewMode")
         stopTimeUpdateTimer()
     }
     

@@ -23,5 +23,11 @@ data class SessionSummary(
 
     // ADD: Store room info for resuming
     val shareCode: String? = null,
-    val roomName: String? = null
+    val roomName: String? = null,
+    
+    // ADD: Store breakdown of all activity types as JSON
+    val activityBreakdown: String? = null,
+    
+    // ADD: Track if this session is currently active
+    val isActive: Boolean = false
 )

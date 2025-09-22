@@ -524,7 +524,9 @@ class AboutFragment : Fragment() {
         binding.text420Location.visibility = View.VISIBLE
         binding.text420Location.alpha = 1.0f
 
-        checkLocationPermissionAndStart()
+        // Don't request location permission automatically on startup
+        // Only check/request when user interacts with location-based features
+        // checkLocationPermissionAndStart()
 
         // Start timer updates
         start420Timers()

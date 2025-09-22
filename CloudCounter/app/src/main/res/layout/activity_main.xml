@@ -53,30 +53,22 @@
             android:paddingEnd="0dp"
             android:prompt="@string/prompt_select_smoker" />
 
-        <RadioGroup
-            android:id="@+id/radioGroupMode"
+        <Button
+            android:id="@+id/btnModeToggle"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="24dp"
             android:layout_marginStart="4dp"
-            android:layout_marginTop="2dp"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/radioSticky"
-                style="@style/SmallRadioButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Sticky" />
-
-            <RadioButton
-                android:id="@+id/radioAuto"
-                style="@style/SmallRadioButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="2dp"
-                android:checked="true"
-                android:text="Auto" />
-        </RadioGroup>
+            android:minWidth="48dp"
+            android:minHeight="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            android:text="AUTO"
+            android:textSize="11sp"
+            android:textColor="@android:color/darker_gray"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:gravity="center" />
 
         <ImageButton
             android:id="@+id/btnLayoutRotation"
@@ -135,6 +127,18 @@
             android:src="@android:drawable/ic_popup_reminder"
             android:scaleType="centerInside"
             android:contentDescription="Toggle notifications"
+            android:tint="@android:color/darker_gray"
+            android:padding="4dp" />
+
+        <ImageButton
+            android:id="@+id/btnConfettiToggle"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="2dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_confetti_on"
+            android:scaleType="centerInside"
+            android:contentDescription="Toggle confetti animations"
             android:tint="@android:color/darker_gray"
             android:padding="4dp" />
     </LinearLayout>
@@ -505,11 +509,25 @@
         android:visibility="gone"
         android:layout_marginTop="4dp">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRoundMinus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/ic_media_previous"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            app:icon="@android:drawable/ic_media_previous"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/my_light_primary"
+            android:backgroundTint="@android:color/transparent"
+            app:strokeColor="@color/my_light_primary"
+            app:cornerRadius="8dp"
+            android:text=""
+            android:minWidth="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:padding="0dp"
             android:contentDescription="Decrease rounds" />
 
         <TextView
@@ -522,11 +540,25 @@
             android:paddingEnd="16dp"
             android:contentDescription="Rounds left" />
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRoundPlus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@android:drawable/ic_media_next"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            app:icon="@android:drawable/ic_media_next"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconTint="@color/my_light_primary"
+            android:backgroundTint="@android:color/transparent"
+            app:strokeColor="@color/my_light_primary"
+            app:cornerRadius="8dp"
+            android:text=""
+            android:minWidth="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:padding="0dp"
             android:contentDescription="Increase rounds" />
     </LinearLayout>
     </LinearLayout>

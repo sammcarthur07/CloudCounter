@@ -1,6 +1,7 @@
 package com.sam.cloudcounter
 
 import android.Manifest
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -34,6 +35,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.sam.cloudcounter.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -168,6 +170,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private var vibrationsEnabled = true  // Track vibration state
+    private var confettiEnabled = true  // Track confetti animation state
 
 
     private var pendingBowlQuantity = 1
@@ -180,7 +183,6 @@ class MainActivity : AppCompatActivity() {
         R.font.rubik_glitch,
         R.font.sankofa_display,
         R.font.silkscreen,
-        R.font.rubik_puddles,
         R.font.rubik_beastly,
         R.font.sixtyfour,
         R.font.monoton,
@@ -205,6 +207,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+    private lateinit var onboardingPrefs: SharedPreferences
+    private lateinit var onboardingController: OnboardingFlowController
     lateinit var customActivityManager: CustomActivityManager
 
     private var currentDialog: Dialog? = null
@@ -238,6 +242,8 @@ class MainActivity : AppCompatActivity() {
     private var isInFirstConeDialog = false
 
     private var notificationsEnabled = true  // Track notification state
+    private var isAddSmokerDialogShown = false  // Track if add smoker dialog was already shown
+    private var sequentialDialogCallback: (() -> Unit)? = null  // Callback for sequential dialogs
 
     private lateinit var addSmokerDialog: AddSmokerDialog
     private lateinit var passwordDialog: PasswordDialog
@@ -317,6 +323,7 @@ class MainActivity : AppCompatActivity() {
     // editing/resuming
     private var editingSummaryId: Long? = null
     private var lastLoadedSummary: SessionSummary? = null
+    private var pendingResumeSummary: SessionSummary? = null // For safe end->resume handoff
 
     // Prevent rapid clicks
     private var isLoggingHit = false
@@ -371,10 +378,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val requestPerm =
+    private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Log.d("FIRST_LAUNCH_FLOW", "🔔 Notification permission result: $granted")
             if (!granted) {
                 Toast.makeText(this, "Notification permission denied", Toast.LENGTH_SHORT).show()
+            }
+            // Notify the onboarding controller if initialized
+            if (::onboardingController.isInitialized) {
+                onboardingController.onNotificationPermissionResult(granted)
+            }
+        }
+    
+    private val locationPermissionLauncher = 
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Log.d("FIRST_LAUNCH_FLOW", "📍 Location permission result: $granted")
+            // Notify the onboarding controller if initialized
+            if (::onboardingController.isInitialized) {
+                onboardingController.onLocationPermissionResult(granted)
             }
         }
 
@@ -1900,6 +1921,14 @@ class MainActivity : AppCompatActivity() {
 
         // CRITICAL: Initialize prefs FIRST before using it
         prefs = getSharedPreferences("sesh", Context.MODE_PRIVATE)
+        onboardingPrefs = getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
+        
+        // Initialize onboarding controller
+        onboardingController = OnboardingFlowController(
+            activity = this,
+            handler = Handler(Looper.getMainLooper()),
+            onboardingPrefs = onboardingPrefs
+        )
 
         // Initialize helpers
         confettiHelper = ConfettiHelper(this)
@@ -1915,6 +1944,8 @@ class MainActivity : AppCompatActivity() {
         initializeSupportMessagesWatcher()
 
         setupVibrationToggle()
+        setupConfettiToggle()
+        setupModeToggleButton()
         setupLayoutRotation()
         setupGiantCounterButton()
         setupCustomActivityButton()
@@ -1942,7 +1973,16 @@ class MainActivity : AppCompatActivity() {
 
         // Setup UI components
         setupTabs()
-        askNotificationPermission()
+        
+        // Check if we're coming from splash and if we should run onboarding
+        val fromSplash = intent.getBooleanExtra(SplashActivity.EXTRA_FROM_SPLASH, false)
+        val shouldRunOnboarding = intent.getBooleanExtra(SplashActivity.EXTRA_SHOULD_RUN_ONBOARDING, false)
+        
+        Log.d("FIRST_LAUNCH_FLOW", "📱 MainActivity started - fromSplash=$fromSplash, shouldRunOnboarding=$shouldRunOnboarding")
+        
+        // Start onboarding flow if needed
+        onboardingController.start(shouldRunOnboarding, fromSplash)
+        
         triggerInitialNotifications()
         setupSessionControls()
         setupRewindButton()
@@ -2104,7 +2144,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            private var isFirstSelection = true
+            
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
+                // Skip the first automatic selection during initialization
+                if (isFirstSelection) {
+                    isFirstSelection = false
+                    // Don't show dialog on first automatic selection
+                    val sel = smokerAdapterNew.getItem(pos)
+                    if (sel != null) {
+                        handleSmokerSelection(sel)
+                    }
+                    smokerManager.dismissSpinnerDropDown()
+                    return
+                }
+                
                 val sel = smokerAdapterNew.getItem(pos)
                 if (sel == null) {
                     if (smokers.isEmpty()) {
@@ -2415,6 +2469,21 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "🔄 Successfully reconnected to room: ${room.name}")
                     currentRoomName = room.name
                     currentRoom = room
+                    
+                    // Update active session summary with room info if reconnecting
+                    if (editingSummaryId != null) {
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val currentSummary = repo.getSummaryById(editingSummaryId!!)
+                            if (currentSummary != null && currentSummary.roomName.isNullOrEmpty()) {
+                                val updatedSummary = currentSummary.copy(
+                                    shareCode = shareCode,
+                                    roomName = room.name
+                                )
+                                repo.updateSummary(updatedSummary)
+                                Log.d("SessionDebug", "Updated reconnected session with room info: ${room.name}")
+                            }
+                        }
+                    }
 
                     // Return from away status and mark as current smoker
                     sessionSyncService.returnFromAway(userId, shareCode)
@@ -2658,7 +2727,6 @@ class MainActivity : AppCompatActivity() {
                             R.font.rubik_glitch,
                             R.font.sankofa_display,
                             R.font.silkscreen,
-                            R.font.rubik_puddles,
                             R.font.rubik_beastly,
                             R.font.sixtyfour,
                             R.font.monoton,
@@ -3783,6 +3851,9 @@ class MainActivity : AppCompatActivity() {
             id
         }
         
+        // Update active session summary
+        updateActiveSessionSummary()
+        
         // Handle cloud sync if in a cloud session
         if (currentShareCode != null) {
             val smokerActivityUid = if (capturedSmoker.isCloudSmoker) {
@@ -4206,7 +4277,33 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             onResumeSummary = { summary ->
-                resumeSession(summary)
+                // If the tapped summary is the active one, navigate to the live Sesh view
+                val isActiveSummary = summary.isActive
+                val isCurrentActive = sessionActive && (
+                        (editingSummaryId != null && editingSummaryId == summary.id) ||
+                        (sessionStart > 0 && summary.timestamp == sessionStart)
+                )
+                if (isActiveSummary && isCurrentActive) {
+                    Log.d(
+                        "SeshFlow",
+                        "History tap on ACTIVE summary; navigating to live Sesh (summaryId=${summary.id}, sessionStart=$sessionStart)"
+                    )
+                    // Go to Sesh tab and ensure live mode
+                    binding.viewPager.currentItem = 1
+                    val sesh = supportFragmentManager.fragments.filterIsInstance<SeshFragment>().firstOrNull()
+                    if (sesh != null) {
+                        Log.d("SeshFlow", "Focusing live Sesh in SeshFragment (onSessionStarted)")
+                        sesh.onSessionStarted()
+                    } else {
+                        Log.d("SeshFlow", "SeshFragment not found while focusing live session; tab switch should create it")
+                    }
+                } else {
+                    Log.d(
+                        "SeshFlow",
+                        "History card clicked for preview: id=${summary.id}, room=${summary.roomName}, code=${summary.shareCode} (isActive=$isActiveSummary, isCurrentActive=$isCurrentActive)"
+                    )
+                    previewSession(summary)
+                }
             }
             setConfettiHelper(confettiHelper)
         }
@@ -4214,13 +4311,21 @@ class MainActivity : AppCompatActivity() {
         val seshFrag = SeshFragment().apply {
             onResumeSesh = {
                 Log.d(TAG, "📱 Resume button clicked in SeshFragment")
-                resumeLastSummary()
+                val toResume = lastLoadedSummary
+                if (toResume != null) {
+                    Log.d("SeshFlow", "Resume FAB pressed; resuming previewed summary id=${toResume.id}")
+                    resumeSession(toResume)
+                } else {
+                    Log.d("SeshFlow", "Resume FAB pressed with no preview; falling back to lastSummary")
+                    resumeLastSummary()
+                }
             }
             setConfettiHelper(confettiHelper)
         }
 
         val statsFrag = StatsFragment()
         val graphFrag = GraphFragment()
+        val calendarFrag = CalendarFragment()
         val stashFrag = StashFragment()
 
         val chatFrag = ChatFragment().apply {
@@ -4233,17 +4338,46 @@ class MainActivity : AppCompatActivity() {
 
         val aboutOrInboxFrag = AboutOrInboxFragment()
 
-        binding.viewPager.adapter =
-            ViewPagerAdapter(this, listOf(
-                historyFrag,
-                seshFrag,
-                statsFrag,
-                graphFrag,
-                stashFrag,
-                chatFrag,
-                goalFrag,
-                aboutOrInboxFrag
-            ))
+        val fragmentList = listOf(
+            historyFrag,
+            seshFrag,
+            statsFrag,
+            graphFrag,
+            calendarFrag,
+            stashFrag,
+            chatFrag,
+            goalFrag,  // Index 7
+            aboutOrInboxFrag
+        )
+        
+        // Log all fragments being added
+        fragmentList.forEachIndexed { index, fragment ->
+            Log.d("FIRST_LAUNCH_FLOW", "📱 ViewPager fragment[$index]: ${fragment.javaClass.simpleName}")
+        }
+        
+        binding.viewPager.adapter = ViewPagerAdapter(this, fragmentList)
+        
+        // IMPORTANT: Preload all fragments to ensure they're available for dialogs
+        // This ensures GoalFragment (at index 7) is loaded even when not visible
+        binding.viewPager.offscreenPageLimit = 8  // Load all 9 fragments (0-8)
+        Log.d("FIRST_LAUNCH_FLOW", "📱 Set ViewPager offscreenPageLimit to 8 - all fragments will be preloaded")
+        
+        // Force initialization of all fragments
+        binding.viewPager.post {
+            Log.d("FIRST_LAUNCH_FLOW", "🔄 Forcing fragment initialization...")
+            // Navigate to last fragment and back to ensure all are loaded
+            binding.viewPager.setCurrentItem(8, false)
+            handler.postDelayed({
+                binding.viewPager.setCurrentItem(0, false)
+                Log.d("FIRST_LAUNCH_FLOW", "✅ Fragment initialization complete")
+            }, 100)
+        }
+        
+        // Restore last selected tab
+        val savedTabPosition = prefs.getInt("last_selected_tab", 0)
+        binding.viewPager.post {
+            binding.viewPager.setCurrentItem(savedTabPosition, false)
+        }
 
         // Setup tab layout with icons — Option A (stateful tint owned by TabLayout)
        // binding.tabLayout.tabIconTint = android.content.res.ColorStateList(
@@ -4263,10 +4397,11 @@ class MainActivity : AppCompatActivity() {
                 1 -> tab.text = getString(R.string.tab_sesh)
                 2 -> tab.text = getString(R.string.tab_stats)
                 3 -> tab.text = getString(R.string.tab_graph)
-                4 -> tab.text = getString(R.string.tab_stash)
-                5 -> tab.text = getString(R.string.tab_chat)
-                6 -> tab.text = getString(R.string.tab_goals)
-                7 -> tab.setIcon(R.drawable.ic_about_selector)  // This stays as is
+                4 -> tab.setIcon(R.drawable.ic_calendar_selector)  // Calendar icon only
+                5 -> tab.text = getString(R.string.tab_stash)
+                6 -> tab.text = getString(R.string.tab_chat)
+                7 -> tab.text = getString(R.string.tab_goals)
+                8 -> tab.setIcon(R.drawable.ic_about_selector)  // This stays as is
                 else -> tab.text = ""
             }
         }.attach()
@@ -4295,6 +4430,9 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                 tab?.let {
+                    // Save the selected tab position
+                    prefs.edit().putInt("last_selected_tab", tab.position).apply()
+                    
                     // Update history icon color when unselected
                     if (tab?.position == 0) {
                         val customView = tab.customView as? LinearLayout
@@ -5157,6 +5295,13 @@ class MainActivity : AppCompatActivity() {
         }
         contentLayout.addView(newRoomCard)
 
+        // Sesh Roulette button (primary - styled like New Room)
+        val rouletteCard = createCloudOptionCard("🎲", "Sesh Roulette", "Jump into a random social sesh", true) {
+            Log.d("Roulette", "UI click: Sesh Roulette selected")
+            animateCardSelection(dialog) { startSeshRoulette() }
+        }
+        contentLayout.addView(rouletteCard)
+
         // Existing Room button (secondary)
         val existingRoomCard = createCloudOptionCard("🔥", "Existing Room", "Continue active sessions", false) {
             animateCardSelection(dialog) { showExistingRoomsDialog() }
@@ -5324,8 +5469,8 @@ class MainActivity : AppCompatActivity() {
         frameLayout.addView(contentLayout)
         cardContainer.addView(frameLayout)
 
-        // Add throbbing animation for "New Room" button (primary)
-        if (isPrimary && title == "New Room") {
+        // Add throbbing animation for primary attention-grab options
+        if (isPrimary && (title == "New Room" || title == "Sesh Roulette")) {
             addThrobbingAnimation(cardContainer)
         }
 
@@ -5899,6 +6044,7 @@ class MainActivity : AppCompatActivity() {
         val roomNameInput = dialogView.findViewById<EditText>(R.id.editRoomName)
         val shareCodeInput = dialogView.findViewById<EditText>(R.id.editShareCode)
         val passwordInput = dialogView.findViewById<EditText>(R.id.editRoomPassword)
+        val socialCheckbox = dialogView.findViewById<CheckBox>(R.id.checkboxSocialRoom)
 
         // Pre-fill with auto-generated values
         roomNameInput.setText(getRandomRoomName())
@@ -5910,11 +6056,28 @@ class MainActivity : AppCompatActivity() {
         // Limit share code length
         shareCodeInput.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(20))
 
+        // Disable/enable password based on social toggle
+        socialCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            Log.d("Roulette", "CreateRoom: Social checkbox toggled = $isChecked")
+            if (isChecked) {
+                passwordInput.setText("")
+                passwordInput.isEnabled = false
+                passwordInput.alpha = 0.5f
+                Log.d("Roulette", "CreateRoom: Password cleared and disabled due to social mode")
+            } else {
+                passwordInput.isEnabled = true
+                passwordInput.alpha = 1f
+                Log.d("Roulette", "CreateRoom: Password re-enabled")
+            }
+        }
+
         // Set up button clicks
         dialogView.findViewById<View>(R.id.btnCreate).setOnClickListener {
             val roomName = roomNameInput.text.toString().trim()
             val shareCode = shareCodeInput.text.toString().trim()
-            val password = passwordInput.text.toString().trim()
+            val isSocial = socialCheckbox.isChecked
+            Log.d("Roulette", "CreateRoom: Create tapped name='$roomName' code='$shareCode' isSocial=$isSocial")
+            val password = if (isSocial) "" else passwordInput.text.toString().trim()
 
             if (shareCode.isEmpty()) {
                 Toast.makeText(this, "Share code cannot be empty", Toast.LENGTH_SHORT).show()
@@ -5923,7 +6086,7 @@ class MainActivity : AppCompatActivity() {
 
             dialog.dismiss()
             lifecycleScope.launch {
-                createRoomWithCustomCode(roomName, shareCode, password)
+                createRoomWithCustomCode(roomName, shareCode, password, isSocial)
             }
         }
 
@@ -6016,6 +6179,171 @@ class MainActivity : AppCompatActivity() {
 
         // Apply fade-in animation with 2-second duration
         performDialogFadeIn(view, 2000L)  // Changed from 500L to 2000L
+    }
+
+    private fun startSeshRoulette() {
+        // Simple loading dialog
+        val loadingDialog = AlertDialog.Builder(this)
+            .setMessage("Loading sesh…")
+            .setCancelable(false)
+            .create()
+        loadingDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                Log.d("Roulette", "Start: Sesh Roulette flow begin")
+                val result = withContext(Dispatchers.IO) { sessionSyncService.getActiveRooms() }
+                result.fold(
+                    onSuccess = { rooms ->
+                        lifecycleScope.launch {
+                            val now = System.currentTimeMillis()
+                            val windowMs = 20 * 60 * 1000L // 20 minutes
+                            val me = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+                            Log.d("Roulette", "Loaded rooms=${rooms.size} me='$me'")
+                            rooms.forEach { r ->
+                                Log.d(
+                                    "Roulette",
+                                    "Room ${r.name} (${r.shareCode}) social=${r.isSocialRoom} acts=${r.activities.size} active=${r.activeParticipants.size} hasPw=${r.passwordHash != null} lastAgeMs=${now - r.lastActivityTime} meIn=${r.participants.contains(me) || r.activeParticipants.contains(me) || r.safeAwayParticipants().contains(me)}"
+                                )
+                            }
+
+                            // Base filters
+                            val candidates = rooms.filter { room ->
+                                val notMe =
+                                    !room.participants.contains(me) &&
+                                    !room.activeParticipants.contains(me) &&
+                                    !room.safeAwayParticipants().contains(me)
+
+                                room.isSocialRoom &&
+                                    room.passwordHash == null &&
+                                    room.activities.isNotEmpty() &&
+                                    room.activeParticipants.isNotEmpty() &&
+                                    room.activeParticipants.size <= 4 &&
+                                    (now - room.lastActivityTime) <= windowMs &&
+                                    notMe
+                            }
+                            Log.d("Roulette", "Candidates after filter count=${candidates.size}")
+
+                            // Prioritize rooms with active video participants
+                            val videoActive = mutableListOf<RoomData>()
+                            for (room in candidates) {
+                                Log.d("Roulette", "Checking video activity for ${room.shareCode}")
+                                if (hasActiveVideoParticipants(room.shareCode)) {
+                                    videoActive.add(room)
+                                    Log.d("Roulette", "Video-active: ${room.shareCode}")
+                                }
+                            }
+
+                            val pickFrom = if (videoActive.isNotEmpty()) videoActive else candidates
+                            Log.d("Roulette", "pickFrom size=${pickFrom.size} (videoPreferred=${videoActive.isNotEmpty()})")
+
+                            if (pickFrom.isEmpty()) {
+                                Log.d("Roulette", "No social candidates - trying fallback (non-social rooms)")
+
+                                // FALLBACK: relax social filter to include non-social rooms
+                                val fallbackCandidates = rooms.filter { room ->
+                                    val notMe =
+                                        !room.participants.contains(me) &&
+                                        !room.activeParticipants.contains(me) &&
+                                        !room.safeAwayParticipants().contains(me)
+
+                                    // Same guardrails except social flag
+                                    room.passwordHash == null &&
+                                        room.activities.isNotEmpty() &&
+                                        room.activeParticipants.isNotEmpty() &&
+                                        room.activeParticipants.size <= 4 &&
+                                        (now - room.lastActivityTime) <= windowMs &&
+                                        notMe
+                                }
+                                Log.d("Roulette", "Fallback candidates count=${fallbackCandidates.size}")
+
+                                val videoActiveFallback = mutableListOf<RoomData>()
+                                for (room in fallbackCandidates) {
+                                    if (hasActiveVideoParticipants(room.shareCode)) {
+                                        videoActiveFallback.add(room)
+                                    }
+                                }
+                                val pickFromFallback = if (videoActiveFallback.isNotEmpty()) videoActiveFallback else fallbackCandidates
+                                Log.d("Roulette", "pickFromFallback size=${pickFromFallback.size} (videoPreferred=${videoActiveFallback.isNotEmpty()})")
+
+                                if (pickFromFallback.isEmpty()) {
+                                    loadingDialog.dismiss()
+                                    val noneDialog = AlertDialog.Builder(this@MainActivity)
+                                        .setMessage("Sorry, it seems like everyone is sleeping at the moment. Try again in a bit.")
+                                        .setPositiveButton("OK") { d, _ -> d.dismiss() }
+                                        .create()
+                                    noneDialog.setOnDismissListener {
+                                        // Return to Start Cloud Session popup after message closes
+                                        showCloudSessionOptions()
+                                    }
+                                    noneDialog.show()
+
+                                    // Auto-dismiss after 3 seconds
+                                    Handler(Looper.getMainLooper()).postDelayed({
+                                        if (noneDialog.isShowing) noneDialog.dismiss()
+                                    }, 3000)
+                                    Log.d("Roulette", "No candidates found after fallback - sleeping dialog shown and returning to options")
+                                } else {
+                                    val chosen = pickFromFallback.random()
+                                    Log.d("Roulette", "Chosen (fallback) ${chosen.name} (${chosen.shareCode})")
+                                    loadingDialog.dismiss()
+                                    joinRoomSafely(chosen.shareCode, null)
+                                }
+                            } else {
+                                val chosen = pickFrom.random()
+                                Log.d("Roulette", "Chosen room ${chosen.name} (${chosen.shareCode}) active=${chosen.activeParticipants.size} acts=${chosen.activities.size}")
+                                loadingDialog.dismiss()
+                                joinRoomSafely(chosen.shareCode, null)
+                                Log.d("Roulette", "joinRoomSafely invoked for ${chosen.shareCode}")
+                            }
+                        }
+                    },
+                    onFailure = { err ->
+                        loadingDialog.dismiss()
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Error loading rooms: ${err.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        Log.e("Roulette", "getActiveRooms failed: ${err.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                loadingDialog.dismiss()
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                Log.e("Roulette", "Exception in Sesh Roulette: ${e.message}", e)
+            }
+        }
+    }
+
+    private suspend fun hasActiveVideoParticipants(shareCode: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val roomId = "sesh_${shareCode}"
+            val snap = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("video_rooms")
+                .document(roomId)
+                .collection("participants")
+                .whereEqualTo("isActive", true)
+                .get()
+                .await()
+
+            if (snap.isEmpty) {
+                Log.d("Roulette", "Video: no active participants for room=$shareCode")
+                return@withContext false
+            }
+
+            val now = System.currentTimeMillis()
+            val freshWindow = 5 * 60 * 1000L // 5 minutes
+            val anyFresh = snap.documents.any { doc ->
+                val lastHeartbeat = doc.getLong("lastHeartbeat") ?: 0L
+                lastHeartbeat > 0L && (now - lastHeartbeat) <= freshWindow
+            }
+            Log.d("Roulette", "Video: room=$shareCode hasFresh=$anyFresh participants=${snap.size()} (freshWindow=${freshWindow}ms)")
+            return@withContext anyFresh
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking video participants for $shareCode: ${e.message}")
+            return@withContext false
+        }
     }
 
     private fun performDialogFadeIn(view: View, durationMs: Long) {
@@ -6137,8 +6465,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun createRoomWithCustomCode(roomName: String, customShareCode: String, password: String? = null) {
-        Log.d(TAG, "🏠 createRoomWithCustomCode called: name=$roomName, code=$customShareCode, hasPassword=${password != null}")
+    // Preview a past session without activating it; shows stats + Resume button
+    private fun previewSession(summary: SessionSummary) {
+        Log.d("SeshFlow", "Previewing session id=${summary.id}, room=${summary.roomName}, code=${summary.shareCode}")
+        lastLoadedSummary = summary
+
+        // Load stats into the Sesh tab without activating the session
+        sessionStatsVM.loadSummary(summary)
+
+        // Show room info if available (use OFFLINE code for historical cloud sessions)
+        if (!summary.roomName.isNullOrEmpty()) {
+            val code = summary.shareCode ?: "OFFLINE"
+            sessionStatsVM.setRoomInfo(summary.roomName!!, code)
+        } else {
+            sessionStatsVM.clearRoomInfo()
+        }
+
+        // Notify SeshFragment to show Resume button
+        val seshFragments = supportFragmentManager.fragments.filterIsInstance<SeshFragment>()
+        Log.d("SeshFlow", "previewSession: found ${seshFragments.size} SeshFragment instance(s)")
+        val sesh = seshFragments.firstOrNull()
+        if (sesh == null) {
+            Log.d("SeshFlow", "previewSession: SeshFragment not found; will rely on tab switch to create it")
+        } else {
+            Log.d("SeshFlow", "previewSession: calling onSummaryLoaded() on existing SeshFragment")
+            sesh.onSummaryLoaded()
+            Log.d("SeshFlow", "previewSession: onSummaryLoaded() call returned")
+        }
+
+        // Navigate to Sesh tab
+        binding.viewPager.currentItem = 1
+        Log.d("SeshFlow", "previewSession: switched to Sesh tab (index 1)")
+    }
+
+    private fun createRoomWithCustomCode(roomName: String, customShareCode: String, password: String? = null, isSocialRoom: Boolean = false) {
+        Log.d(TAG, "🏠 createRoomWithCustomCode called: name=$roomName, code=$customShareCode, hasPassword=${password != null}, isSocial=$isSocialRoom")
+        Log.d("Roulette", "CreateRoom: Creating room code=$customShareCode social=$isSocialRoom passwordProvided=${!password.isNullOrEmpty()}")
 
         lifecycleScope.launch {
             Log.d(TAG, "🏠 Coroutine started")
@@ -6156,9 +6518,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Hash the password if provided
-            val passwordHash = if (!password.isNullOrEmpty()) {
+            val passwordHash = if (!password.isNullOrEmpty() && !isSocialRoom) {
                 PasswordUtils.hashPassword(password)
             } else null
+            Log.d("Roulette", "CreateRoom: passwordHashSet=${passwordHash != null}")
 
             // Create room with custom share code
             val now = System.currentTimeMillis()
@@ -6178,11 +6541,13 @@ class MainActivity : AppCompatActivity() {
                 roundsCounter = 0,
                 autoAddState = AutoAddState(),
                 passwordHash = passwordHash,
-                joinedUsers = listOf(creatorId)
+                joinedUsers = listOf(creatorId),
+                isSocialRoom = isSocialRoom
             )
 
             try {
                 Log.d(TAG, "🏠 About to create room document in Firestore")
+                Log.d("Roulette", "CreateRoom: Writing room doc social=${room.isSocialRoom} participants=${room.activeParticipants.size}")
 
                 // Directly create the room document with the custom share code as ID
                 com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -6193,12 +6558,15 @@ class MainActivity : AppCompatActivity() {
 
                 Log.d(TAG, "🏠 Room document created successfully in Firestore")
 
-                startSession(room.startTime)
+                // Set room info BEFORE starting session so the initial summary has correct room name
                 currentShareCode = room.shareCode
                 currentRoomName = room.name
                 currentRoom = room
+                Log.d("SeshFlow", "createRoom: setting room info BEFORE startSession (name=${room.name}, code=${room.shareCode})")
+                startSession(room.startTime)
 
                 sessionStatsVM.setRoomInfo(room.name, room.shareCode)
+                Log.d("SeshFlow", "createRoom: room info applied to VM (name=${room.name}, code=${room.shareCode})")
                 Log.d(TAG, "🏠 Room created with custom code: ${room.name} (${room.shareCode})")
 
                 // Sync local smokers to the new room
@@ -6211,6 +6579,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 startRoomListener(room.shareCode)
+                Log.d("SeshFlow", "createRoom: started room listener for ${room.shareCode}")
 
                 val message = if (passwordHash != null) {
                     "Created password-protected room: ${room.name} (Code: ${room.shareCode})"
@@ -6281,25 +6650,30 @@ class MainActivity : AppCompatActivity() {
         )
     }
     private fun joinRoomSafely(shareCode: String, dialogToClose: AlertDialog?) {
+        Log.d("Roulette", "joinRoomSafely called for code=$shareCode (dialogClose=${dialogToClose != null})")
         lifecycleScope.launch {
             val userId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+            Log.d("Roulette", "joinRoomSafely: resolved userId='$userId'")
 
             // First get the room to check if it has a password
             val roomData = sessionSyncService.getRoomData(shareCode)
             if (roomData == null) {
                 Toast.makeText(this@MainActivity, "Room not found", Toast.LENGTH_SHORT).show()
+                Log.e("Roulette", "joinRoomSafely: Room not found for code=$shareCode")
                 return@launch
             }
 
             // Check if room has password and user hasn't joined yet
             if (roomData.passwordHash != null && !roomData.hasUserJoined(userId)) {
                 dialogToClose?.dismiss()
-
+                
                 // Show password dialog
                 showRoomPasswordDialog(roomData, userId)
+                Log.d("Roulette", "joinRoomSafely: Password required for code=$shareCode; prompting")
             } else {
                 // No password or already joined, proceed normally
                 proceedWithJoinRoom(shareCode, userId, dialogToClose)
+                Log.d("Roulette", "joinRoomSafely: Proceeding without password for code=$shareCode")
             }
         }
     }
@@ -6348,6 +6722,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun proceedWithJoinRoom(shareCode: String, userId: String, dialogToClose: AlertDialog?) {
+        Log.d("Roulette", "proceedWithJoinRoom: shareCode=$shareCode userId=$userId")
         lifecycleScope.launch {
             // Get local smokers BEFORE joining the room
             val localSmokers = withContext(Dispatchers.IO) {
@@ -6355,18 +6730,38 @@ class MainActivity : AppCompatActivity() {
             }
 
             Log.d(TAG, "🏠 Joining room with ${localSmokers.size} local smokers")
+            Log.d("Roulette", "proceedWithJoinRoom: localSmokers=${localSmokers.size}")
 
             // Use the enhanced join method that syncs smokers
             sessionSyncService.joinRoomWithSmokerSync(userId, shareCode, localSmokers).fold(
                 onSuccess = { room: RoomData ->  // Explicitly specify the type
                     dialogToClose?.dismiss()
-                    startSession(room.startTime)
+                    // Set room info BEFORE starting session so the initial summary has correct room name
                     currentShareCode = shareCode
                     currentRoomName = room.name
                     currentRoom = room
+                    Log.d("SeshFlow", "joinRoom: setting room info BEFORE startSession (name=${room.name}, code=$shareCode)")
+                    startSession(room.startTime)
 
                     sessionStatsVM.setRoomInfo(room.name, shareCode)
                     Log.d(TAG, "🏠 Room info set for joined room: ${room.name} ($shareCode)")
+                    Log.d("Roulette", "proceedWithJoinRoom: Joined room ${room.name} ($shareCode); starting session")
+                    
+                    // Update active session summary with room info (redundant with reorder but harmless)
+                    if (editingSummaryId != null) {
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val currentSummary = repo.getSummaryById(editingSummaryId!!)
+                            if (currentSummary != null) {
+                                val updatedSummary = currentSummary.copy(
+                                    shareCode = shareCode,
+                                    roomName = room.name
+                                )
+                                repo.updateSummary(updatedSummary)
+                                Log.d("SessionDebug", "Updated active session with room info: ${room.name}")
+                                Log.d("SeshFlow", "joinRoom: updated summaryId=${editingSummaryId} with room info (${room.name}, $shareCode)")
+                            }
+                        }
+                    }
 
                     // Initialize rounds counter from room
                     initialRoundsSet = room.roundsCounter
@@ -6444,16 +6839,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun askNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
 
     private fun triggerInitialNotifications() {
         if (!notificationsEnabled) return  // Skip if notifications are disabled
@@ -6567,6 +6952,68 @@ class MainActivity : AppCompatActivity() {
         updateRoundsUI()
     }
 
+    private fun updateActiveSessionSummary() {
+        if (!sessionActive || editingSummaryId == null) return
+        
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val sessionEnd = System.currentTimeMillis()
+                val length = sessionEnd - sessionStart
+                
+                // Get all activities for the current session
+                val allActivities = repo.getLogsInTimeRange(sessionStart, sessionEnd)
+                val activityMap = mutableMapOf<String, Int>()
+                
+                allActivities.forEach { log: ActivityLog ->
+                    val activityName = when {
+                        !log.customActivityName.isNullOrEmpty() -> log.customActivityName
+                        log.type == ActivityType.JOINT -> "Joint"
+                        log.type == ActivityType.CONE -> "Cone"
+                        log.type == ActivityType.BOWL -> "Bowl"
+                        else -> log.type.name
+                    }
+                    
+                    val countToAdd = if (log.type == ActivityType.BOWL) log.bowlQuantity else 1
+                    activityMap[activityName] = (activityMap[activityName] ?: 0) + countToAdd
+                }
+                
+                val activityBreakdown = if (activityMap.isNotEmpty()) {
+                    org.json.JSONObject(activityMap as Map<*, *>).toString()
+                } else null
+                
+                // Get cone counts for each smoker
+                val names = smokers.map { it.name }
+                val conesList = smokers.map { s ->
+                    repo.countConesForSmokerBetween(s.smokerId, sessionStart, sessionEnd)
+                }
+                val total = conesList.sum()
+                
+                // Update the active session summary
+                val summary = SessionSummary(
+                    id = editingSummaryId!!,
+                    smokerNames = names,
+                    conesPerSmoker = conesList,
+                    totalCones = total,
+                    rounds = actualRounds,
+                    sessionLength = length,
+                    longestInterval = intervalsList.maxOrNull() ?: 0L,
+                    shortestInterval = intervalsList.minOrNull() ?: 0L,
+                    timestamp = sessionStart,  // Keep original start time
+                    liveSyncEnabled = currentShareCode != null,
+                    shareCode = currentShareCode,
+                    roomName = currentRoomName,
+                    activityBreakdown = activityBreakdown,
+                    isActive = true  // Keep as active
+                )
+                
+                repo.updateSummary(summary)
+                Log.d("SessionDebug", "Updated active session summary: ${activityMap.size} activity types")
+            } catch (e: Exception) {
+                Log.e("SessionDebug", "Error updating active session summary", e)
+            }
+        }
+    }
+    
     private fun startSession(startTime: Long) {
         // Clear any editing state - we're starting a NEW session
         editingSummaryId = null
@@ -6592,6 +7039,38 @@ class MainActivity : AppCompatActivity() {
         lastBowlTimestamp = 0L
         lastIntervalMillis = 0L
         intervalsList.clear()
+        
+        // Create initial SessionSummary for live tracking
+        // Use runBlocking to ensure editingSummaryId is set before continuing
+        Log.d("SessionDebug", "Creating initial session summary...")
+        Log.d("SeshFlow", "startSession: creating initial summary at $startTime with shareCode=$currentShareCode, roomName=$currentRoomName")
+        runBlocking {
+            withContext(Dispatchers.IO) {
+                val names = smokers.map { it.name }
+                val initialSummary = SessionSummary(
+                    smokerNames = names,
+                    conesPerSmoker = List(names.size) { 0 },
+                    totalCones = 0,
+                    rounds = 0,
+                    sessionLength = 0L,
+                    longestInterval = 0L,
+                    shortestInterval = 0L,
+                    timestamp = startTime,
+                    liveSyncEnabled = currentShareCode != null,
+                    shareCode = currentShareCode,
+                    roomName = currentRoomName,
+                    activityBreakdown = null,
+                    isActive = true  // Mark as active
+                )
+                
+                val summaryId = repo.insertSummary(initialSummary)
+                editingSummaryId = summaryId
+                Log.d("SessionDebug", "Created active session with ID: $summaryId, editingSummaryId is now set")
+                Log.d("SeshFlow", "startSession: inserted initial summaryId=$summaryId (liveSync=${currentShareCode != null}, roomName=${currentRoomName})")
+            }
+        }
+        Log.d("SessionDebug", "Session creation complete, editingSummaryId = $editingSummaryId")
+        Log.d("SeshFlow", "startSession: complete; editingSummaryId=$editingSummaryId")
         activitiesTimestamps.clear()
         hitsThisRound = 0
         actualRounds = 0
@@ -6711,13 +7190,66 @@ class MainActivity : AppCompatActivity() {
         }
 
         val sessionEnd = System.currentTimeMillis()
+        
+        // Capture these values before clearing them
+        val capturedSessionStart = sessionStart
+        val capturedEditingSummaryId = editingSummaryId
+        val capturedLastLoadedSummary = lastLoadedSummary
+        val capturedCurrentShareCode = currentShareCode
+        val capturedCurrentRoomName = currentRoomName
+        
+        Log.d("SessionDebug", "=== SESSION END DEBUG ===")
+        Log.d("SessionDebug", "sessionEnd timestamp: $sessionEnd")
+        Log.d("SessionDebug", "sessionStart value: $capturedSessionStart")
+        Log.d("SessionDebug", "sessionActive: $sessionActive")
+        Log.d("SessionDebug", "editingSummaryId: $capturedEditingSummaryId")
+        
         lifecycleScope.launch(Dispatchers.IO) {
             val names = smokers.map { it.name }
 
-            val originalSessionStart = if (editingSummaryId != null && lastLoadedSummary != null) {
-                sessionEnd - lastLoadedSummary!!.sessionLength - (sessionEnd - sessionStart)
+            Log.d("SessionDebug", "Determining originalSessionStart:")
+            Log.d("SessionDebug", "  - editingSummaryId: $capturedEditingSummaryId")
+            Log.d("SessionDebug", "  - lastLoadedSummary: ${capturedLastLoadedSummary?.id}")
+            Log.d("SessionDebug", "  - current sessionStart: $capturedSessionStart")
+            
+            val originalSessionStart = if (capturedEditingSummaryId != null && capturedLastLoadedSummary != null) {
+                // When editing a session, sessionStart should already be set to the correct value
+                // from when we resumed the session. Just use it directly.
+                Log.d("SessionDebug", "EDITING PATH - session was resumed or continued")
+                Log.d("SessionDebug", "  - Using sessionStart: $capturedSessionStart")
+                if (capturedSessionStart > 0) {
+                    capturedSessionStart
+                } else {
+                    // Fallback: if sessionStart is invalid, calculate from the loaded summary
+                    val calculated = capturedLastLoadedSummary.timestamp - capturedLastLoadedSummary.sessionLength
+                    Log.d("SessionDebug", "  - sessionStart was invalid (<=0), calculated from summary: $calculated")
+                    calculated
+                }
+            } else if (capturedEditingSummaryId != null && capturedLastLoadedSummary == null) {
+                // This is a newly created session that hasn't been loaded
+                Log.d("SessionDebug", "NEW SESSION PATH - editingSummaryId exists but no loaded summary")
+                Log.d("SessionDebug", "  - This is a newly created session")
+                Log.d("SessionDebug", "  - Using sessionStart: $capturedSessionStart")
+                capturedSessionStart
             } else {
-                sessionStart
+                // If sessionStart is 0 or invalid, use the timestamp of the first activity
+                // or default to a reasonable session start time (e.g., 1 hour ago)
+                if (capturedSessionStart <= 0) {
+                    Log.d("SessionDebug", "Invalid sessionStart ($capturedSessionStart), finding first activity...")
+                    // Try to get the first activity timestamp in a reasonable time range
+                    val recentActivities = repo.getLogsInTimeRange(sessionEnd - 86400000, sessionEnd) // Last 24 hours
+                    if (recentActivities.isNotEmpty()) {
+                        val firstActivity = recentActivities.minOf { it.timestamp }
+                        Log.d("SessionDebug", "Using first activity timestamp: $firstActivity")
+                        firstActivity
+                    } else {
+                        Log.d("SessionDebug", "No activities found, defaulting to 1 hour ago")
+                        sessionEnd - 3600000 // Default to 1 hour session if no activities
+                    }
+                } else {
+                    Log.d("SessionDebug", "Using existing sessionStart: $capturedSessionStart")
+                    capturedSessionStart
+                }
             }
 
             val conesList = if (currentShareCode != null && currentRoom != null) {
@@ -6739,12 +7271,70 @@ class MainActivity : AppCompatActivity() {
             }
 
             val total = conesList.sum()
-            val length = sessionEnd - originalSessionStart
+            var length = sessionEnd - originalSessionStart
+            Log.d("SessionDebug", "originalSessionStart: $originalSessionStart")
+            Log.d("SessionDebug", "sessionEnd: $sessionEnd")
+            Log.d("SessionDebug", "Calculated length in ms: $length")
+            Log.d("SessionDebug", "Calculated length in seconds: ${length / 1000}")
+            Log.d("SessionDebug", "Calculated length in minutes: ${length / 60000}")
+            Log.d("SessionDebug", "Calculated length in hours: ${length / 3600000}")
+            
+            // Validate session length - maximum 7 days
+            val maxSessionLength = 7L * 24 * 60 * 60 * 1000 // 7 days in ms
+            if (length < 0) {
+                Log.d("SessionDebug", "ERROR: Negative session length detected!")
+                Log.d("SessionDebug", "  - originalSessionStart: $originalSessionStart")
+                Log.d("SessionDebug", "  - sessionEnd: $sessionEnd")
+                Log.d("SessionDebug", "  - calculated length: $length")
+                Log.d("SessionDebug", "  - editingSummaryId: $editingSummaryId")
+                Log.d("SessionDebug", "  - sessionStart: $sessionStart")
+                Log.d("SessionDebug", "  - Using 1 hour default")
+                length = 3600000L // 1 hour default
+            } else if (length > maxSessionLength) {
+                Log.d("SessionDebug", "ERROR: Session length too long!")
+                Log.d("SessionDebug", "  - length: ${length}ms (${length/3600000} hours)")
+                Log.d("SessionDebug", "  - max allowed: ${maxSessionLength}ms (168 hours)")
+                Log.d("SessionDebug", "  - originalSessionStart: $originalSessionStart")
+                Log.d("SessionDebug", "  - sessionEnd: $sessionEnd")
+                Log.d("SessionDebug", "  - Using 1 hour default")
+                length = 3600000L // 1 hour default
+            } else {
+                Log.d("SessionDebug", "Session length validated OK: ${length}ms (${length/1000/60} minutes)")
+            }
+            
             val longest = intervalsList.maxOrNull() ?: 0L
             val shortest = intervalsList.minOrNull() ?: 0L
+            
+            // Get all activities for the session to create breakdown
+            val allActivities = repo.getLogsInTimeRange(originalSessionStart, sessionEnd)
+            Log.d("SessionDebug", "Activities found for session: ${allActivities.size}")
+            val activityMap = mutableMapOf<String, Int>()
+            
+            allActivities.forEach { log: ActivityLog ->
+                val activityName = when {
+                    !log.customActivityName.isNullOrEmpty() -> log.customActivityName
+                    log.type == ActivityType.JOINT -> "Joint"
+                    log.type == ActivityType.CONE -> "Cone"
+                    log.type == ActivityType.BOWL -> "Bowl"
+                    else -> log.type.name
+                }
+                
+                // For bowls, add the quantity; for others add 1
+                val countToAdd = if (log.type == ActivityType.BOWL) log.bowlQuantity else 1
+                activityMap[activityName] = (activityMap[activityName] ?: 0) + countToAdd
+            }
+            
+            // Convert to JSON string
+            val activityBreakdown = if (activityMap.isNotEmpty()) {
+                org.json.JSONObject(activityMap as Map<*, *>).toString()
+            } else null
 
+            Log.d("SessionDebug", "=== UPDATING SESSION SUMMARY ===")
+            Log.d("SessionDebug", "sessionLength to store: $length ms (${length/1000} seconds)")
+            Log.d("SessionDebug", "Activity breakdown: $activityBreakdown")
+            
             val summary = SessionSummary(
-                id = editingSummaryId ?: 0L,
+                id = capturedEditingSummaryId ?: 0L,
                 smokerNames = names,
                 conesPerSmoker = conesList,
                 totalCones = total,
@@ -6754,15 +7344,27 @@ class MainActivity : AppCompatActivity() {
                 shortestInterval = shortest,
                 timestamp = sessionEnd,
                 liveSyncEnabled = true,
-                shareCode = currentShareCode,
-                roomName = currentRoomName
+                shareCode = capturedCurrentShareCode,
+                roomName = capturedCurrentRoomName,
+                activityBreakdown = activityBreakdown,
+                isActive = false  // Mark as completed when ending
             )
 
-            val summaryId = if (editingSummaryId != null) {
+            // Always update since we create the summary when starting
+            if (capturedEditingSummaryId != null) {
+                Log.d("SessionDebug", "Updating existing session summary:")
+                Log.d("SessionDebug", "  - ID: $capturedEditingSummaryId")
+                Log.d("SessionDebug", "  - Final length: ${summary.sessionLength}ms (${summary.sessionLength/1000/60} minutes)")
+                Log.d("SessionDebug", "  - Activities: ${summary.activityBreakdown}")
                 repo.updateSummary(summary)
-                editingSummaryId!!
+                Log.d("SessionDebug", "Updated session $capturedEditingSummaryId to inactive")
             } else {
-                repo.insertSummary(summary)
+                // Fallback - shouldn't happen but handle it
+                Log.d("SessionDebug", "WARNING: editingSummaryId is null at session end!")
+                Log.d("SessionDebug", "  - This shouldn't happen with synchronous creation")
+                Log.d("SessionDebug", "  - Creating new summary as fallback")
+                val newId = repo.insertSummary(summary)
+                Log.d("SessionDebug", "Created fallback summary with ID: $newId")
             }
 
             withContext(Dispatchers.Main) {
@@ -6780,14 +7382,23 @@ class MainActivity : AppCompatActivity() {
                     .filterIsInstance<SeshFragment>()
                     .firstOrNull()
                 seshFragment?.onSessionEnded()
+                
+                // Clear session variables INSIDE the coroutine after all work is done
+                sessionStart = 0L
+                editingSummaryId = null
+                lastLoadedSummary = null
+
+                // If a resume was requested during endSession, perform it now
+                val pending = pendingResumeSummary
+                if (pending != null) {
+                    Log.d("SeshFlow", "End complete; proceeding to resume pending id=${pending.id}")
+                    pendingResumeSummary = null
+                    resumeSession(pending)
+                } else {
+                    Log.d("SeshFlow", "End complete; no pending resume")
+                }
             }
-
-            editingSummaryId = null
-            lastLoadedSummary = null
         }
-
-        // Clear session start AFTER everything else
-        sessionStart = 0L
 
         updateUIForSessionState()
     }
@@ -6904,11 +7515,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resumeSession(summary: SessionSummary) {
-        if (sessionActive) endSession()
+        Log.d("SeshFlow", "resumeSession requested: id=${summary.id}, active=$sessionActive")
+        if (sessionActive) {
+            Log.d("SeshFlow", "Active session present; deferring resume of id=${summary.id} until endSession completes")
+            pendingResumeSummary = summary
+            endSession()
+            return
+        }
 
         val resumeTime = System.currentTimeMillis()
         editingSummaryId = summary.id
-        sessionStart = summary.timestamp - summary.sessionLength
+        // Protect against invalid session lengths (e.g., 55 years)
+        // Maximum reasonable session length is 7 days
+        val maxSessionLength = 7L * 24 * 60 * 60 * 1000 // 7 days in ms
+        val sessionLength = if (summary.sessionLength > maxSessionLength) {
+            Log.d("SessionDebug", "Invalid session length detected: ${summary.sessionLength} ms, using 1 hour default")
+            3600000L // Default to 1 hour
+        } else {
+            summary.sessionLength
+        }
+        sessionStart = summary.timestamp - sessionLength
+        Log.d("SessionDebug", "Resuming session: timestamp=${summary.timestamp}, length=$sessionLength, calculated start=$sessionStart")
+        Log.d("SeshFlow", "Resuming session now: id=${summary.id}, start=$sessionStart")
+        
+        // Mark the session as active again in the database
+        lifecycleScope.launch(Dispatchers.IO) {
+            val updatedSummary = summary.copy(isActive = true)
+            repo.updateSummary(updatedSummary)
+            Log.d("SessionDebug", "Marked session ${summary.id} as active")
+        }
+        
         lastLogTime = resumeTime
         actualLastLogTime = 0L
         lastLogTimeBeforeRewind = 0L
@@ -6925,8 +7561,19 @@ class MainActivity : AppCompatActivity() {
 
         lastLoadedSummary = summary
 
+        // Load the summary into the stats view model so Stats tab shows correct data
+        sessionStatsVM.loadSummary(summary)
+        Log.d("SessionDebug", "Loaded summary into sessionStatsVM for session ${summary.id}")
+        
         sessionStatsVM.startSession(sessionStart)
         stashViewModel.setSessionStartTime(sessionStart)
+        
+        // Notify SeshFragment that session has been resumed/started
+        val seshFragment = supportFragmentManager.fragments
+            .filterIsInstance<SeshFragment>()
+            .firstOrNull()
+        seshFragment?.onSessionStarted()
+        Log.d("SessionDebug", "Notified SeshFragment of resumed session")
 
         prefs.edit()
             .putLong("current_session_id", sessionStart)
@@ -6938,10 +7585,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.tabLayout.getTabAt(1)?.select()
 
-        val seshFragment = supportFragmentManager.fragments
-            .filterIsInstance<SeshFragment>()
-            .firstOrNull()
-        seshFragment?.onSummaryLoaded()
+        // We just resumed; ensure preview mode is cleared and FAB is hidden
+        Log.d("SeshFlow", "Resumed session; clearing preview mode")
 
         summary.shareCode?.let { shareCode ->
             currentShareCode = shareCode
@@ -6986,13 +7631,13 @@ class MainActivity : AppCompatActivity() {
                         },
                         onFailure = { error ->
                             Log.w(TAG, "🔄 Could not rejoin original room: ${error.message}")
-                            currentShareCode = null
-                            currentRoomName = null
+                            Log.d("SeshFlow", "Resume: join failed; keeping room name and showing OFFLINE")
+                            // Keep room name for display; mark as offline in VM
                             currentRoom = null
 
-                            sessionStatsVM.clearRoomInfo()
-
                             withContext(Dispatchers.Main) {
+                                val roomName = summary.roomName ?: currentRoomName ?: "Session"
+                                sessionStatsVM.setRoomInfo(roomName, "OFFLINE")
                                 sessionStatsVM.loadSummary(summary)
                                 refreshLocalSessionStatsIfNeeded()
                             }
@@ -7117,6 +7762,10 @@ class MainActivity : AppCompatActivity() {
     fun showWelcomeScreenForFirstCloudSmoker() {
         Log.d("WELCOME_DEBUG", "🚀 showWelcomeScreenForFirstCloudSmoker() called")
         
+        // IMPORTANT: Dismiss add smoker dialog first
+        Log.d("FIRST_LAUNCH_FLOW", "🚪 Dismissing AddSmokerDialog before showing welcome")
+        addSmokerDialog.dismiss()
+        
         // Check if we should show the welcome screen (hasn't been shown before)
         val shouldShow = WelcomeScreenDialog.shouldShowWelcomeScreen(this)
         Log.d("WELCOME_DEBUG", "🔑 Should show welcome? $shouldShow")
@@ -7149,9 +7798,10 @@ class MainActivity : AppCompatActivity() {
             // Only show welcome if this is the FIRST cloud smoker (none existed before)
             // We check for size == 1 because the new one was just added
             if (existingCloudSmokers.size == 1) {
-                Log.d("WELCOME_DEBUG", "🎉 This is the first cloud smoker! Showing welcome...")
+                Log.d("WELCOME_DEBUG", "🎉 This is the first cloud smoker!")
                 withContext(Dispatchers.Main) {
-                    showWelcomeScreenAfterGoogleLogin()
+                    // The onboarding controller will handle showing the welcome screen
+                    onboardingController.onAddSmokerStepCompleted(isFirstCloudSmoker = true)
                 }
             } else {
                 Log.d("WELCOME_DEBUG", "⏭️ Not the first cloud smoker (found ${existingCloudSmokers.size}), skipping welcome")
@@ -7159,126 +7809,150 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
-    private fun showWelcomeScreenAfterGoogleLogin() {
-        Log.d("WELCOME_DEBUG", "🚀 showWelcomeScreenAfterGoogleLogin() called")
-        
-        // Always show after Google login, regardless of previous showing
-        Log.d("WELCOME_DEBUG", "⏰ Scheduling welcome screen to show in 500ms...")
-        handler.postDelayed({
-            Log.d("WELCOME_DEBUG", "🎭 Creating and showing WelcomeScreenDialog now!")
-            val welcomeDialog = WelcomeScreenDialog(this) {
-                // On completion callback - nothing special needed here
-                Log.d("WELCOME_DEBUG", "✨ Welcome screen completed after Google login")
-            }
-            welcomeDialog.show()
-            Log.d("WELCOME_DEBUG", "📱 WelcomeScreenDialog.show() called")
-        }, 1000)
-    }
-    
     // Public methods for showing dialogs from WelcomeScreenDialog
-    fun showAddStashDialog() {
-        Log.d("WELCOME_DEBUG", "🏦 MainActivity.showAddStashDialog() called")
-        // Navigate to stash tab (index 4) and show dialog
-        Log.d("WELCOME_DEBUG", "📍 Navigating to stash tab (index 4)")
-        binding.viewPager.currentItem = 4
-        
-        handler.postDelayed({
-            Log.d("WELCOME_DEBUG", "🔍 Looking for StashFragment...")
-            // Get all fragments and find StashFragment
-            val fragments = supportFragmentManager.fragments
-            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
-            val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
-            
-            if (stashFragment != null) {
-                Log.d("WELCOME_DEBUG", "✅ Found StashFragment, calling showAddStashDialogPublic()")
-                stashFragment.showAddStashDialogPublic()
-            } else {
-                Log.d("WELCOME_DEBUG", "⚠️ StashFragment not found, retrying in 500ms...")
-                // If fragment not found, try again after a delay
-                handler.postDelayed({
-                    val retryFragments = supportFragmentManager.fragments
-                    val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
-                    if (retryStashFragment != null) {
-                        Log.d("WELCOME_DEBUG", "✅ Found StashFragment on retry")
-                        retryStashFragment.showAddStashDialogPublic()
-                    } else {
-                        Log.d("WELCOME_DEBUG", "❌ StashFragment still not found after retry")
-                    }
-                }, 500)
-            }
-        }, 1000)
+    // Onboarding Flow Methods
+    fun handlePostOnboardingLaunch() {
+        Log.d("FIRST_LAUNCH_FLOW", "✅ Post-onboarding launch - resuming normal app flow")
+        // Resume normal app functionality
+        // All onboarding is complete
     }
     
-    fun showSetRatioDialog() {
-        Log.d("WELCOME_DEBUG", "⚖️ MainActivity.showSetRatioDialog() called")
-        // Navigate to stash tab (index 4) and show ratio dialog
-        Log.d("WELCOME_DEBUG", "📍 Navigating to stash tab (index 4)")
-        binding.viewPager.currentItem = 4
-        
-        handler.postDelayed({
-            Log.d("WELCOME_DEBUG", "🔍 Looking for StashFragment...")
-            // Get all fragments and find StashFragment
-            val fragments = supportFragmentManager.fragments
-            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
-            val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
-            
-            if (stashFragment != null) {
-                Log.d("WELCOME_DEBUG", "✅ Found StashFragment, calling showSetRatioDialogPublic()")
-                stashFragment.showSetRatioDialogPublic()
-            } else {
-                Log.d("WELCOME_DEBUG", "⚠️ StashFragment not found, retrying in 500ms...")
-                // If fragment not found, try again after a delay
-                handler.postDelayed({
-                    Log.d("WELCOME_DEBUG", "🔄 Retry: Looking for StashFragment...")
-                    val retryFragments = supportFragmentManager.fragments
-                    Log.d("WELCOME_DEBUG", "📋 Retry: Found ${retryFragments.size} fragments total")
-                    val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
-                    
-                    if (retryStashFragment != null) {
-                        Log.d("WELCOME_DEBUG", "✅ Retry: Found StashFragment, calling showSetRatioDialogPublic()")
-                        retryStashFragment.showSetRatioDialogPublic()
-                    } else {
-                        Log.d("WELCOME_DEBUG", "❌ Retry: StashFragment still not found!")
-                    }
-                }, 500)
-            }
-        }, 1000)
+    fun markLegacyFirstLaunchHandled() {
+        prefs.edit().putBoolean("is_first_launch", false).apply()
     }
     
-    fun showAddGoalDialog() {
-        Log.d("WELCOME_DEBUG", "🎯 MainActivity.showAddGoalDialog() called")
-        // Navigate to goals tab (index 6) and show dialog
-        Log.d("WELCOME_DEBUG", "📍 Navigating to goals tab (index 6)")
-        binding.viewPager.currentItem = 6
+    fun shouldRequestNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        } else {
+            false
+        }
+    }
+    
+    fun shouldRequestLocationPermission(): Boolean {
+        return checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+    }
+    
+    fun launchNotificationPermissionRequest() {
+        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+    
+    fun launchLocationPermissionRequest() {
+        locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+    
+    fun hasAnySmokers(): Boolean {
+        return smokers.isNotEmpty()
+    }
+    
+    fun showAddSmokerDialogForOnboarding() {
+        Log.d("FIRST_LAUNCH_FLOW", "📝 Showing add smoker dialog for onboarding")
         
-        handler.postDelayed({
-            Log.d("WELCOME_DEBUG", "🔍 Looking for GoalFragment...")
-            // Get all fragments and find GoalFragment
-            val fragments = supportFragmentManager.fragments
-            Log.d("WELCOME_DEBUG", "📋 Found ${fragments.size} fragments total")
-            val goalFragment = fragments.filterIsInstance<GoalFragment>().firstOrNull()
+        addSmokerDialog.setOnSuccessCallback { smoker ->
+            Log.d("FIRST_LAUNCH_FLOW", "✅ Smoker added: ${smoker.name}")
+            val isFirstCloud = smokers.count { it.isCloudSmoker } == 1
+            onboardingController.onAddSmokerStepCompleted(isFirstCloud)
+        }
+        addSmokerDialog.setOnCancelCallback {
+            Log.d("FIRST_LAUNCH_FLOW", "❌ Add smoker dialog cancelled")
+            onboardingController.onAddSmokerCancelledOrSkipped()
+        }
+        addSmokerDialog.show()
+    }
+    
+    fun showAddStashDialog(onDismiss: () -> Unit = {}) {
+        Log.d("FIRST_LAUNCH_FLOW", "🏦 MainActivity.showAddStashDialog() called with callback")
+        // DON'T navigate to tabs during welcome flow - just show dialog
+        Log.d("FIRST_LAUNCH_FLOW", "🔍 Looking for StashFragment...")
+        
+        // Get all fragments and find StashFragment
+        val fragments = supportFragmentManager.fragments
+        Log.d("FIRST_LAUNCH_FLOW", "📋 Found ${fragments.size} fragments total")
+        val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
+        
+        if (stashFragment != null) {
+            Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment, calling showAddStashDialogPublic()")
+            stashFragment.showAddStashDialogPublic(onDismiss)
+        } else {
+            Log.d("FIRST_LAUNCH_FLOW", "⚠️ StashFragment not found, trying with navigation...")
+            // Navigate to stash tab and retry
+            binding.viewPager.currentItem = 4
+            handler.postDelayed({
+                val retryFragments = supportFragmentManager.fragments
+                val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
+                if (retryStashFragment != null) {
+                    Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment on retry")
+                    retryStashFragment.showAddStashDialogPublic(onDismiss)
+                } else {
+                    Log.d("FIRST_LAUNCH_FLOW", "❌ StashFragment still not found after retry")
+                }
+            }, 500)
+        }
+    }
+    
+    fun showSetRatioDialog(onDismiss: () -> Unit = {}) {
+        Log.d("FIRST_LAUNCH_FLOW", "⚖️ MainActivity.showSetRatioDialog() called with callback")
+        // DON'T navigate during welcome flow
+        Log.d("FIRST_LAUNCH_FLOW", "🔍 Looking for StashFragment for ratio dialog...")
+        
+        // Get all fragments and find StashFragment
+        val fragments = supportFragmentManager.fragments
+        Log.d("FIRST_LAUNCH_FLOW", "📋 Found ${fragments.size} fragments total")
+        val stashFragment = fragments.filterIsInstance<StashFragment>().firstOrNull()
+        
+        if (stashFragment != null) {
+            Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment, calling showSetRatioDialogPublic()")
+            stashFragment.showSetRatioDialogPublic(onDismiss)
+        } else {
+            Log.d("FIRST_LAUNCH_FLOW", "⚠️ StashFragment not found, trying with navigation...")
+            // Navigate to stash tab and retry
+            binding.viewPager.currentItem = 4
+            handler.postDelayed({
+                val retryFragments = supportFragmentManager.fragments
+                val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
+                if (retryStashFragment != null) {
+                    Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment on retry")
+                    retryStashFragment.showSetRatioDialogPublic(onDismiss)
+                } else {
+                    Log.d("FIRST_LAUNCH_FLOW", "❌ StashFragment still not found!")
+                }
+            }, 500)
+        }
+    }
+    
+    fun showAddGoalDialog(onDismiss: () -> Unit = {}) {
+        Log.d("FIRST_LAUNCH_FLOW", "🎯 MainActivity.showAddGoalDialog() called with callback")
+        
+        // No delay needed - fragments are already preloaded!
+        Log.d("FIRST_LAUNCH_FLOW", "🔍 Looking for GoalFragment immediately...")
+        
+        // Look in all fragments
+        val fragments = supportFragmentManager.fragments
+        Log.d("FIRST_LAUNCH_FLOW", "📋 Found ${fragments.size} fragments total")
+        
+        val goalFragment = fragments.filterIsInstance<GoalFragment>().firstOrNull()
+        
+        if (goalFragment != null) {
+            Log.d("FIRST_LAUNCH_FLOW", "✅ Found GoalFragment immediately! Showing dialog...")
+            goalFragment.showAddGoalDialogPublic(onDismiss)
+        } else {
+            Log.d("FIRST_LAUNCH_FLOW", "⚠️ GoalFragment not found, trying navigation...")
+            // Navigate to goals tab - GoalFragment is at index 7
+            binding.viewPager.setCurrentItem(7, false)
             
-            if (goalFragment != null) {
-                Log.d("WELCOME_DEBUG", "✅ Found GoalFragment, calling showAddGoalDialogPublic()")
-                goalFragment.showAddGoalDialogPublic()
-            } else {
-                Log.d("WELCOME_DEBUG", "⚠️ GoalFragment not found, retrying in 500ms...")
-                // If fragment not found, try again after a delay
-                handler.postDelayed({
-                    Log.d("WELCOME_DEBUG", "🔄 Retry: Looking for GoalFragment...")
-                    val retryFragments = supportFragmentManager.fragments
-                    Log.d("WELCOME_DEBUG", "📋 Retry: Found ${retryFragments.size} fragments total")
-                    val retryGoalFragment = retryFragments.filterIsInstance<GoalFragment>().firstOrNull()
-                    
-                    if (retryGoalFragment != null) {
-                        Log.d("WELCOME_DEBUG", "✅ Retry: Found GoalFragment, calling showAddGoalDialogPublic()")
-                        retryGoalFragment.showAddGoalDialogPublic()
-                    } else {
-                        Log.d("WELCOME_DEBUG", "❌ Retry: GoalFragment still not found!")
-                    }
-                }, 500)
-            }
-        }, 1000)
+            handler.postDelayed({
+                Log.d("FIRST_LAUNCH_FLOW", "🔄 Retry after navigation...")
+                val retryFragments = supportFragmentManager.fragments
+                val retryGoalFragment = retryFragments.filterIsInstance<GoalFragment>().firstOrNull()
+                
+                if (retryGoalFragment != null) {
+                    Log.d("FIRST_LAUNCH_FLOW", "✅ Found GoalFragment on retry")
+                    retryGoalFragment.showAddGoalDialogPublic()
+                } else {
+                    Log.d("FIRST_LAUNCH_FLOW", "❌ GoalFragment still not found! This shouldn't happen with preloading")
+                }
+            }, 500)  // Short delay just for navigation
+        }
     }
 
     // Save session state when starting/resuming
@@ -8141,7 +8815,6 @@ class MainActivity : AppCompatActivity() {
                             R.font.rubik_glitch,
                             R.font.sankofa_display,
                             R.font.silkscreen,
-                            R.font.rubik_puddles,
                             R.font.rubik_beastly,
                             R.font.sixtyfour,
                             R.font.monoton,
@@ -8186,7 +8859,7 @@ class MainActivity : AppCompatActivity() {
                                     textView.setTextColor(giantCounterColor)
                                     Log.d(TAG, "🎨 Also applied color directly to current view")
                                 }
-                                if (giantCounterFontIndex != -1 && giantCounterFontIndex < 13) {
+                                if (giantCounterFontIndex != -1) {
                                     val fontList = listOf(
                                         R.font.bitcount_prop_double,
                                         R.font.exile,
@@ -8195,15 +8868,16 @@ class MainActivity : AppCompatActivity() {
                                         R.font.rubik_glitch,
                                         R.font.sankofa_display,
                                         R.font.silkscreen,
-                                        R.font.rubik_puddles,
                                         R.font.rubik_beastly,
                                         R.font.sixtyfour,
                                         R.font.monoton,
                                         R.font.sedgwick_ave_display,
                                         R.font.splash
                                     )
-                                    val newFont = ResourcesCompat.getFont(this@MainActivity, fontList[giantCounterFontIndex])
-                                    textView.typeface = newFont
+                                    if (giantCounterFontIndex < fontList.size) {
+                                        val newFont = ResourcesCompat.getFont(this@MainActivity, fontList[giantCounterFontIndex])
+                                        textView.typeface = newFont
+                                    }
                                     Log.d(TAG, "🔤 Also applied font directly to current view")
                                 }
                             } else {
@@ -8749,6 +9423,7 @@ class MainActivity : AppCompatActivity() {
     
     private fun clearSeshStatsForSmoker(smoker: Smoker) {
         Log.d(TAG, "🧹 === CLEAR SESH STATS FOR ${smoker.name} START ===")
+        Log.d("SeshFlow", "CLEAR per-smoker requested: smokerId=${smoker.smokerId}, active=$sessionActive, sessionStart=$sessionStart")
         Log.d(TAG, "🧹 Session active: $sessionActive")
         Log.d(TAG, "🧹 Session start: $sessionStart")
         Log.d(TAG, "🧹 Current share code: $currentShareCode")
@@ -8766,6 +9441,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.IO) {
                     val logsCleared = repo.clearSessionLogsForSmoker(smoker.smokerId, sessionStart, now)
                     Log.d(TAG, "🧹 Cleared $logsCleared local activities for ${smoker.name}")
+                    Log.d("SeshFlow", "CLEAR per-smoker deletedCount=$logsCleared (range=[$sessionStart..$now])")
                 }
 
                 // Clear from cloud room if in one
@@ -8816,6 +9492,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun clearAllSeshStats() {
         Log.d(TAG, "🧹🔴 === CLEAR ALL SESH STATS START ===")
+        Log.d("SeshFlow", "CLEAR ALL requested: active=$sessionActive, sessionStart=$sessionStart")
         Log.d(TAG, "🧹🔴 Session active: $sessionActive")
         Log.d(TAG, "🧹🔴 Session start: $sessionStart")
         Log.d(TAG, "🧹🔴 Current share code: $currentShareCode")
@@ -8836,10 +9513,12 @@ class MainActivity : AppCompatActivity() {
                         val logsCleared = repo.clearSessionLogsForSmoker(smoker.smokerId, sessionStart, now)
                         totalCleared += logsCleared
                         Log.d(TAG, "🧹🔴 Cleared $logsCleared activities for ${smoker.name}")
+                        Log.d("SeshFlow", "CLEAR ALL per-smoker deletedCount=$logsCleared for smokerId=${smoker.smokerId} (range=[$sessionStart..$now])")
                     }
                 }
 
                 Log.d(TAG, "🧹🔴 Total local activities cleared: $totalCleared")
+                Log.d("SeshFlow", "CLEAR ALL total deletedCount=$totalCleared (range=[$sessionStart..$now])")
 
                 // Clear from cloud room if in one
                 currentShareCode?.let { shareCode ->
@@ -8896,12 +9575,36 @@ class MainActivity : AppCompatActivity() {
     private suspend fun reconcileRemoteActivitiesIntoLocal(updatedRoom: RoomData) {
         val remoteActivities = updatedRoom.safeActivities()
         Log.d(TAG, "🔁 Reconciling ${remoteActivities.size} remote activities")
+        Log.d("SeshFlow", "Reconcile start: room=${updatedRoom.shareCode}, name=${updatedRoom.name}")
+        Log.d("SeshFlow", "Reconcile context: sessionStart=$sessionStart, active=$sessionActive")
+
+        // Guard: Only reconcile while an active session is running and for the same room
+        if (!sessionActive || sessionStart <= 0L) {
+            Log.d(
+                "SeshFlow",
+                "Reconcile skipped: inactive or invalid session (active=$sessionActive, sessionStart=$sessionStart)"
+            )
+            return
+        }
+        val currentCode = currentShareCode
+        if (currentCode.isNullOrEmpty() || updatedRoom.shareCode != currentCode) {
+            Log.d(
+                "SeshFlow",
+                "Reconcile skipped: room mismatch or no current room (current=$currentCode, incoming=${updatedRoom.shareCode})"
+            )
+            return
+        }
 
         // IMPORTANT: First, remove any local activities that are no longer in the room
         // This handles the undo case where activities were removed from the room
+        // Limit reconciliation strictly to the current session's activities
         val localSessionActivities = withContext(Dispatchers.IO) {
-            repo.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+            repo.getActivitiesBySessionId(sessionStart)
         }
+        Log.d(
+            "SeshFlow",
+            "Reconcile scope: sessionId=$sessionStart, localCount=${localSessionActivities.size}"
+        )
 
         // Create a set of remote activity identifiers for quick lookup
         val remoteActivityIds = remoteActivities.map {
@@ -8926,11 +9629,30 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 val localActivityId = "${smokerUid}_${activityTypeStr}_${localActivity.timestamp}"
+                val existsRemotely = remoteActivityIds.contains(localActivityId)
+                Log.d(
+                    "SeshFlow",
+                    "Reconcile check: localId=$localActivityId, existsRemotely=$existsRemotely, sessionId=${localActivity.sessionId}"
+                )
 
-                if (!remoteActivityIds.contains(localActivityId)) {
+                // Only delete if it's from the CURRENT session
+                val isFromCurrentSession =
+                    (localActivity.sessionId != null && localActivity.sessionId == sessionStart) ||
+                            (localActivity.sessionStartTime != null && localActivity.sessionStartTime == sessionStart)
+
+                if (!existsRemotely && isFromCurrentSession) {
                     // This activity exists locally but not in the room - delete it
                     Log.d(TAG, "🔁 Removing local activity not in room: ${smoker.name} ${localActivity.type} @ ${localActivity.timestamp}")
+                    Log.d(
+                        "SeshFlow",
+                        "Reconcile deleting local-only activity id=${localActivity.id}, smokerId=${localActivity.smokerId}, type=${localActivity.type}, ts=${localActivity.timestamp}"
+                    )
                     repo.delete(localActivity)
+                } else if (!existsRemotely) {
+                    Log.d(
+                        "SeshFlow",
+                        "Reconcile NOT deleting (not current session): id=${localActivity.id}, sessionId=${localActivity.sessionId}, startTime=${localActivity.sessionStartTime}"
+                    )
                 }
             }
         }
@@ -9104,6 +9826,9 @@ class MainActivity : AppCompatActivity() {
             val insertedId = repo.insert(activityLog)
             Log.d(TAG, "🎯 Inserted activity to local DB with ID: $insertedId, sessionId: $sessionId")
         }
+        
+        // Update active session summary
+        updateActiveSessionSummary()
 
         // THEN sync to cloud if in a cloud session
         if (shareCode != null) {
@@ -10092,6 +10817,11 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch(Dispatchers.IO) {
                 val insertedId = repo.insert(activityLog)
                 Log.d(TAG, "🎯 Inserted activity ID: $insertedId with payerStashOwnerId: '$payerStashOwnerId'")
+                
+                // Update active session summary
+                withContext(Dispatchers.Main) {
+                    updateActiveSessionSummary()
+                }
 
                 // Verify it was stored correctly
                 val verifyActivity = repo.getActivityById(insertedId)
@@ -10492,6 +11222,9 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🎯 INSERTED activity ID $id for smoker ${capturedSmoker.name}")
             id
         }
+        
+        // Update active session summary
+        updateActiveSessionSummary()
 
         // THEN handle cloud sync if in a cloud session
         if (currentShareCode != null) {
@@ -11827,23 +12560,8 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🔄 Decreased rounds counter to: $initialRoundsSet")
         }
 
-        binding.radioAuto.setOnCheckedChangeListener { buttonView, isChecked ->
-            if (isChecked) {
-                confettiHelper.showMiniConfettiFromButton(buttonView)
-                isAutoMode = true
-                sessionStatsVM.setAutoMode(true)
-                Log.d(TAG, "🔘 Auto mode enabled")
-            }
-        }
-
-        binding.radioSticky.setOnCheckedChangeListener { buttonView, isChecked ->
-            if (isChecked) {
-                confettiHelper.showMiniConfettiFromButton(buttonView)
-                isAutoMode = false
-                sessionStatsVM.setAutoMode(false)
-                Log.d(TAG, "🔘 Sticky mode enabled")
-            }
-        }
+        // Setup mode toggle button
+        setupModeToggleButton()
     }
 
     private fun showConfirmUndoDialog(onConfirm: () -> Unit) {
@@ -13076,11 +13794,14 @@ class MainActivity : AppCompatActivity() {
         withContext(Dispatchers.IO) {
             val insertedId = repo.insert(activityLog)
             Log.d(TAG, "🎯 INSERTED activity ID $insertedId with sessionId: ${if (sessionActive) sessionStart else null}")
-
+            
             // Verify it was stored correctly
             val verifyActivity = repo.getActivityById(insertedId)
             Log.d(TAG, "🎯 VERIFICATION - stored sessionId: ${verifyActivity?.sessionId}")
         }
+        
+        // Update active session summary
+        updateActiveSessionSummary()
 
         // THEN handle cloud sync if in a cloud session
         if (currentShareCode != null) {
@@ -13527,6 +14248,9 @@ class MainActivity : AppCompatActivity() {
         withContext(Dispatchers.IO) {
             repo.insert(activityLog)
         }
+        
+        // Update active session summary
+        updateActiveSessionSummary()
 
         // Trigger stats refresh
         stashViewModel.onActivityLogged(type)
@@ -14473,6 +15197,119 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupConfettiToggle() {
+        // Load confetti preference
+        confettiEnabled = prefs.getBoolean("confetti_enabled", true)
+        updateConfettiButtonState()
+        // Update ConfettiHelper with the initial state
+        confettiHelper.setEnabled(confettiEnabled)
+
+        binding.btnConfettiToggle.setOnClickListener {
+            toggleConfetti()
+        }
+    }
+
+    private fun toggleConfetti() {
+        confettiEnabled = !confettiEnabled
+        prefs.edit().putBoolean("confetti_enabled", confettiEnabled).apply()
+        updateConfettiButtonState()
+        // Update ConfettiHelper with the new state
+        confettiHelper.setEnabled(confettiEnabled)
+        
+        // Show animation feedback (similar to vibration toggle)
+        animateConfettiToggle()
+        
+        // Optional: Show a toast to confirm the change
+        val message = if (confettiEnabled) "Confetti animations enabled" else "Confetti animations disabled"
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun updateConfettiButtonState() {
+        val iconRes = if (confettiEnabled) {
+            R.drawable.ic_confetti_on
+        } else {
+            R.drawable.ic_confetti_off
+        }
+        binding.btnConfettiToggle.setImageResource(iconRes)
+    }
+
+    private fun animateConfettiToggle() {
+        val originalTint = ContextCompat.getColor(this, android.R.color.darker_gray)
+        val neonPurple = Color.parseColor("#BF7EFF")  // Using neon purple for confetti
+        
+        // Create color animation from neon purple to grey
+        val colorAnimation = ValueAnimator.ofArgb(neonPurple, originalTint).apply {
+            duration = 2000 // 2 seconds
+            addUpdateListener { animator ->
+                val color = animator.animatedValue as Int
+                binding.btnConfettiToggle.setColorFilter(color)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // Ensure final state is grey
+                    binding.btnConfettiToggle.setColorFilter(originalTint)
+                }
+            })
+        }
+        
+        colorAnimation.start()
+    }
+
+    private fun setupModeToggleButton() {
+        // Initialize button text based on current mode
+        updateModeButtonText()
+        
+        binding.btnModeToggle.setOnClickListener { button ->
+            // Toggle the mode
+            isAutoMode = !isAutoMode
+            
+            // Update button text
+            updateModeButtonText()
+            
+            // Update session stats
+            sessionStatsVM.setAutoMode(isAutoMode)
+            
+            // Show confetti animation
+            confettiHelper.showMiniConfettiFromButton(button)
+            
+            // Animate button color
+            animateModeToggle()
+            
+            // Log the change
+            Log.d(TAG, "🔘 Mode toggled to: ${if (isAutoMode) "AUTO" else "STICKY"}")
+        }
+    }
+    
+    private fun updateModeButtonText() {
+        binding.btnModeToggle.text = if (isAutoMode) "AUTO" else "STICKY"
+    }
+    
+    private fun animateModeToggle() {
+        // Create a simple text color animation for the mode toggle button
+        val originalColor = ContextCompat.getColor(this, android.R.color.darker_gray)
+        val neonColor = if (isAutoMode) {
+            Color.parseColor("#66B2FF")  // Neon blue for auto
+        } else {
+            Color.parseColor("#FFA366")  // Neon orange for sticky
+        }
+        
+        // Animate text color
+        val colorAnimation = ValueAnimator.ofArgb(neonColor, originalColor).apply {
+            duration = 1500
+            addUpdateListener { animator ->
+                val color = animator.animatedValue as Int
+                binding.btnModeToggle.setTextColor(color)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // Restore original color
+                    binding.btnModeToggle.setTextColor(originalColor)
+                }
+            })
+        }
+        colorAnimation.start()
+    }
+
     private suspend fun proceedWithLogHitForSmoker(
         type: ActivityType,
         timestamp: Long,
@@ -14597,11 +15434,14 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.IO) {
                 val insertedId = repo.insert(activityLog)
                 Log.d(TAG, "🎯 Inserted to local DB with payerStashOwnerId: '$payerStashOwnerId'")
-
+                
                 // Verify it was stored correctly
                 val verifyActivity = repo.getActivityById(insertedId)
                 Log.d(TAG, "🎯 Verification - stored payerStashOwnerId: '${verifyActivity?.payerStashOwnerId}'")
             }
+            
+            // Update active session summary
+            updateActiveSessionSummary()
         }
 
         // Handle post-hit actions but DON'T advance smoker here - it will be done separately
