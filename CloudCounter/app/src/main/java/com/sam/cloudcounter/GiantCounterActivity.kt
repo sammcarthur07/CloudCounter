@@ -1318,6 +1318,53 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         val insertedId = repository.insert(activity)
                         Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
                         
+                        // CRITICAL FIX: Sync activity to cloud room if connected
+                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+                        val sessionActiveNow = prefs.getBoolean("sessionActive", false)
+                        val currentShareCode = prefs.getString("currentShareCode", null)
+                        
+                        if (currentShareCode != null && sessionActiveNow) {
+                            Log.d(TAG, "$LOG_PREFIX 🌩️ Syncing activity to cloud room: $currentShareCode")
+                            try {
+                                val sessionSyncService = SessionSyncService()
+                                val currentUser = auth.currentUser
+                                
+                                if (currentUser != null) {
+                                    // Get the cloud smoker UID for this local smoker
+                                    val cloudSmokerUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
+                                        smoker.cloudUserId
+                                    } else {
+                                        currentUser.uid  // Use current user's UID for local smokers
+                                    }
+                                    
+                                    Log.d(TAG, "$LOG_PREFIX 🌩️ Adding activity for ${smoker.name} (UID: $cloudSmokerUid) to room $currentShareCode")
+                                    
+                                    // Launch coroutine to call suspend function
+                                    lifecycleScope.launch {
+                                        val result = sessionSyncService.addActivityToRoom(
+                                            shareCode = currentShareCode,
+                                            smokerUid = cloudSmokerUid ?: currentUser.uid,
+                                            smokerName = smoker.name,
+                                            activityType = activityType,
+                                            timestamp = activity.timestamp
+                                        )
+                                        
+                                        if (result.isSuccess) {
+                                            Log.d(TAG, "$LOG_PREFIX ✅ Activity synced to cloud successfully")
+                                        } else {
+                                            Log.e(TAG, "$LOG_PREFIX ❌ Failed to sync activity to cloud: ${result.exceptionOrNull()?.message}")
+                                        }
+                                    }
+                                } else {
+                                    Log.d(TAG, "$LOG_PREFIX Not signed in, skipping cloud sync")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "$LOG_PREFIX Error syncing to cloud: ${e.message}", e)
+                            }
+                        } else {
+                            Log.d(TAG, "$LOG_PREFIX No cloud session active, activity saved locally only")
+                        }
+                        
                         // Track activity for undo
                         activityHistory.add(insertedId)
                         // Update undo button visibility

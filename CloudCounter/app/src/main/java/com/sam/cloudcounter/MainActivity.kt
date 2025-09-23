@@ -3836,7 +3836,7 @@ class MainActivity : AppCompatActivity() {
             payerStashOwnerId = payerStashOwnerId,
             type = ActivityType.CUSTOM, // Use CUSTOM type for custom activities
             timestamp = adjustedNow,
-            sessionId = if (sessionActive) sessionStart else null,
+            sessionId = sessionStatsVM.currentSessionId.value,
             sessionStartTime = if (sessionActive) sessionStart else null,
             customActivityId = activity.id,
             customActivityName = activity.name,
@@ -4276,6 +4276,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            // onDeleteSummaryWithActivities is now handled by HistoryViewModel
             onResumeSummary = { summary ->
                 // If the tapped summary is the active one, navigate to the live Sesh view
                 val isActiveSummary = summary.isActive
@@ -7342,7 +7343,7 @@ class MainActivity : AppCompatActivity() {
                 sessionLength = length,
                 longestInterval = longest,
                 shortestInterval = shortest,
-                timestamp = sessionEnd,
+                timestamp = capturedSessionStart,  // FIX: Use sessionStart as sessionId, not sessionEnd
                 liveSyncEnabled = true,
                 shareCode = capturedCurrentShareCode,
                 roomName = capturedCurrentRoomName,
@@ -7872,7 +7873,8 @@ class MainActivity : AppCompatActivity() {
         
         if (stashFragment != null) {
             Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment, calling showAddStashDialogPublic()")
-            stashFragment.showAddStashDialogPublic(onDismiss)
+            stashFragment.showAddStashDialogPublic()
+            onDismiss()
         } else {
             Log.d("FIRST_LAUNCH_FLOW", "⚠️ StashFragment not found, trying with navigation...")
             // Navigate to stash tab and retry
@@ -7882,7 +7884,8 @@ class MainActivity : AppCompatActivity() {
                 val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
                 if (retryStashFragment != null) {
                     Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment on retry")
-                    retryStashFragment.showAddStashDialogPublic(onDismiss)
+                    retryStashFragment.showAddStashDialogPublic()
+                    onDismiss()
                 } else {
                     Log.d("FIRST_LAUNCH_FLOW", "❌ StashFragment still not found after retry")
                 }
@@ -7902,7 +7905,8 @@ class MainActivity : AppCompatActivity() {
         
         if (stashFragment != null) {
             Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment, calling showSetRatioDialogPublic()")
-            stashFragment.showSetRatioDialogPublic(onDismiss)
+            stashFragment.showSetRatioDialogPublic()
+            onDismiss()
         } else {
             Log.d("FIRST_LAUNCH_FLOW", "⚠️ StashFragment not found, trying with navigation...")
             // Navigate to stash tab and retry
@@ -7912,7 +7916,8 @@ class MainActivity : AppCompatActivity() {
                 val retryStashFragment = retryFragments.filterIsInstance<StashFragment>().firstOrNull()
                 if (retryStashFragment != null) {
                     Log.d("FIRST_LAUNCH_FLOW", "✅ Found StashFragment on retry")
-                    retryStashFragment.showSetRatioDialogPublic(onDismiss)
+                    retryStashFragment.showSetRatioDialogPublic()
+                    onDismiss()
                 } else {
                     Log.d("FIRST_LAUNCH_FLOW", "❌ StashFragment still not found!")
                 }
@@ -9598,12 +9603,13 @@ class MainActivity : AppCompatActivity() {
         // IMPORTANT: First, remove any local activities that are no longer in the room
         // This handles the undo case where activities were removed from the room
         // Limit reconciliation strictly to the current session's activities
+        val currentSessionId = sessionStatsVM.currentSessionId.value ?: return
         val localSessionActivities = withContext(Dispatchers.IO) {
-            repo.getActivitiesBySessionId(sessionStart)
+            repo.getActivitiesBySessionId(currentSessionId)
         }
         Log.d(
             "SeshFlow",
-            "Reconcile scope: sessionId=$sessionStart, localCount=${localSessionActivities.size}"
+            "Reconcile scope: sessionId=$currentSessionId, localCount=${localSessionActivities.size}"
         )
 
         // Create a set of remote activity identifiers for quick lookup
@@ -9636,8 +9642,9 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 // Only delete if it's from the CURRENT session
+                val currentSessionId = sessionStatsVM.currentSessionId.value
                 val isFromCurrentSession =
-                    (localActivity.sessionId != null && localActivity.sessionId == sessionStart) ||
+                    (localActivity.sessionId != null && localActivity.sessionId == currentSessionId) ||
                             (localActivity.sessionStartTime != null && localActivity.sessionStartTime == sessionStart)
 
                 if (!existsRemotely && isFromCurrentSession) {
@@ -9800,7 +9807,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         // ALWAYS create and insert the activity log locally
-        val sessionId = if (sessionActive) sessionStart else null
+        val sessionId = sessionStatsVM.currentSessionId.value
         Log.d(TAG, "🎯 Creating activity with sessionId: $sessionId")
 
         val activityLog = ActivityLog(
@@ -9963,7 +9970,7 @@ class MainActivity : AppCompatActivity() {
                 payerStashOwnerId = payerStashOwnerId,
                 type = type,
                 timestamp = now,
-                sessionId = if (sessionActive) sessionStart else null,
+                sessionId = sessionStatsVM.currentSessionId.value,
                 sessionStartTime = if (sessionActive) sessionStart else null,
                 gramsAtLog = 0.0, // These will be set by stash tracking
                 pricePerGramAtLog = 0.0
@@ -10789,14 +10796,10 @@ class MainActivity : AppCompatActivity() {
 
         val pricePerGram = currentStash?.pricePerGram ?: 15.0
 
-        // CRITICAL FIX: Set session ID properly
-        val currentSessionId = if (sessionActive && sessionStart > 0) {
-            sessionStart  // Use sessionStart as the session ID
-        } else {
-            null
-        }
+        // CRITICAL FIX: Use ViewModel's currentSessionId for proper session association
+        val currentSessionId = sessionStatsVM.currentSessionId.value
 
-        Log.d(TAG, "🎯 Creating activity with sessionId: $currentSessionId (sessionActive: $sessionActive, sessionStart: $sessionStart)")
+        Log.d(TAG, "🎯 Creating activity with sessionId: $currentSessionId (from ViewModel)")
 
         // Create the activity log object with session ID
         val activityLog = ActivityLog(
@@ -11205,7 +11208,7 @@ class MainActivity : AppCompatActivity() {
             payerStashOwnerId = payerStashOwnerId,
             type = type,
             timestamp = adjustedNow,
-            sessionId = if (sessionActive) sessionStart else null,
+            sessionId = sessionStatsVM.currentSessionId.value,
             sessionStartTime = if (sessionActive) sessionStart else null,
             gramsAtLog = when (type) {
                 ActivityType.CONE -> ratios?.coneGrams ?: 0.3
@@ -11305,7 +11308,7 @@ class MainActivity : AppCompatActivity() {
                 payerStashOwnerId = payerStashOwnerId,
                 type = type,
                 timestamp = now,
-                sessionId = if (sessionActive) sessionStart else null,
+                sessionId = sessionStatsVM.currentSessionId.value,
                 sessionStartTime = if (sessionActive) sessionStart else null,
                 gramsAtLog = 0.0, // These will be set by stash tracking
                 pricePerGramAtLog = 0.0
@@ -12929,6 +12932,21 @@ class MainActivity : AppCompatActivity() {
                         Log.d(TAG, "=== SIGN IN DEBUG ===")
                         Log.d(TAG, "User ID: $userId")
                         Log.d(TAG, "Google Account Name: $googleName")
+                        
+                        // Set user ID in repository for cloud sync
+                        repo.setCurrentUserId(userId)
+                        
+                        // Sync history from cloud (runs in background)
+                        Log.d(TAG, "🌐 Starting history sync from cloud...")
+                        lifecycleScope.launch {
+                            repo.syncHistoryFromCloud(lifecycleScope)
+                            Log.d(TAG, "🌐 History sync initiated")
+                            
+                            // After downloading from cloud, upload any local-only data
+                            delay(5000) // Wait for download to complete
+                            Log.d(TAG, "🌐 Starting background upload of local data...")
+                            repo.syncLocalToCloud()
+                        }
 
                         // First, clean up any duplicates
                         removeDuplicateCloudSmokers()
@@ -13779,7 +13797,7 @@ class MainActivity : AppCompatActivity() {
             payerStashOwnerId = payerStashOwnerId,
             type = type,
             timestamp = adjustedNow,
-            sessionId = if (sessionActive) sessionStart else null,
+            sessionId = sessionStatsVM.currentSessionId.value,
             sessionStartTime = if (sessionActive) sessionStart else null,
             gramsAtLog = when (type) {
                 ActivityType.CONE -> ratios?.coneGrams ?: 0.3
@@ -13793,7 +13811,7 @@ class MainActivity : AppCompatActivity() {
         // ALWAYS store in local database first
         withContext(Dispatchers.IO) {
             val insertedId = repo.insert(activityLog)
-            Log.d(TAG, "🎯 INSERTED activity ID $insertedId with sessionId: ${if (sessionActive) sessionStart else null}")
+            Log.d(TAG, "🎯 INSERTED activity ID $insertedId with sessionId: ${activityLog.sessionId}")
             
             // Verify it was stored correctly
             val verifyActivity = repo.getActivityById(insertedId)
@@ -14225,7 +14243,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val currentSessionId = if (sessionActive) sessionStart else null
+        val currentSessionId = sessionStatsVM.currentSessionId.value
 
         val activityLog = ActivityLog(
             id = 0L,
@@ -15411,7 +15429,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            val currentSessionId = if (sessionActive) sessionStart else null
+            val currentSessionId = sessionStatsVM.currentSessionId.value
 
             val activityLog = ActivityLog(
                 id = 0L,
@@ -15460,7 +15478,7 @@ class MainActivity : AppCompatActivity() {
                     payerStashOwnerId = null,  // This is just for history tracking, not stored
                     type = type,
                     timestamp = adjustedTimestamp,
-                    sessionId = if (sessionActive) sessionStart else null,
+                    sessionId = sessionStatsVM.currentSessionId.value,
                     sessionStartTime = if (sessionActive) sessionStart else null,
                     gramsAtLog = 0.0,
                     pricePerGramAtLog = 0.0
