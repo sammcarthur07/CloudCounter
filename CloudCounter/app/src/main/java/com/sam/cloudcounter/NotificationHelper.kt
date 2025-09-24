@@ -268,6 +268,7 @@ class NotificationHelper(private val context: Context) {
                 ActivityType.CONE -> "Add a Cone"
                 ActivityType.BOWL -> "Add a Bowl"
                 ActivityType.CUSTOM -> "Add Custom Activity"
+                ActivityType.CIGARETTE -> "Add a Cigarette"
                 ActivityType.SESSION_SUMMARY -> "Session Summary"
             }
         } else {
@@ -276,6 +277,7 @@ class NotificationHelper(private val context: Context) {
                 ActivityType.CONE            -> "Last Cone"
                 ActivityType.BOWL            -> "Last Bowl"
                 ActivityType.CUSTOM          -> "Last Custom Activity"
+                ActivityType.CIGARETTE       -> "Last Cigarette"
                 ActivityType.SESSION_SUMMARY -> "Session Summary"
             }
         }

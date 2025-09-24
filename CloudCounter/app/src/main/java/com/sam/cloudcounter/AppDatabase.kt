@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 26, // Changed from 25 to 26 for session isActive field
+    version = 27, // Changed from 26 to 27 for custom ratio fields
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -463,6 +463,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 26 to 27 - Adding custom ratio fields")
+                
+                // Add customRatioId and customRatioName fields to activity_logs table
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN customRatioId TEXT")
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN customRatioName TEXT")
+                
+                Log.d("Migration", "Migration 26 to 27 completed successfully")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -488,7 +500,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_22_23, // Added displayOrder migration
                         MIGRATION_23_24,  // Added custom activities migration
                         MIGRATION_24_25,  // Added session activity breakdown
-                        MIGRATION_25_26   // Added session isActive field
+                        MIGRATION_25_26,  // Added session isActive field
+                        MIGRATION_26_27   // Added custom ratio fields
                     )
                     .fallbackToDestructiveMigration()
                     .build()

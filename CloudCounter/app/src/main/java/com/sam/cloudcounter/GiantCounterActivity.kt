@@ -1061,6 +1061,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                                 currentActivityName = recentActivity.customActivityName
                                 "custom"
                             }
+                            com.sam.cloudcounter.ActivityType.CIGARETTE -> "cigarettes"
                             com.sam.cloudcounter.ActivityType.SESSION_SUMMARY -> "cones" // Default for session
                         }
                         

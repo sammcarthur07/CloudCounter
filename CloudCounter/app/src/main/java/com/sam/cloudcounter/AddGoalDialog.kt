@@ -259,6 +259,7 @@ class AddGoalDialog : DialogFragment() {
             val targetJoints = if (selectedActivityType == "joints") targetValue else 0
             val targetCones = if (selectedActivityType == "cones") targetValue else 0
             val targetBowls = if (selectedActivityType == "bowls") targetValue else 0
+            // Cigarettes are tracked via selectedActivityType and targetValue fields
             if (selectedSmokers.isEmpty()) {
                 Toast.makeText(context, "Please select at least one smoker.", Toast.LENGTH_SHORT).show()
                 return@setupButtonWithImagePress
@@ -562,7 +563,8 @@ class AddGoalDialog : DialogFragment() {
         val coreActivities = listOf(
             "joints" to "Joints",
             "cones" to "Cones", 
-            "bowls" to "Bowls"
+            "bowls" to "Bowls",
+            "cigarettes" to "Cigarettes"
         ).filter { (key, _) -> key !in disabledCore }
         
         // Custom activities (only active ones)

@@ -5,6 +5,7 @@ data class PerSmokerStats(
     val totalCones: Int = 0,
     val totalJoints: Int = 0,
     val totalBowls: Int = 0,
+    val totalCigarettes: Int = 0,
     val avgGapMs: Long = 0L,
     val longestGapMs: Long = 0L,
     val shortestGapMs: Long = 0L,
@@ -20,6 +21,11 @@ data class PerSmokerStats(
     val shortestBowlGapMs: Long = 0L,
     val lastBowlGapMs: Long = 0L,  // Last gap between bowl activities
     val lastBowlTime: Long = 0L,  // Timestamp of last bowl activity
+    val avgCigaretteGapMs: Long = 0L,
+    val longestCigaretteGapMs: Long = 0L,
+    val shortestCigaretteGapMs: Long = 0L,
+    val lastCigaretteGapMs: Long = 0L,  // Last gap between cigarette activities
+    val lastCigaretteTime: Long = 0L,  // Timestamp of last cigarette activity
     val lastActivityTime: Long = 0L,  // Timestamp of last activity (any type)
     // Custom activity stats: Map of customActivityId to stats
     val customActivityStats: Map<String, CustomActivityStat> = emptyMap()

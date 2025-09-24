@@ -223,6 +223,7 @@ class GoalService(private val application: Application) {
                         activityType == ActivityType.JOINT -> goal.selectedActivityType == "joints"
                         activityType == ActivityType.CONE  -> goal.selectedActivityType == "cones"
                         activityType == ActivityType.BOWL  -> goal.selectedActivityType == "bowls"
+                        activityType == ActivityType.CIGARETTE -> goal.selectedActivityType == "cigarettes"
                         else -> false
                     }
 
@@ -387,6 +388,7 @@ class GoalService(private val application: Application) {
                         ActivityType.JOINT -> goal.selectedActivityType == "joints"
                         ActivityType.CONE -> goal.selectedActivityType == "cones"
                         ActivityType.BOWL -> goal.selectedActivityType == "bowls"
+                        ActivityType.CIGARETTE -> goal.selectedActivityType == "cigarettes"
                         else -> false
                     }
 
@@ -450,6 +452,7 @@ class GoalService(private val application: Application) {
                             activityType == ActivityType.JOINT -> goal.selectedActivityType == "joints"
                             activityType == ActivityType.CONE -> goal.selectedActivityType == "cones"
                             activityType == ActivityType.BOWL -> goal.selectedActivityType == "bowls"
+                            activityType == ActivityType.CIGARETTE -> goal.selectedActivityType == "cigarettes"
                             else -> false
                         }
 
@@ -675,17 +678,17 @@ class GoalService(private val application: Application) {
 
         val newJoints = when (activityType) {
             ActivityType.JOINT -> goal.currentJoints + 1
-            ActivityType.CONE, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentJoints
+            ActivityType.CONE, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY, ActivityType.CIGARETTE -> goal.currentJoints
         }
 
         val newCones = when (activityType) {
             ActivityType.CONE -> goal.currentCones + 1
-            ActivityType.JOINT, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentCones
+            ActivityType.JOINT, ActivityType.BOWL, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY, ActivityType.CIGARETTE -> goal.currentCones
         }
 
         val newBowls = when (activityType) {
             ActivityType.BOWL -> goal.currentBowls + 1
-            ActivityType.JOINT, ActivityType.CONE, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY -> goal.currentBowls
+            ActivityType.JOINT, ActivityType.CONE, ActivityType.CUSTOM, ActivityType.SESSION_SUMMARY, ActivityType.CIGARETTE -> goal.currentBowls
         }
 
         val updatedSmokerProgress = updateSmokerProgressJson(
@@ -764,6 +767,9 @@ class GoalService(private val application: Application) {
                 ActivityType.BOWL -> smokerData.put("b", smokerData.optInt("b", 0) + 1)
                 ActivityType.CUSTOM -> {
                     // Custom activities don't update legacy goal counts
+                }
+                ActivityType.CIGARETTE -> {
+                    // Cigarettes don't update cannabis goal counts
                 }
                 ActivityType.SESSION_SUMMARY -> {
                     // Don't update individual counts for session summary

@@ -81,7 +81,9 @@ class StashFragment : Fragment() {
         try {
             val account = task.getResult(ApiException::class.java)!!
             lifecycleScope.launch {
+                Log.d(TAG, "🔐 Processing Google sign-in with Firebase")
                 authManager.firebaseAuthWithGoogle(account.idToken!!) { firebaseUser ->
+                    Log.d(TAG, "🔐 Firebase auth complete, user: ${firebaseUser?.uid}")
                     updateUI(firebaseUser)
                 }
             }
@@ -144,7 +146,10 @@ class StashFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        updateUI(authManager.getCurrentUser())
+        Log.d(TAG, "🔐 onStart - checking current user")
+        val currentUser = authManager.getCurrentUser()
+        Log.d(TAG, "🔐 Current user: ${currentUser?.uid} - ${currentUser?.email}")
+        updateUI(currentUser)
     }
     
     override fun onResume() {
@@ -520,16 +525,28 @@ class StashFragment : Fragment() {
     }
 
     private fun updateUI(user: FirebaseUser?) {
+        Log.d(TAG, "🔐 updateUI called with user: ${user?.uid}")
         if (user != null) {
+            Log.d(TAG, "🔐 User signed in: ${user.email}")
             currentUserId = user.uid
             binding.layoutSignInPrompt.visibility = View.GONE
             binding.layoutSignedIn.visibility = View.VISIBLE
             binding.textUserEmail.text = user.email
+            
+            // Set user ID first - this will trigger cloud sync
+            Log.d(TAG, "🔐 Setting user ID in StashViewModel: ${user.uid}")
             stashViewModel.setCurrentUserId(user.uid)
+            
+            // Load stash and ratios - these will now sync with cloud
+            Log.d(TAG, "🔐 Loading stash data (will sync with cloud)")
             stashViewModel.loadCurrentStash()
             stashViewModel.loadRatios()
+            
+            // Recalculate stats with synced data
+            Log.d(TAG, "🔐 Recalculating stats after sync")
             recalculateStats()
         } else {
+            Log.d(TAG, "🔐 User signed out or null")
             currentUserId = null
             binding.layoutSignInPrompt.visibility = View.VISIBLE
             binding.layoutSignedIn.visibility = View.GONE
@@ -1275,34 +1292,58 @@ class StashFragment : Fragment() {
         }
         contentLayout.addView(titleText)
 
-        // Helper text
-        val helperText = android.widget.TextView(requireContext()).apply {
-            text = "Set consumption ratios in grams"
-            textSize = 14f
-            setTextColor(android.graphics.Color.parseColor("#707070"))
-            gravity = android.view.Gravity.CENTER
+        // Store references for later use in callback
+        var ratioButtonCallback: (() -> Unit)? = null
+        
+        // Smoke-to-Green Ratio Button
+        val ratioButton = createThemedStashButton("Set Smoke-to-Green Ratio", false) {
+            Log.d(TAG, "Opening Smoke-to-Green Ratio popup")
+            showSmokeRatioPopup(ratioButtonCallback)
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                48.dpToPx()
+            ).apply {
+                setMargins(16.dpToPx(), 0, 16.dpToPx(), 24.dpToPx())
+            }
+        }
+        contentLayout.addView(ratioButton)
+
+        // Horizontal container for ratio inputs
+        val ratiosContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 24.dpToPx()
+                bottomMargin = 16.dpToPx()
             }
         }
-        contentLayout.addView(helperText)
 
         // Bowl Input Section
+        val bowlContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                marginEnd = 8.dpToPx()
+            }
+        }
+        
         val bowlLabel = android.widget.TextView(requireContext()).apply {
-            text = "Bowl (Grams per Bowl)"
+            text = "Bowl"
             textSize = 14f
             setTextColor(android.graphics.Color.parseColor("#98FB98"))
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 8.dpToPx()
+                bottomMargin = 4.dpToPx()
             }
         }
-        contentLayout.addView(bowlLabel)
+        bowlContainer.addView(bowlLabel)
 
         val bowlCard = androidx.cardview.widget.CardView(requireContext()).apply {
             radius = 12.dpToPx().toFloat()
@@ -1331,21 +1372,50 @@ class StashFragment : Fragment() {
         }
 
         bowlCard.addView(editBowlGrams)
-        contentLayout.addView(bowlCard)
+        
+        // Add custom ratio label below bowl input
+        val bowlCustomRatioLabel = android.widget.TextView(requireContext()).apply {
+            text = ""
+            textSize = 11f
+            setTextColor(android.graphics.Color.parseColor("#999999"))
+            visibility = android.view.View.GONE
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 4.dpToPx()
+            }
+        }
+        
+        bowlContainer.addView(bowlCard)
+        bowlContainer.addView(bowlCustomRatioLabel)
+        ratiosContainer.addView(bowlContainer)
 
         // Cone Input Section
+        val coneContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                marginStart = 4.dpToPx()
+                marginEnd = 4.dpToPx()
+            }
+        }
+        
         val coneLabel = android.widget.TextView(requireContext()).apply {
-            text = "Cone (Grams per Cone)"
+            text = "Cone"
             textSize = 14f
             setTextColor(android.graphics.Color.parseColor("#98FB98"))
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 8.dpToPx()
+                bottomMargin = 4.dpToPx()
             }
         }
-        contentLayout.addView(coneLabel)
+        coneContainer.addView(coneLabel)
 
         val coneCard = androidx.cardview.widget.CardView(requireContext()).apply {
             radius = 12.dpToPx().toFloat()
@@ -1360,14 +1430,13 @@ class StashFragment : Fragment() {
         }
 
         val editConeGrams = android.widget.EditText(requireContext()).apply {
-            hint = "(empty) Leave empty for auto-calculation"
-            setHintTextColor(android.graphics.Color.parseColor("#707070"))
+            hint = "(auto)"
+            setHintTextColor(android.graphics.Color.parseColor("#999999"))
             setTextColor(android.graphics.Color.WHITE)
             textSize = 16f
             background = null
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
             setPadding(16.dpToPx(), 0, 16.dpToPx(), 0)
-            setTypeface(typeface, android.graphics.Typeface.ITALIC)
             layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -1375,35 +1444,33 @@ class StashFragment : Fragment() {
         }
 
         coneCard.addView(editConeGrams)
-        contentLayout.addView(coneCard)
-
-        val textConeInfo = android.widget.TextView(requireContext()).apply {
-            text = "Will be calculated based on your bowl activities"
-            textSize = 12f
-            setTextColor(android.graphics.Color.parseColor("#707070"))
-            setTypeface(typeface, android.graphics.Typeface.ITALIC)
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = 16.dpToPx()
-            }
-        }
-        contentLayout.addView(textConeInfo)
+        coneContainer.addView(coneCard)
+        ratiosContainer.addView(coneContainer)
 
         // Joint Input Section
+        val jointContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                marginStart = 8.dpToPx()
+            }
+        }
+        
         val jointLabel = android.widget.TextView(requireContext()).apply {
-            text = "Joint (Grams per Joint)"
+            text = "Joint"
             textSize = 14f
             setTextColor(android.graphics.Color.parseColor("#98FB98"))
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 8.dpToPx()
+                bottomMargin = 4.dpToPx()
             }
         }
-        contentLayout.addView(jointLabel)
+        jointContainer.addView(jointLabel)
 
         val jointCard = androidx.cardview.widget.CardView(requireContext()).apply {
             radius = 12.dpToPx().toFloat()
@@ -1432,7 +1499,40 @@ class StashFragment : Fragment() {
         }
 
         jointCard.addView(editJointGrams)
-        contentLayout.addView(jointCard)
+        
+        // Add custom ratio label below joint input
+        val jointCustomRatioLabel = android.widget.TextView(requireContext()).apply {
+            text = ""
+            textSize = 11f
+            setTextColor(android.graphics.Color.parseColor("#999999"))
+            visibility = android.view.View.GONE
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 4.dpToPx()
+            }
+        }
+        
+        jointContainer.addView(jointCard)
+        jointContainer.addView(jointCustomRatioLabel)
+        ratiosContainer.addView(jointContainer)
+        
+        contentLayout.addView(ratiosContainer)
+        
+        val textConeInfo = android.widget.TextView(requireContext()).apply {
+            text = "Cone will be calculated based on your bowl activities"
+            textSize = 12f
+            setTextColor(android.graphics.Color.parseColor("#707070"))
+            setTypeface(typeface, android.graphics.Typeface.ITALIC)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16.dpToPx()
+            }
+        }
+        contentLayout.addView(textConeInfo)
 
         // Neon separator with gradient - FULL OPACITY IN CENTER
         val separator = android.view.View(requireContext()).apply {
@@ -1484,18 +1584,75 @@ class StashFragment : Fragment() {
         contentLayout.addView(deductionHelperText)
 
         // Checkboxes
-        val checkboxDeductCones = createStashCheckbox("Deduct cones from stash", true)
-        val checkboxDeductJoints = createStashCheckbox("Deduct joints from stash", true)
-        val checkboxDeductBowls = createStashCheckbox("Deduct bowls from stash", false)
+        val checkboxDeductCones = createStashCheckbox("Deduct cones", true)
+        val checkboxDeductJoints = createStashCheckbox("Deduct joints", true)
+        val checkboxDeductBowls = createStashCheckbox("Deduct bowls", false)
 
-        contentLayout.addView(checkboxDeductCones)
-        contentLayout.addView(checkboxDeductJoints)
-        contentLayout.addView(checkboxDeductBowls)
+        // Horizontal container for checkboxes
+        val checkboxContainer = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 16.dpToPx()
+            }
+        }
+        
+        checkboxContainer.addView(checkboxDeductCones)
+        checkboxContainer.addView(checkboxDeductJoints)
+        checkboxContainer.addView(checkboxDeductBowls)
+        contentLayout.addView(checkboxContainer)
 
         // Load current ratios
         val currentRatios = stashViewModel.ratios.value ?: ConsumptionRatio()
         editJointGrams.setText(decimalFormat.format(currentRatios.jointGrams))
         editBowlGrams.setText(decimalFormat.format(currentRatios.bowlGrams))
+        
+        // Get selected custom ratios
+        val ratioManager = SmokeRatioManager(requireContext())
+        val selectedBowlRatio = ratioManager.getSelectedRatio(SmokeRatio.RatioType.BOWL)
+        val selectedJointRatio = ratioManager.getSelectedRatio(SmokeRatio.RatioType.JOINT)
+        
+        // Display custom ratio labels and update field values
+        if (selectedBowlRatio != null) {
+            bowlCustomRatioLabel.text = "Custom ratio\n[${selectedBowlRatio.name}]\nset"
+            bowlCustomRatioLabel.visibility = android.view.View.VISIBLE
+            // Set the bowl grams to the chop amount from the ratio
+            editBowlGrams.setText(decimalFormat.format(selectedBowlRatio.totalGrams))
+        }
+        
+        if (selectedJointRatio != null) {
+            jointCustomRatioLabel.text = "Custom ratio\n[${selectedJointRatio.name}]\nset"
+            jointCustomRatioLabel.visibility = android.view.View.VISIBLE
+            // Set the joint grams to the chop amount from the ratio
+            editJointGrams.setText(decimalFormat.format(selectedJointRatio.totalGrams))
+        }
+        
+        // Add text change listeners to deselect custom ratios when user types
+        editBowlGrams.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s?.isNotEmpty() == true && selectedBowlRatio != null) {
+                    // User is typing, deselect the custom ratio
+                    ratioManager.clearSelection(SmokeRatio.RatioType.BOWL)
+                    bowlCustomRatioLabel.text = "Custom ratio deselected - using manual value"
+                }
+            }
+        })
+        
+        editJointGrams.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (s?.isNotEmpty() == true && selectedJointRatio != null) {
+                    // User is typing, deselect the custom ratio
+                    ratioManager.clearSelection(SmokeRatio.RatioType.JOINT)
+                    jointCustomRatioLabel.text = "Custom ratio deselected - using manual value"
+                }
+            }
+        })
 
         // Set checkbox states
         (checkboxDeductCones as androidx.cardview.widget.CardView).findViewWithTag<android.widget.CheckBox>("checkbox").isChecked = currentRatios.deductConesFromStash
@@ -1506,11 +1663,51 @@ class StashFragment : Fragment() {
         val sessionStats = sessionStatsViewModel.groupStats.value
         val currentConeCount = sessionStats?.totalCones ?: 0
 
+        // Calculate auto cone ratio
+        val autoConeRatio = if (currentConeCount > 0 && currentRatios.bowlGrams > 0) {
+            currentRatios.bowlGrams / currentConeCount
+        } else {
+            null
+        }
+        
         // Set initial cone value or hint
         if (currentRatios.userDefinedConeGrams != null) {
             editConeGrams.setText(decimalFormat.format(currentRatios.coneGrams))
             editConeGrams.setTypeface(editConeGrams.typeface, android.graphics.Typeface.NORMAL)
             textConeInfo.text = "User-defined ratio"
+        } else if (autoConeRatio != null) {
+            editConeGrams.hint = "${decimalFormat.format(autoConeRatio)} (auto)"
+            textConeInfo.text = "Auto-calculated from your bowl activities (${currentConeCount} cones per bowl)"
+        } else {
+            editConeGrams.hint = "(auto)"
+            textConeInfo.text = "Cone will be calculated based on your bowl activities"
+        }
+        
+        // Set the callback for the ratio button now that all views are created
+        ratioButtonCallback = {
+            // Refresh the custom ratio labels after popup closes
+            val updatedBowlRatio = ratioManager.getSelectedRatio(SmokeRatio.RatioType.BOWL)
+            val updatedJointRatio = ratioManager.getSelectedRatio(SmokeRatio.RatioType.JOINT)
+            
+            // Update bowl ratio label
+            if (updatedBowlRatio != null) {
+                bowlCustomRatioLabel.text = "Custom ratio\n[${updatedBowlRatio.name}]\nset"
+                bowlCustomRatioLabel.visibility = android.view.View.VISIBLE
+                // totalGrams in the ratio is the chop (green) amount, use it directly
+                editBowlGrams.setText(decimalFormat.format(updatedBowlRatio.totalGrams))
+            } else {
+                bowlCustomRatioLabel.visibility = android.view.View.GONE
+            }
+            
+            // Update joint ratio label
+            if (updatedJointRatio != null) {
+                jointCustomRatioLabel.text = "Custom ratio\n[${updatedJointRatio.name}]\nset"
+                jointCustomRatioLabel.visibility = android.view.View.VISIBLE
+                // totalGrams in the ratio is the chop (green) amount, use it directly
+                editJointGrams.setText(decimalFormat.format(updatedJointRatio.totalGrams))
+            } else {
+                jointCustomRatioLabel.visibility = android.view.View.GONE
+            }
         }
 
         scrollView.addView(contentLayout)
@@ -1546,11 +1743,25 @@ class StashFragment : Fragment() {
                     deductBowls
                 )
 
-                if (currentConeCount > 0 && bowlGrams > 0) {
-                    val autoCalc = bowlGrams / currentConeCount
+                // Handle bulk bowl additions for cone auto-calculation
+                val bulkBowlCount = sessionStats?.bulkBowlAdditions ?: 0
+                val adjustedConeCount = if (bulkBowlCount > 0) {
+                    // For bulk bowl additions, use the bulk count for more accurate cone calculation
+                    bulkBowlCount
+                } else {
+                    currentConeCount
+                }
+                
+                if (adjustedConeCount > 0 && bowlGrams > 0) {
+                    val autoCalc = bowlGrams / adjustedConeCount
+                    val calculationNote = if (bulkBowlCount > 0) {
+                        " (based on bulk bowl addition of $bulkBowlCount bowls)"
+                    } else {
+                        ""
+                    }
                     Toast.makeText(
                         requireContext(),
-                        "Using auto-calculated cone ratio: ${decimalFormat.format(autoCalc)}g",
+                        "Using auto-calculated cone ratio: ${decimalFormat.format(autoCalc)}g$calculationNote",
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
@@ -1695,10 +1906,11 @@ class StashFragment : Fragment() {
             cardElevation = 0f
             setCardBackgroundColor(android.graphics.Color.parseColor("#424242"))
             layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f  // Equal weight for horizontal distribution
             ).apply {
-                bottomMargin = 8.dpToPx()
+                marginEnd = 4.dpToPx()
             }
         }
 
@@ -1723,7 +1935,7 @@ class StashFragment : Fragment() {
 
         val checkboxText = android.widget.TextView(requireContext()).apply {
             this.text = text
-            textSize = 14f
+            textSize = 12f
             setTextColor(android.graphics.Color.WHITE)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 0,
@@ -1939,6 +2151,20 @@ class StashFragment : Fragment() {
     // Extension function for dp to px conversion
     private fun Int.dpToPx(): Int {
         return (this * requireContext().resources.displayMetrics.density).toInt()
+    }
+    
+    private fun showSmokeRatioPopup(onDismiss: (() -> Unit)? = null) {
+        Log.d(TAG, "Showing Smoke Ratio Popup")
+        val ratioManager = SmokeRatioManager(requireContext())
+        val popup = SmokeRatioPopup(
+            requireContext(), 
+            ratioManager,
+            onRatioSaved = { savedRatio ->
+                Log.d(TAG, "Ratio saved: ${savedRatio.name} - ${savedRatio.totalGrams}g")
+            },
+            onDismissListener = onDismiss
+        )
+        popup.show()
     }
 
     // ===== Custom Session Picker for Stash (1:1 with Stats/Graph) =====

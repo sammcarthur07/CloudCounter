@@ -1,0 +1,25 @@
+FIRESTORE CLOUD FUNCTION UPDATE REQUIRED
+=========================================
+
+The following changes need to be made to the Firestore cloud functions that calculate session statistics:
+
+1. When calculating per-smoker stats in the room document, include cigarette activities:
+   - Count activities where type == "CIGARETTE"
+   - Calculate totalCigarettes for each smoker
+   - Calculate cigarette gap statistics (avgCigaretteGapMs, longestCigaretteGapMs, shortestCigaretteGapMs)
+
+2. When calculating overall session stats:
+   - Add totalCigarettes field to SessionStats
+   - Add sinceLastCigaretteMs field to track time since last cigarette
+
+3. The PerSmokerData and SessionStats data classes have been updated in the Android app to include these fields:
+   - PerSmokerData now includes: totalCigarettes, avgCigaretteGapMs, longestCigaretteGapMs, shortestCigaretteGapMs
+   - SessionStats now includes: totalCigarettes, sinceLastCigaretteMs
+
+4. Activities with type == "CIGARETTE" are already being synced to the room, so the cloud functions just need to include them in the statistics calculations.
+
+Note: Until these cloud function updates are deployed, cigarettes will:
+- Show correctly in local sessions
+- Show correctly in Goals tracking
+- Show correctly in Graph tab
+- NOT show in per-smoker stats for cloud sessions (will show as 0)

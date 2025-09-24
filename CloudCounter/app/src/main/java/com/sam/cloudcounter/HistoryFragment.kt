@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.sam.cloudcounter.databinding.FragmentHistoryBinding
@@ -13,9 +14,15 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
 
+    // Get the HistoryViewModel
+    private val viewModel by lazy {
+        ViewModelProvider(this).get(HistoryViewModel::class.java)
+    }
+
     // callbacks—MainActivity will set these if it wants to.
     var onDeleteLog:      ((ActivityLog)     -> Unit)? = null
     var onDeleteSummary:  ((SessionSummary)  -> Unit)? = null
+    var onDeleteSummaryWithActivities: ((SessionSummary) -> Unit)? = null
     var onResumeSummary:  ((SessionSummary)  -> Unit)? = null
 
     // ADD: Confetti helper
@@ -36,120 +43,38 @@ class HistoryFragment : Fragment(R.layout.fragment_history) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHistoryBinding.bind(view)
 
-        if (onDeleteLog != null && onDeleteSummary != null && onResumeSummary != null) {
-            adapter = HistoryAdapter(
-                repo,
-                onDeleteLog!!,
-                onDeleteSummary!!,
-                onResumeSummary!!,
-                confettiHelper
-            )
-            binding.recyclerViewHistory.layoutManager = LinearLayoutManager(requireContext())
-            binding.recyclerViewHistory.adapter       = adapter
+        // Setup the adapter with ViewModel-based deletion functions
+        adapter = HistoryAdapter(
+            repo,
+            onDeleteLog = { log -> viewModel.deleteLog(log) },
+            onDeleteSummary = { summary -> viewModel.deleteSummary(summary) },
+            onDeleteSummaryWithActivities = { summary -> viewModel.deleteSessionWithActivities(summary) },
+            onResumeSummary = onResumeSummary ?: { },
+            confettiHelper
+        )
+        binding.recyclerViewHistory.layoutManager = LinearLayoutManager(requireContext())
+        binding.recyclerViewHistory.adapter = adapter
 
-            repo.allLogs.observe(viewLifecycleOwner) { logs ->
-                lifecycleScope.launch {
-                    val summaries = repo.allSummaries.value ?: emptyList()
-                    val items = logs.map { HistoryItem.ActivityItem(it) } +
-                            summaries.map { HistoryItem.SummaryItem(it) }
+        // Observe the ViewModel's combined items LiveData
+        viewModel.allItems.observe(viewLifecycleOwner) { items ->
+            // Check if this is a new item being added (not initial load or deletion)
+            val currentItemCount = items.size
+            val shouldScrollToTop = currentItemCount > previousItemCount && previousItemCount > 0
 
-                    // Promote active summary to the top, then sort by timestamp desc
-                    val sortedItems = items.sortedWith(
-                        compareByDescending<HistoryItem> { item ->
-                            (item as? HistoryItem.SummaryItem)?.summary?.isActive == true
-                        }.thenByDescending { item ->
-                            when (item) {
-                                is HistoryItem.ActivityItem -> item.log.timestamp
-                                is HistoryItem.SummaryItem  -> item.summary.timestamp
-                                else -> 0L
-                            }
-                        }
-                    )
-
-                    // Logging: show if we promoted anything
-                    val activeSummaries = summaries.filter { it.isActive }
-                    if (activeSummaries.isNotEmpty()) {
-                        Log.d("SeshFlow", "HistorySort – promoting active summary ids=${activeSummaries.map { it.id }} to top")
-                        val top = sortedItems.firstOrNull()
-                        when (top) {
-                            is HistoryItem.SummaryItem -> Log.d("SeshFlow", "HistorySort – top item summary id=${top.summary.id}, active=${top.summary.isActive}")
-                            is HistoryItem.ActivityItem -> Log.d("SeshFlow", "HistorySort – top item activity id=${top.log.id}")
-                            else -> { /* no-op */ }
-                        }
-                    }
-
-                    // Check if this is a new item being added (not initial load or deletion)
-                    val currentItemCount = sortedItems.size
-                    val shouldScrollToTop = currentItemCount > previousItemCount && previousItemCount > 0
-
-                    adapter.submitList(sortedItems) {
-                        // This callback runs after the list is updated
-                        // CRITICAL FIX: Check if binding is still valid before accessing it
-                        if (_binding != null && shouldScrollToTop) {
-                            // Smooth scroll to the top to show the new entry
-                            _binding?.recyclerViewHistory?.smoothScrollToPosition(0)
-                        }
-                    }
-
-                    previousItemCount = currentItemCount
-
-                    // CRITICAL FIX: Check if binding is still valid
-                    _binding?.textViewEmptyHistory?.visibility =
-                        if (adapter.itemCount == 0) View.VISIBLE else View.GONE
+            adapter.submitList(items) {
+                // This callback runs after the list is updated
+                // CRITICAL FIX: Check if binding is still valid before accessing it
+                if (_binding != null && shouldScrollToTop) {
+                    // Smooth scroll to the top to show the new entry
+                    _binding?.recyclerViewHistory?.smoothScrollToPosition(0)
                 }
             }
 
-            repo.allSummaries.observe(viewLifecycleOwner) { summaries ->
-                lifecycleScope.launch {
-                    val logs = repo.allLogs.value ?: emptyList()
-                    val items = logs.map { HistoryItem.ActivityItem(it) } +
-                            summaries.map { HistoryItem.SummaryItem(it) }
+            previousItemCount = currentItemCount
 
-                    // Promote active summary to the top, then sort by timestamp desc
-                    val sortedItems = items.sortedWith(
-                        compareByDescending<HistoryItem> { item ->
-                            (item as? HistoryItem.SummaryItem)?.summary?.isActive == true
-                        }.thenByDescending { item ->
-                            when (item) {
-                                is HistoryItem.ActivityItem -> item.log.timestamp
-                                is HistoryItem.SummaryItem  -> item.summary.timestamp
-                                else -> 0L
-                            }
-                        }
-                    )
-
-                    // Logging: show if we promoted anything
-                    val activeSummaries = summaries.filter { it.isActive }
-                    if (activeSummaries.isNotEmpty()) {
-                        Log.d("SeshFlow", "HistorySort – promoting active summary ids=${activeSummaries.map { it.id }} to top")
-                        val top = sortedItems.firstOrNull()
-                        when (top) {
-                            is HistoryItem.SummaryItem -> Log.d("SeshFlow", "HistorySort – top item summary id=${top.summary.id}, active=${top.summary.isActive}")
-                            is HistoryItem.ActivityItem -> Log.d("SeshFlow", "HistorySort – top item activity id=${top.log.id}")
-                            else -> { /* no-op */ }
-                        }
-                    }
-
-                    // Check if this is a new item being added (not initial load or deletion)
-                    val currentItemCount = sortedItems.size
-                    val shouldScrollToTop = currentItemCount > previousItemCount && previousItemCount > 0
-
-                    adapter.submitList(sortedItems) {
-                        // This callback runs after the list is updated
-                        // CRITICAL FIX: Check if binding is still valid before accessing it
-                        if (_binding != null && shouldScrollToTop) {
-                            // Smooth scroll to the top to show the new entry
-                            _binding?.recyclerViewHistory?.smoothScrollToPosition(0)
-                        }
-                    }
-
-                    previousItemCount = currentItemCount
-
-                    // CRITICAL FIX: Check if binding is still valid
-                    _binding?.textViewEmptyHistory?.visibility =
-                        if (adapter.itemCount == 0) View.VISIBLE else View.GONE
-                }
-            }
+            // CRITICAL FIX: Check if binding is still valid
+            _binding?.textViewEmptyHistory?.visibility =
+                if (adapter.itemCount == 0) View.VISIBLE else View.GONE
         }
     }
 

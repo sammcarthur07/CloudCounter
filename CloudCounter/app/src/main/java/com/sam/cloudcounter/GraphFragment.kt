@@ -76,6 +76,21 @@ class GraphFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        Log.d("GraphFragment", "🚬 DEBUG: onViewCreated called")
+        Log.d("GraphFragment", "🚬 DEBUG: Binding is initialized: ${_binding != null}")
+        
+        if (_binding != null) {
+            Log.d("GraphFragment", "🚬 DEBUG: Checking if cigarette checkbox exists in binding...")
+            try {
+                val cigaretteCheckbox = binding.checkBoxShowCigarettes
+                Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox found in binding: $cigaretteCheckbox")
+                Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox id: ${cigaretteCheckbox.id}")
+                Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox resources name: ${resources.getResourceEntryName(cigaretteCheckbox.id)}")
+            } catch (e: Exception) {
+                Log.e("GraphFragment", "🚬 ERROR: Failed to access cigarette checkbox: ${e.message}")
+            }
+        }
 
         graphViewModel = ViewModelProvider(requireActivity()).get(GraphViewModel::class.java)
 
@@ -131,6 +146,15 @@ class GraphFragment : Fragment() {
                 // Always use the current chart type from ViewModel
                 val currentType = graphViewModel.chartType.value ?: GraphViewModel.ChartType.BAR
                 updateChartDisplay(it, currentType)
+                
+                // Check if there are any cigarette activities and show/hide checkbox accordingly
+                val hasCigaretteActivities = graphViewModel.hasCigaretteActivities()
+                Log.d("GraphFragment", "🚬 DEBUG: Has cigarette activities: $hasCigaretteActivities")
+                binding.checkBoxShowCigarettes.visibility = if (hasCigaretteActivities) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
             }
         })
 
@@ -851,6 +875,30 @@ class GraphFragment : Fragment() {
     }
 
     private fun setupLineToggleCheckBoxListeners() {
+        // Debug cigarette checkbox visibility
+        Log.d("GraphFragment", "🚬 DEBUG: Setting up line toggle checkboxes")
+        Log.d("GraphFragment", "🚬 DEBUG: checkBoxShowJoints exists: ${_binding != null && binding.checkBoxShowJoints != null}")
+        Log.d("GraphFragment", "🚬 DEBUG: checkBoxShowCones exists: ${_binding != null && binding.checkBoxShowCones != null}")
+        Log.d("GraphFragment", "🚬 DEBUG: checkBoxShowBowls exists: ${_binding != null && binding.checkBoxShowBowls != null}")
+        Log.d("GraphFragment", "🚬 DEBUG: checkBoxShowCigarettes exists: ${_binding != null && binding.checkBoxShowCigarettes != null}")
+        
+        if (_binding != null && binding.checkBoxShowCigarettes != null) {
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox visibility: ${binding.checkBoxShowCigarettes.visibility}")
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox parent: ${binding.checkBoxShowCigarettes.parent}")
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox width: ${binding.checkBoxShowCigarettes.width}")
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox height: ${binding.checkBoxShowCigarettes.height}")
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox text: ${binding.checkBoxShowCigarettes.text}")
+        }
+        
+        // Debug the toggle lines container
+        Log.d("GraphFragment", "🚬 DEBUG: toggleLinesContainer child count: ${binding.toggleLinesContainer.childCount}")
+        for (i in 0 until binding.toggleLinesContainer.childCount) {
+            val child = binding.toggleLinesContainer.getChildAt(i)
+            if (child is CheckBox) {
+                Log.d("GraphFragment", "🚬 DEBUG: Child $i is CheckBox with text: ${child.text}, visibility: ${child.visibility}")
+            }
+        }
+        
         binding.checkBoxShowJoints.setOnCheckedChangeListener { _, isChecked ->
             graphViewModel.setShowJoints(isChecked)
         }
@@ -860,11 +908,18 @@ class GraphFragment : Fragment() {
         binding.checkBoxShowBowls.setOnCheckedChangeListener { _, isChecked ->
             graphViewModel.setShowBowls(isChecked)
         }
+        binding.checkBoxShowCigarettes.setOnCheckedChangeListener { _, isChecked ->
+            Log.d("GraphFragment", "🚬 DEBUG: Cigarette checkbox changed to: $isChecked")
+            graphViewModel.setShowCigarettes(isChecked)
+        }
 
         // Set initial states from ViewModel
         binding.checkBoxShowJoints.isChecked = graphViewModel.showJoints.value ?: true
         binding.checkBoxShowCones.isChecked = graphViewModel.showCones.value ?: true
         binding.checkBoxShowBowls.isChecked = graphViewModel.showBowls.value ?: true
+        binding.checkBoxShowCigarettes.isChecked = graphViewModel.showCigarettes.value ?: true
+        
+        Log.d("GraphFragment", "🚬 DEBUG: Initial cigarette checkbox state: ${binding.checkBoxShowCigarettes.isChecked}")
     }
     
     private fun observeCustomActivities() {
@@ -906,9 +961,9 @@ class GraphFragment : Fragment() {
         // Get the toggle lines container (now using the new ID)
         val checkboxContainer = binding.toggleLinesContainer
         
-        // Remove any existing custom activity checkboxes (keep first 3 for joints/cones/bowls)
-        while (checkboxContainer.childCount > 3) {
-            checkboxContainer.removeViewAt(3)
+        // Remove any existing custom activity checkboxes (keep first 4 for joints/cones/bowls/cigarettes)
+        while (checkboxContainer.childCount > 4) {
+            checkboxContainer.removeViewAt(4)
         }
         
         // Add checkbox for each custom activity (support up to 12 custom = 15 total)
@@ -937,9 +992,9 @@ class GraphFragment : Fragment() {
         // Get the legend container
         val legendContainer = binding.customLegendContainer
         
-        // Remove any existing custom activity legend items (keep first 3 for joints/cones/bowls)
-        while (legendContainer.childCount > 3) {
-            legendContainer.removeViewAt(3)
+        // Remove any existing custom activity legend items (keep first 4 for joints/cones/bowls/cigarettes)
+        while (legendContainer.childCount > 4) {
+            legendContainer.removeViewAt(4)
         }
         
         // Add legend item for ALL custom activities (not just 6)

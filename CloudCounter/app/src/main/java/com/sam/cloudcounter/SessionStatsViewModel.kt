@@ -12,17 +12,21 @@ data class GroupStats(
     val totalCones: Int = 0,
     val totalJoints: Int = 0,
     val totalBowls: Int = 0,
+    val totalCigarettes: Int = 0,
+    val bulkBowlAdditions: Int = 0,
     val longestGapMs: Long = 0L,
     val shortestGapMs: Long = 0L,
     val sinceLastGapMs: Long = 0L,
     val sinceLastJointMs: Long = 0L,
     val sinceLastBowlMs: Long = 0L,
+    val sinceLastCigaretteMs: Long = 0L,
     val totalRounds: Int = 0,
     val hitsInCurrentRound: Int = 0,
     val participantCount: Int = 0,
     val lastConeSmokerName: String? = null,
     val lastJointSmokerName: String? = null,
     val lastBowlSmokerName: String? = null,
+    val lastCigaretteSmokerName: String? = null,
     val conesSinceLastBowl: Int = 0,
     val lastGapMs: Long? = null,
     val previousGapMs: Long? = null,
@@ -69,6 +73,10 @@ class SessionStatsViewModel : ViewModel() {
     // FIXED: Made this LiveData and public
     private val _isSessionActive = MutableLiveData<Boolean>(false)
     val isSessionActive: LiveData<Boolean> = _isSessionActive
+
+    // ADD: Track the current session ID for proper activity association
+    private val _currentSessionId = MutableLiveData<Long?>(null)
+    val currentSessionId: LiveData<Long?> = _currentSessionId
 
     private val _elapsedTimeSec = MutableLiveData<Long>(0L)
     val elapsedTimeSec: LiveData<Long> = _elapsedTimeSec
@@ -128,24 +136,26 @@ class SessionStatsViewModel : ViewModel() {
 
     fun startSession(sessionStart: Long) {
         Log.d(TAG, "🎬 START_SESSION: Called with sessionStart=$sessionStart")
-        Log.d(TAG, "🎬 START_SESSION: Previous state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime")
+        Log.d(TAG, "🎬 START_SESSION: Previous state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime, sessionId=${_currentSessionId.value}")
 
         this.sessionStartTime = sessionStart
+        _currentSessionId.value = sessionStart  // Use session start time as session ID
         _isSessionActive.value = true
         _elapsedTimeSec.value = 0L
         _perSmokerStats.value = emptyList()
         _groupStats.value = GroupStats()
 
-        Log.d(TAG, "🎬 START_SESSION: New state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime")
+        Log.d(TAG, "🎬 START_SESSION: New state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime, sessionId=${_currentSessionId.value}")
         Log.d(TAG, "🎬 START_SESSION: Stats cleared - perSmoker=${_perSmokerStats.value?.size}, groupStats=${_groupStats.value}")
     }
 
     fun stopSession() {
         Log.d(TAG, "🛑 STOP_SESSION: Called")
-        Log.d(TAG, "🛑 STOP_SESSION: Previous state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime")
+        Log.d(TAG, "🛑 STOP_SESSION: Previous state - isActive=${_isSessionActive.value}, startTime=$sessionStartTime, sessionId=${_currentSessionId.value}")
         Log.d(TAG, "🛑 STOP_SESSION: Current stats - cones=${_groupStats.value?.totalCones}, smokers=${_perSmokerStats.value?.size}")
 
         _isSessionActive.value = false
+        _currentSessionId.value = null  // Clear session ID when session ends
         sessionStartTime = 0L
         
         // Clear carried-over stats when session ends
@@ -188,9 +198,10 @@ class SessionStatsViewModel : ViewModel() {
     fun applyRoomStats(roomStats: SessionStats, sessionStart: Long, smokerDisplayOrder: Map<String, Int>? = null) {
         Log.d(TAG, "📊 APPLY_ROOM_STATS: Applying stats - cones=${roomStats.totalCones}, joints=${roomStats.totalJoints}, bowls=${roomStats.totalBowls}")
         Log.d(TAG, "📊 APPLY_ROOM_STATS: Mode=${if (isAutoMode) "AUTO" else "STICKY"}, sessionStart=$sessionStart")
-        Log.d(TAG, "📊 APPLY_ROOM_STATS: Previous isActive=${_isSessionActive.value}")
+        Log.d(TAG, "📊 APPLY_ROOM_STATS: Previous isActive=${_isSessionActive.value}, sessionId=${_currentSessionId.value}")
 
         sessionStartTime = sessionStart
+        _currentSessionId.value = sessionStart  // Set session ID when applying room stats
         _isSessionActive.value = true
 
         val now = System.currentTimeMillis()
@@ -211,6 +222,7 @@ class SessionStatsViewModel : ViewModel() {
                 totalCones = serverData.totalCones,
                 totalJoints = serverData.totalJoints,
                 totalBowls = serverData.totalBowls,
+                totalCigarettes = serverData.totalCigarettes,
                 avgGapMs = serverData.avgGapMs,
                 longestGapMs = serverData.longestGapMs,
                 shortestGapMs = serverData.shortestGapMs,
@@ -226,6 +238,11 @@ class SessionStatsViewModel : ViewModel() {
                 shortestBowlGapMs = serverData.shortestBowlGapMs,
                 lastBowlGapMs = serverData.avgBowlGapMs,  // TODO: Calculate from activity history
                 lastBowlTime = 0L,  // TODO: Get from last bowl activity
+                avgCigaretteGapMs = serverData.avgCigaretteGapMs,
+                longestCigaretteGapMs = serverData.longestCigaretteGapMs,
+                shortestCigaretteGapMs = serverData.shortestCigaretteGapMs,
+                lastCigaretteGapMs = serverData.avgCigaretteGapMs,
+                lastCigaretteTime = 0L,
                 lastActivityTime = serverData.lastActivityTime
             )
         }.let { list ->
@@ -367,6 +384,7 @@ class SessionStatsViewModel : ViewModel() {
                     ActivityType.CONE -> stat.copy(totalCones = (stat.totalCones - 1).coerceAtLeast(0))
                     ActivityType.JOINT -> stat.copy(totalJoints = (stat.totalJoints - 1).coerceAtLeast(0))
                     ActivityType.BOWL -> stat.copy(totalBowls = (stat.totalBowls - 1).coerceAtLeast(0))
+                    ActivityType.CIGARETTE -> stat.copy(totalCigarettes = (stat.totalCigarettes - 1).coerceAtLeast(0))
                     ActivityType.CUSTOM -> {
                         // Decrement the per-smoker count for this custom activity ID
                         if (customActivityId != null && stat.customActivityStats.containsKey(customActivityId)) {
@@ -391,6 +409,7 @@ class SessionStatsViewModel : ViewModel() {
             ActivityType.CONE -> currentGroupStats.copy(totalCones = (currentGroupStats.totalCones - 1).coerceAtLeast(0))
             ActivityType.JOINT -> currentGroupStats.copy(totalJoints = (currentGroupStats.totalJoints - 1).coerceAtLeast(0))
             ActivityType.BOWL -> currentGroupStats.copy(totalBowls = (currentGroupStats.totalBowls - 1).coerceAtLeast(0))
+            ActivityType.CIGARETTE -> currentGroupStats.copy(totalCigarettes = (currentGroupStats.totalCigarettes - 1).coerceAtLeast(0))
             ActivityType.CUSTOM -> {
                 if (customActivityId != null) {
                     val updatedCustomGroup = currentGroupStats.customActivityGroupStats.toMutableMap()
@@ -497,9 +516,11 @@ class SessionStatsViewModel : ViewModel() {
         Log.d(TAG, "📦🔴   - totalCones = ${adjustedGroupStats.totalCones}")
         Log.d(TAG, "📦🔴   - totalJoints = ${adjustedGroupStats.totalJoints}")
         Log.d(TAG, "📦🔴   - totalBowls = ${adjustedGroupStats.totalBowls}")
+        Log.d(TAG, "📦🔴   - totalCigarettes = ${adjustedGroupStats.totalCigarettes}")
 
         this.sessionStartTime = sessionStart
         val shouldActivate = sessionStart > 0
+        _currentSessionId.value = if (shouldActivate) sessionStart else null  // Set session ID when applying local stats
         _isSessionActive.value = shouldActivate
 
         _elapsedTimeSec.value = if (sessionStart > 0) (System.currentTimeMillis() - sessionStart) / 1000 else 0L
@@ -567,6 +588,13 @@ class SessionStatsViewModel : ViewModel() {
         _groupStats.value = adjustedGroupStats
         Log.d(TAG, "📦🔴 DEBUG: After setting _groupStats.value:")
         Log.d(TAG, "📦🔴   - cone name = ${_groupStats.value?.lastConeSmokerName}")
+        
+        // Log cigarette stats
+        Log.d(TAG, "🚬 CIGARETTE_VM: Set perSmokerStats with ${sortedPerSmoker.size} smokers")
+        sortedPerSmoker.forEach { stat ->
+            Log.d(TAG, "🚬 CIGARETTE_VM:   ${stat.smokerName}: totalCigarettes=${stat.totalCigarettes}")
+        }
+        Log.d(TAG, "🚬 CIGARETTE_VM: Set groupStats with totalCigarettes=${adjustedGroupStats.totalCigarettes}")
         Log.d(TAG, "📦🔴   - joint name = ${_groupStats.value?.lastJointSmokerName}")
         Log.d(TAG, "📦🔴   - bowl name = ${_groupStats.value?.lastBowlSmokerName}")
 

@@ -224,6 +224,7 @@ class StatsFragment : Fragment() {
                         R.id.chipCategoryJoint -> ActivityType.JOINT
                         R.id.chipCategoryCone  -> ActivityType.CONE
                         R.id.chipCategoryBowl  -> ActivityType.BOWL
+                        R.id.chipCategoryCigarette -> ActivityType.CIGARETTE
                         R.id.chipCategoryAll -> null
                         else                   -> null
                     }

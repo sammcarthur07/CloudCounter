@@ -44,6 +44,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
             activityType == ActivityType.JOINT -> Color.parseColor("#4CAF50") // Green - matching graph
             activityType == ActivityType.CONE -> Color.parseColor("#FF9800") // Orange - matching graph  
             activityType == ActivityType.BOWL -> Color.parseColor("#2196F3") // Blue - matching graph
+            activityType == ActivityType.CIGARETTE -> Color.parseColor("#9E9E9E") // Grey - matching graph
             else -> ContextCompat.getColor(getApplication(), R.color.text_secondary)
         }
     }
@@ -133,6 +134,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                     activity.type == ActivityType.JOINT -> "Joints"
                     activity.type == ActivityType.CONE -> "Cones"
                     activity.type == ActivityType.BOWL -> "Bowls"
+                    activity.type == ActivityType.CIGARETTE -> "Cigarettes"
                     else -> "Other"
                 }
                 
@@ -293,6 +295,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 activity.type == ActivityType.JOINT -> "Joints"
                 activity.type == ActivityType.CONE -> "Cones"
                 activity.type == ActivityType.BOWL -> "Bowls"
+                activity.type == ActivityType.CIGARETTE -> "Cigarettes"
                 else -> "Other"
             }
             
@@ -333,6 +336,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 activity.type == ActivityType.JOINT -> "Joints"
                 activity.type == ActivityType.CONE -> "Cones"
                 activity.type == ActivityType.BOWL -> "Bowls"
+                activity.type == ActivityType.CIGARETTE -> "Cigarettes"
                 else -> "Other"
             }
             
@@ -393,6 +397,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 activity.type == ActivityType.JOINT -> "Joints"
                 activity.type == ActivityType.CONE -> "Cones"
                 activity.type == ActivityType.BOWL -> "Bowls"
+                activity.type == ActivityType.CIGARETTE -> "Cigarettes"
                 else -> "Other"
             }
 
@@ -450,6 +455,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
                 activity.type == ActivityType.JOINT -> "Joints"
                 activity.type == ActivityType.CONE -> "Cones"
                 activity.type == ActivityType.BOWL -> "Bowls"
+                activity.type == ActivityType.CIGARETTE -> "Cigarettes"
                 else -> "Other"
             }
 

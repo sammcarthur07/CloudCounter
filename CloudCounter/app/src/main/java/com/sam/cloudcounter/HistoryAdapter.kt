@@ -28,6 +28,7 @@ class HistoryAdapter(
     private val repository: ActivityRepository,
     private val onDeleteLog: (ActivityLog) -> Unit,
     private val onDeleteSummary: (SessionSummary) -> Unit,
+    private val onDeleteSummaryWithActivities: ((SessionSummary) -> Unit)? = null,
     private val onResumeSummary: (SessionSummary) -> Unit,
     private val confettiHelper: ConfettiHelper? = null
 ) : ListAdapter<HistoryItem, RecyclerView.ViewHolder>(HistoryItemDiffCallback()) {
@@ -196,6 +197,9 @@ class HistoryAdapter(
                 log.type == ActivityType.BOWL -> {
                     iconEmoji.text = "🥣"
                 }
+                log.type == ActivityType.CIGARETTE -> {
+                    iconEmoji.text = "🚬"
+                }
                 else -> {
                     iconEmoji.text = "🌿"
                 }
@@ -213,6 +217,8 @@ class HistoryAdapter(
                             "$smokerName - ${log.customActivityName}"
                         log.type == ActivityType.BOWL && log.bowlQuantity > 1 ->
                             "$smokerName - ${log.bowlQuantity} Bowls"
+                        log.type == ActivityType.CIGARETTE ->
+                            "$smokerName - Cigarette"
                         else ->
                             "$smokerName - ${log.type.name.lowercase().capitalize()}"
                     }
@@ -403,7 +409,8 @@ class HistoryAdapter(
                                 count > 1 && displayName == "Joint" -> "${count} Joints"
                                 count > 1 && displayName == "Cone" -> "${count} Cones"
                                 count > 1 && displayName == "Bowl" -> "${count} Bowls"
-                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl") -> "${count} $displayName"
+                                count > 1 && displayName == "Cigarette" -> "${count} Cigarettes"
+                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl" || displayName == "Cigarette") -> "${count} $displayName"
                                 else -> "${count} $displayName"
                             }
                             activities.add(pluralName)
@@ -530,7 +537,8 @@ class HistoryAdapter(
                                 count > 1 && displayName == "Joint" -> "${count} Joints"
                                 count > 1 && displayName == "Cone" -> "${count} Cones"
                                 count > 1 && displayName == "Bowl" -> "${count} Bowls"
-                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl") -> "${count} $displayName"
+                                count > 1 && displayName == "Cigarette" -> "${count} Cigarettes"
+                                count == 1 && (displayName == "Joint" || displayName == "Cone" || displayName == "Bowl" || displayName == "Cigarette") -> "${count} $displayName"
                                 else -> "${count} $displayName"
                             }
                             activities.add(pluralName)
@@ -567,7 +575,9 @@ class HistoryAdapter(
             btnDelete.setOnClickListener { view ->
                 // Use mini confetti like the original
                 confettiHelper?.showMiniConfettiFromButton(view)
-                onDeleteSummary(summary)
+                
+                // Show deletion dialog with 3 options
+                showSessionDeletionDialog(summary)
             }
 
             android.util.Log.d(
@@ -581,6 +591,49 @@ class HistoryAdapter(
                 confettiHelper?.showMiniConfettiFromButton(view)
                 onResumeSummary(summary)
             }
+        }
+        
+        private fun showSessionDeletionDialog(summary: SessionSummary) {
+            val context = itemView.context
+            
+            // Create a themed dialog similar to smoker deletion
+            val dialog = android.app.AlertDialog.Builder(context)
+                .setTitle("Delete Session?")
+                .setMessage("Session from ${formatTimestamp(summary.timestamp)}\n\nChoose deletion option:")
+                .setPositiveButton("Delete Just Stats") { _, _ ->
+                    // Delete only the session summary
+                    onDeleteSummary(summary)
+                }
+                .setNeutralButton("Delete with Activities") { _, _ ->
+                    // Delete session summary and all related activities
+                    if (onDeleteSummaryWithActivities != null) {
+                        onDeleteSummaryWithActivities.invoke(summary)
+                    } else {
+                        // Fallback to just deleting summary if the handler is not set
+                        onDeleteSummary(summary)
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .create()
+                
+            // Style the dialog buttons after showing
+            dialog.show()
+            
+            // Style the buttons with appropriate colors
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(context.getColor(android.R.color.holo_orange_dark))
+            }
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL)?.apply {
+                setTextColor(context.getColor(android.R.color.holo_red_dark))
+            }
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)?.apply {
+                setTextColor(context.getColor(android.R.color.darker_gray))
+            }
+        }
+        
+        private fun formatTimestamp(timestamp: Long): String {
+            val sdf = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+            return sdf.format(java.util.Date(timestamp))
         }
     }
 }

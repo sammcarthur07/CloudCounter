@@ -185,6 +185,16 @@
                         android:checked="true"
                         android:layout_marginEnd="16dp"
                         android:singleLine="true" />
+
+                    <CheckBox
+                        android:id="@+id/checkBoxShowCigarettes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cigarettes"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:checked="true"
+                        android:layout_marginEnd="16dp"
+                        android:singleLine="true" />
                         
                     <!-- Dynamic custom activity checkboxes will be added here -->
                 </LinearLayout>
@@ -273,6 +283,16 @@
                         android:drawableStart="@drawable/legend_dot_blue"
                         android:drawablePadding="4dp"
                         android:text="Bowls"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/legend_dot_grey"
+                        android:drawablePadding="4dp"
+                        android:text="Cigarettes"
                         android:textColor="?android:attr/textColorPrimary"
                         android:textSize="12sp"
                         android:layout_marginEnd="12dp" />

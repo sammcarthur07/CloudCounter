@@ -8,5 +8,6 @@ enum class ActivityType {
     JOINT,
     BOWL,
     CUSTOM,  // For custom activities - should not interact with stash
-    SESSION_SUMMARY
+    SESSION_SUMMARY,
+    CIGARETTE  // For cigarette tracking based on smoke ratios
 }

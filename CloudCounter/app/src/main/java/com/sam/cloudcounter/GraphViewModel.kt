@@ -62,6 +62,9 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _showBowls = MutableLiveData(true)
     val showBowls: LiveData<Boolean> = _showBowls
+
+    private val _showCigarettes = MutableLiveData(true)
+    val showCigarettes: LiveData<Boolean> = _showCigarettes
     
     // Custom session selection mode for Graph tab (independent of Stats)
     private val _useCustomSessions = MutableLiveData(false)
@@ -78,6 +81,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
     val colorJoints: Int = Color.parseColor("#4CAF50")
     val colorCones: Int = Color.parseColor("#FF9800")
     val colorBowls: Int = Color.parseColor("#2196F3")
+    val colorCigarettes: Int = Color.parseColor("#9E9E9E")
     
     /**
      * Apply small vertical jitter to overlapping data points
@@ -140,6 +144,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             "joint" -> colorJoints
             "cone" -> colorCones
             "bowl" -> colorBowls
+            "cigarette" -> colorCigarettes
             else -> generateNeonColor(activityId)
         }
     }
@@ -189,6 +194,11 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     // This is the raw data stream from the database
     private val allActivities: LiveData<List<ActivityLog>>
+    
+    // Public method to check if there are cigarette activities
+    fun hasCigaretteActivities(): Boolean {
+        return allActivities.value?.any { it.type == ActivityType.CIGARETTE } ?: false
+    }
 
     init {
         val database = AppDatabase.getDatabase(application)
@@ -208,6 +218,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
             .addSource(_showJoints) { refreshChartData() }
         _chartUiData.addSource(_showCones) { refreshChartData() }
         _chartUiData.addSource(_showBowls) { refreshChartData() }
+        _chartUiData.addSource(_showCigarettes) { refreshChartData() }
         _chartUiData.addSource(_chartType) { refreshChartData() }
 
         // Add the new LiveData from the repository as a source.
@@ -247,6 +258,10 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setShowBowls(show: Boolean) {
         if (_showBowls.value != show) _showBowls.value = show
+    }
+
+    fun setShowCigarettes(show: Boolean) {
+        if (_showCigarettes.value != show) _showCigarettes.value = show
     }
     
     fun setShowCustomActivity(customId: String, show: Boolean) {
@@ -363,6 +378,7 @@ class GraphViewModel(application: Application) : AndroidViewModel(application) {
         if (_showJoints.value == true) processLogsForChart(logsNoLedger, ActivityType.JOINT, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Joints").apply { styleDataSet(this, colorJoints) }) }
         if (_showCones.value == true) processLogsForChart(logsNoLedger, ActivityType.CONE, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Cones").apply { styleDataSet(this, colorCones) }) }
         if (_showBowls.value == true) processLogsForChart(logsNoLedger, ActivityType.BOWL, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Bowls").apply { styleDataSet(this, colorBowls) }) }
+        if (_showCigarettes.value == true) processLogsForChart(logsNoLedger, ActivityType.CIGARETTE, effectiveMode).takeIf { it.isNotEmpty() }?.let { dataSets.add(LineDataSet(it, "Cigarettes").apply { styleDataSet(this, colorCigarettes) }) }
         
         // Process custom activities
         val customActivities = logsNoLedger.filter { !it.customActivityId.isNullOrEmpty() }

@@ -390,6 +390,7 @@ class SeshFragment : Fragment() {
         Log.d("SeshFragment", "📊   Cones (${stat.totalCones}): lastGap=${stat.lastGapMs}ms, lastTime=${stat.lastConeTime}, timeSince=$timeSinceLastCone")
         Log.d("SeshFragment", "📊   Joints (${stat.totalJoints}): lastGap=${stat.lastJointGapMs}ms, lastTime=${stat.lastJointTime}, timeSince=$timeSinceLastJoint")
         Log.d("SeshFragment", "📊   Bowls (${stat.totalBowls}): lastGap=${stat.lastBowlGapMs}ms, lastTime=${stat.lastBowlTime}, timeSince=$timeSinceLastBowl")
+        Log.d("SeshFragment", "📊   Cigarettes (${stat.totalCigarettes}): lastGap=${stat.lastCigaretteGapMs}ms, lastTime=${stat.lastCigaretteTime}")
 
         if (stat.totalCones > 0) {
             activities.add(Triple(
@@ -431,6 +432,26 @@ class SeshFragment : Fragment() {
                     if (stat.totalBowls > 1) formatTime(stat.avgBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.shortestBowlGapMs) else "-",
                     if (stat.totalBowls > 1) formatTime(stat.longestBowlGapMs) else "-"
+                )
+            ))
+            if (!nameAdded) nameAdded = true
+        }
+
+        if (stat.totalCigarettes > 0) {
+            val timeSinceLastCigarette = if (stat.lastCigaretteTime > 0) {
+                val elapsed = currentTime - stat.lastCigaretteTime
+                formatTime(elapsed)
+            } else "-"
+            
+            activities.add(Triple(
+                if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
+                "${stat.totalCigarettes} Cigarettes",
+                listOf(
+                    timeSinceLastCigarette,  // Time since last cigarette
+                    if (stat.totalCigarettes > 1) formatTime(stat.lastCigaretteGapMs) else "-",  // Last gap
+                    if (stat.totalCigarettes > 1) formatTime(stat.avgCigaretteGapMs) else "-",
+                    if (stat.totalCigarettes > 1) formatTime(stat.shortestCigaretteGapMs) else "-",
+                    if (stat.totalCigarettes > 1) formatTime(stat.longestCigaretteGapMs) else "-"
                 )
             ))
             if (!nameAdded) nameAdded = true

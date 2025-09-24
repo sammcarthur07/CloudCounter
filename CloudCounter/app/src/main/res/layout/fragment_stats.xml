@@ -186,6 +186,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Bowls" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCategoryCigarette"
+                    style="@style/CustomOutlinedChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cigarettes" />
             </com.google.android.material.chip.ChipGroup>
 
             <!-- Stats display -->

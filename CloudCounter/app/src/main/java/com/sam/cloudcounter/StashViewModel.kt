@@ -19,6 +19,9 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     private val activityLogDao = AppDatabase.getDatabase(application).activityLogDao()
     private val smokerDao = AppDatabase.getDatabase(application).smokerDao()
     private val summaryDao = AppDatabase.getDatabase(application).sessionSummaryDao()
+    
+    // Cloud sync helper
+    private val cloudSync = StashCloudSync()
 
     // Initialize the stats calculator - AFTER all DAOs are declared
     private val statsCalculator = StashStatsCalculator(activityLogDao, stashDao, smokerDao, summaryDao)
@@ -93,6 +96,15 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     fun setCurrentUserId(userId: String) {
         currentUserId = userId
         Log.d("STASH_VM", "User ID set: $userId")
+        Log.d("STASH_VM", "🔄 Triggering cloud sync after user ID set")
+        try {
+            // Trigger cloud sync when user ID is set (after login)
+            Log.d("STASH_VM", "🔄 About to call syncWithCloud()")
+            syncWithCloud()
+            Log.d("STASH_VM", "🔄 syncWithCloud() called successfully")
+        } catch (e: Exception) {
+            Log.e("STASH_VM", "🔄 ERROR calling syncWithCloud()", e)
+        }
     }
 
     fun setLastCompletedSessionBounds(startTime: Long, endTime: Long) {
@@ -235,13 +247,22 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadCurrentStash() {
         viewModelScope.launch {
+            Log.d("STASH_VM", "📦 Loading current stash...")
             val stash = withContext(Dispatchers.IO) { stashDao.getCurrentStash() }
             if (stash != null) {
+                Log.d("STASH_VM", "📦 Loaded local stash: ${stash.currentGrams}g @ $${stash.pricePerGram}/g")
                 _currentStash.postValue(stash)
             } else {
+                Log.d("STASH_VM", "📦 No local stash found, creating new")
                 val newStash = Stash()
                 withContext(Dispatchers.IO) { stashDao.insertStash(newStash) }
                 _currentStash.postValue(newStash)
+            }
+            
+            // If we have a user ID, sync with cloud
+            currentUserId?.let {
+                Log.d("STASH_VM", "📦 User ID exists, syncing with cloud")
+                syncWithCloud()
             }
         }
     }
@@ -304,12 +325,22 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadRatios() {
         viewModelScope.launch {
+            Log.d("STASH_VM", "⚙️ Loading ratios...")
             var ratios = withContext(Dispatchers.IO) { stashDao.getConsumptionRatios() }
             if (ratios == null) {
+                Log.d("STASH_VM", "⚙️ No local ratios found, creating defaults")
                 ratios = ConsumptionRatio()
                 withContext(Dispatchers.IO) { stashDao.insertConsumptionRatio(ratios) }
+            } else {
+                Log.d("STASH_VM", "⚙️ Loaded local ratios: C=${ratios.coneGrams}g, J=${ratios.jointGrams}g, B=${ratios.bowlGrams}g")
             }
             _ratios.postValue(ratios)
+            
+            // If we have a user ID, sync ratios with cloud
+            currentUserId?.let {
+                Log.d("STASH_VM", "⚙️ User ID exists, syncing ratios with cloud")
+                syncRatiosWithCloud()
+            }
         }
     }
 
@@ -352,6 +383,9 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
 
             Log.d(TAG, "Updated ratios - Cone: ${effectiveConeGrams}g (${if (coneGrams != null) "manual" else "auto"}), Joint: ${jointGrams}g, Bowl: ${bowlGrams}g")
             Log.d(TAG, "Deduction settings - Cones: $deductCones, Joints: $deductJoints, Bowls: $deductBowls")
+            
+            // Upload to cloud after local update
+            uploadRatiosToCloud()
 
             // Recalculate stats with new ratios
             recalculateStats()
@@ -450,6 +484,8 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             }
             _currentStash.postValue(updated)
             loadStashHistory()
+            // Upload to cloud after local update
+            uploadStashToCloud()
         }
     }
 
@@ -537,6 +573,9 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 _currentStash.postValue(updated)
                 loadStashHistory()
+                
+                // Upload to cloud after consumption
+                uploadStashToCloud()
 
                 // Recalculate stats after consumption
                 recalculateStats()
@@ -886,6 +925,8 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             }
             _currentStash.postValue(updated)
             loadStashHistory()
+            // Upload to cloud after removal
+            uploadStashToCloud()
             recalculateStats()
         }
     }
@@ -936,6 +977,8 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
             }
             _currentStash.postValue(updated)
             loadStashHistory()
+            // Upload to cloud after removal
+            uploadStashToCloud()
             recalculateStats()
         }
     }
@@ -1329,6 +1372,142 @@ class StashViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         stopProjectionUpdateTimer()
+    }
+    
+    /**
+     * Syncs stash data with Firebase Firestore
+     */
+    private fun syncWithCloud() {
+        Log.d("STASH_VM", "☁️ syncWithCloud() called")
+        val userId = currentUserId ?: run {
+            Log.d("STASH_VM", "☁️ No user ID, skipping cloud sync")
+            return
+        }
+        
+        Log.d("STASH_VM", "☁️ Have user ID: $userId, launching coroutine")
+        viewModelScope.launch {
+            try {
+                Log.d("STASH_VM", "☁️ Starting cloud sync for user: $userId")
+                
+                // Get local stash
+                val localStash = withContext(Dispatchers.IO) { stashDao.getCurrentStash() }
+                Log.d("STASH_VM", "☁️ Local stash before sync: ${localStash?.currentGrams}g @ $${localStash?.pricePerGram}/g")
+                
+                // Sync with cloud
+                Log.d("STASH_VM", "☁️ About to call cloudSync.syncStash()")
+                val syncResult = cloudSync.syncStash(userId, localStash)
+                Log.d("STASH_VM", "☁️ cloudSync.syncStash() returned: ${syncResult.isSuccess}")
+                
+                if (syncResult.isSuccess) {
+                    val mergedStash = syncResult.getOrThrow()
+                    Log.d("STASH_VM", "☁️ Sync successful, merged stash: ${mergedStash.currentGrams}g @ $${mergedStash.pricePerGram}/g")
+                    
+                    // Update local database with merged data
+                    withContext(Dispatchers.IO) {
+                        if (localStash != null) {
+                            Log.d("STASH_VM", "☁️ Updating existing local stash in database")
+                            stashDao.updateStash(mergedStash)
+                        } else {
+                            Log.d("STASH_VM", "☁️ Inserting new stash into database")
+                            stashDao.insertStash(mergedStash)
+                        }
+                        // Verify it was saved
+                        val verifyStash = stashDao.getCurrentStash()
+                        Log.d("STASH_VM", "☁️ Database now contains: ${verifyStash?.currentGrams}g @ $${verifyStash?.pricePerGram}/g")
+                    }
+                    
+                    // Update LiveData
+                    Log.d("STASH_VM", "☁️ Updating LiveData with: ${mergedStash.currentGrams}g @ $${mergedStash.pricePerGram}/g")
+                    _currentStash.postValue(mergedStash)
+                    
+                    // Recalculate stats with new data
+                    recalculateStats()
+                } else {
+                    Log.e("STASH_VM", "☁️ Sync failed: ${syncResult.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("STASH_VM", "☁️ Error during cloud sync: ${e.message}", e)
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    /**
+     * Syncs consumption ratios with Firebase Firestore
+     */
+    private fun syncRatiosWithCloud() {
+        val userId = currentUserId ?: run {
+            Log.d("STASH_VM", "☁️ No user ID, skipping ratios sync")
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                Log.d("STASH_VM", "☁️ Starting ratios sync for user: $userId")
+                
+                // Get local ratios
+                val localRatios = withContext(Dispatchers.IO) { stashDao.getConsumptionRatios() }
+                Log.d("STASH_VM", "☁️ Local ratios before sync: C=${localRatios?.coneGrams}g, J=${localRatios?.jointGrams}g, B=${localRatios?.bowlGrams}g")
+                
+                // Sync with cloud
+                val syncResult = cloudSync.syncRatios(userId, localRatios)
+                
+                if (syncResult.isSuccess) {
+                    val mergedRatios = syncResult.getOrThrow()
+                    Log.d("STASH_VM", "☁️ Ratios sync successful: C=${mergedRatios.coneGrams}g, J=${mergedRatios.jointGrams}g, B=${mergedRatios.bowlGrams}g")
+                    
+                    // Update local database with merged data
+                    withContext(Dispatchers.IO) {
+                        if (localRatios != null) {
+                            stashDao.updateConsumptionRatio(mergedRatios)
+                        } else {
+                            stashDao.insertConsumptionRatio(mergedRatios)
+                        }
+                    }
+                    
+                    // Update LiveData
+                    _ratios.postValue(mergedRatios)
+                } else {
+                    Log.e("STASH_VM", "☁️ Ratios sync failed: ${syncResult.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                Log.e("STASH_VM", "☁️ Error during ratios sync", e)
+            }
+        }
+    }
+    
+    /**
+     * Uploads current stash to cloud (called after local updates)
+     */
+    private fun uploadStashToCloud() {
+        val userId = currentUserId ?: return
+        val stash = _currentStash.value ?: return
+        
+        viewModelScope.launch {
+            try {
+                Log.d("STASH_VM", "☁️ Uploading stash to cloud: ${stash.currentGrams}g")
+                cloudSync.uploadStash(userId, stash)
+            } catch (e: Exception) {
+                Log.e("STASH_VM", "☁️ Failed to upload stash", e)
+            }
+        }
+    }
+    
+    /**
+     * Uploads current ratios to cloud (called after local updates)
+     */
+    private fun uploadRatiosToCloud() {
+        val userId = currentUserId ?: return
+        val ratios = _ratios.value ?: return
+        
+        viewModelScope.launch {
+            try {
+                Log.d("STASH_VM", "☁️ Uploading ratios to cloud")
+                cloudSync.uploadRatios(userId, ratios)
+            } catch (e: Exception) {
+                Log.e("STASH_VM", "☁️ Failed to upload ratios", e)
+            }
+        }
     }
 
 }

@@ -80,6 +80,7 @@ data class PerSmokerData(
     val totalCones: Int = 0,
     val totalJoints: Int = 0,
     val totalBowls: Int = 0,
+    val totalCigarettes: Int = 0,
     val avgGapMs: Long = 0,
     val longestGapMs: Long = 0,
     val shortestGapMs: Long = 0,
@@ -89,6 +90,9 @@ data class PerSmokerData(
     val avgBowlGapMs: Long = 0,
     val longestBowlGapMs: Long = 0,
     val shortestBowlGapMs: Long = 0,
+    val avgCigaretteGapMs: Long = 0,
+    val longestCigaretteGapMs: Long = 0,
+    val shortestCigaretteGapMs: Long = 0,
     val lastActivityTime: Long = 0L
 )
 
@@ -97,11 +101,13 @@ data class SessionStats(
     val totalCones: Int = 0,
     val totalJoints: Int = 0,
     val totalBowls: Int = 0,
+    val totalCigarettes: Int = 0,
     val longestGapMs: Long = 0,
     val shortestGapMs: Long = 0,
     val sinceLastConeMs: Long = 0,
     val sinceLastJointMs: Long = 0,
     val sinceLastBowlMs: Long = 0,
+    val sinceLastCigaretteMs: Long = 0,
     val perSmokerStats: Map<String, PerSmokerData> = emptyMap(),
     val lastCalculated: Long = 0L,
 

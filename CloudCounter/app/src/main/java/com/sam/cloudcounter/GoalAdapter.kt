@@ -512,6 +512,7 @@ class GoalAdapter(
                         "joints" -> "Joints"
                         "cones" -> "Cones" 
                         "bowls" -> "Bowls"
+                        "cigarettes" -> "Cigarettes"
                         else -> {
                             // This is a custom activity - get the name from CustomActivityManager
                             val mainActivity = binding.root.context as? MainActivity

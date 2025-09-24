@@ -5,6 +5,8 @@ import androidx.lifecycle.LiveData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Repository that provides a unified interface to ActivityLog, Smoker,
@@ -16,6 +18,153 @@ class ActivityRepository(
     private val summaryDao: SessionSummaryDao,
     private val stashDao: StashDao
 ) {
+    
+    private val historyCloudSync = HistoryCloudSync()
+    private var currentUserId: String? = null
+    
+    companion object {
+        private const val TAG = "ActivityRepository"
+    }
+    
+    /**
+     * Set the current user ID for cloud sync
+     */
+    fun setCurrentUserId(userId: String?) {
+        currentUserId = userId
+        Log.d(TAG, "🌐 Current user ID set: $userId")
+    }
+    
+    /**
+     * Sync history from cloud with pagination
+     */
+    suspend fun syncHistoryFromCloud(scope: CoroutineScope) {
+        val userId = currentUserId ?: return
+        
+        Log.d(TAG, "🌐 Starting history sync from cloud for user: $userId")
+        
+        withContext(Dispatchers.IO) {
+            try {
+                // Download first page of activities
+                var hasMoreActivities = true
+                var downloadedActivities = 0
+                
+                while (hasMoreActivities) {
+                    val result = if (downloadedActivities == 0) {
+                        historyCloudSync.downloadActivities(userId)
+                    } else {
+                        historyCloudSync.getNextActivityPage(userId)
+                    }
+                    
+                    if (result.isSuccess) {
+                        val (activities, hasMore) = result.getOrThrow()
+                        
+                        // Insert activities into local database
+                        activities.forEach { activity ->
+                            // Check if activity already exists locally
+                            val existing = activityLogDao.findExisting(
+                                activity.smokerId,
+                                activity.type,
+                                activity.timestamp
+                            )
+                            
+                            if (existing == null) {
+                                activityLogDao.insert(activity)
+                                Log.d(TAG, "🌐 Inserted activity from cloud: ${activity.type} at ${activity.timestamp}")
+                            }
+                        }
+                        
+                        downloadedActivities += activities.size
+                        hasMoreActivities = hasMore
+                        
+                        Log.d(TAG, "🌐 Downloaded ${activities.size} activities (total: $downloadedActivities), hasMore: $hasMore")
+                    } else {
+                        Log.e(TAG, "🌐 Failed to download activities: ${result.exceptionOrNull()}")
+                        hasMoreActivities = false
+                    }
+                }
+                
+                // Download first page of sessions
+                var hasMoreSessions = true
+                var downloadedSessions = 0
+                
+                while (hasMoreSessions) {
+                    val result = if (downloadedSessions == 0) {
+                        historyCloudSync.downloadSessionSummaries(userId)
+                    } else {
+                        historyCloudSync.getNextSessionPage(userId)
+                    }
+                    
+                    if (result.isSuccess) {
+                        val (sessions, hasMore) = result.getOrThrow()
+                        
+                        // Insert sessions into local database
+                        sessions.forEach { session ->
+                            // Check if session already exists locally
+                            val existing = summaryDao.getById(session.id)
+                            
+                            if (existing == null) {
+                                summaryDao.insert(session)
+                                Log.d(TAG, "🌐 Inserted session from cloud: ${session.id}")
+                            }
+                        }
+                        
+                        downloadedSessions += sessions.size
+                        hasMoreSessions = hasMore
+                        
+                        Log.d(TAG, "🌐 Downloaded ${sessions.size} sessions (total: $downloadedSessions), hasMore: $hasMore")
+                    } else {
+                        Log.e(TAG, "🌐 Failed to download sessions: ${result.exceptionOrNull()}")
+                        hasMoreSessions = false
+                    }
+                }
+                
+                Log.d(TAG, "🌐 ✅ History sync complete: $downloadedActivities activities, $downloadedSessions sessions")
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "🌐 ❌ Error during history sync", e)
+            }
+        }
+    }
+    
+    /**
+     * Background sync - upload local activities not in cloud
+     */
+    suspend fun syncLocalToCloud() {
+        val userId = currentUserId ?: return
+        
+        withContext(Dispatchers.IO) {
+            try {
+                // Get all local activities
+                val localActivities = activityLogDao.getAllLogsSync()
+                
+                // Check what needs syncing
+                val lastLocalTime = localActivities.maxOfOrNull { it.timestamp } ?: 0
+                val needsSync = historyCloudSync.needsSync(userId, lastLocalTime)
+                
+                if (needsSync) {
+                    Log.d(TAG, "🌐 Starting background sync to cloud")
+                    
+                    // Batch upload in chunks
+                    localActivities.chunked(50).forEach { batch ->
+                        historyCloudSync.batchUploadActivities(userId, batch)
+                        Log.d(TAG, "🌐 Uploaded batch of ${batch.size} activities")
+                    }
+                    
+                    // Upload all sessions
+                    val localSessions = summaryDao.getAllSummariesSync()
+                    localSessions.forEach { session ->
+                        historyCloudSync.uploadSessionSummary(userId, session)
+                    }
+                    
+                    Log.d(TAG, "🌐 ✅ Background sync complete")
+                } else {
+                    Log.d(TAG, "🌐 No sync needed - cloud is up to date")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "🌐 ❌ Background sync failed", e)
+            }
+        }
+    }
 
     // REGION: ActivityLog operations
 
@@ -58,6 +207,10 @@ class ActivityRepository(
                 gramsAtLog = 0.0, // Custom activities don't consume from stash
                 pricePerGramAtLog = 0.0
             )
+            ActivityType.CIGARETTE -> log.copy(
+                gramsAtLog = 0.0, // Cigarettes don't consume from stash
+                pricePerGramAtLog = 0.0
+            )
             ActivityType.SESSION_SUMMARY -> log // Session summaries don't have consumption
         }
 
@@ -65,13 +218,25 @@ class ActivityRepository(
     }
 
     suspend fun insert(log: ActivityLog): Long = withContext(Dispatchers.IO) {
-        // If gramsAtLog and pricePerGramAtLog are already set, use them directly
-        // Otherwise, fetch current values
-        if (log.gramsAtLog > 0 && log.pricePerGramAtLog > 0) {
+        // Insert locally first
+        val id = if (log.gramsAtLog > 0 && log.pricePerGramAtLog > 0) {
             activityLogDao.insert(log)
         } else {
             insertWithRatio(log)
         }
+        
+        // Upload to cloud if user is signed in
+        currentUserId?.let { userId ->
+            try {
+                Log.d(TAG, "🌐 Uploading activity to cloud: ${log.type}")
+                val activityWithId = log.copy(id = id)
+                historyCloudSync.uploadActivity(userId, activityWithId)
+            } catch (e: Exception) {
+                Log.e(TAG, "🌐 Failed to upload activity to cloud", e)
+            }
+        }
+        
+        id
     }
 
     suspend fun delete(log: ActivityLog) {
@@ -90,7 +255,18 @@ class ActivityRepository(
         } catch (e: Exception) {
             // Never let logging break deletion
         }
+        
+        // Delete from local database
         activityLogDao.delete(log)
+        
+        // Delete from cloud if user is signed in
+        currentUserId?.let { userId ->
+            try {
+                historyCloudSync.deleteActivity(userId, log.id)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete activity from cloud", e)
+            }
+        }
     }
 
     suspend fun getLastLogByType(type: ActivityType): ActivityLog? =
@@ -101,6 +277,10 @@ class ActivityRepository(
 
     suspend fun getActivitiesBySessionId(sessionId: Long): List<ActivityLog> {
         return activityLogDao.getActivitiesBySessionId(sessionId)
+    }
+    
+    suspend fun getLogsBetweenTimestamps(startTime: Long, endTime: Long): List<ActivityLog> {
+        return activityLogDao.getLogsBetweenTimestamps(startTime, endTime)
     }
 
     suspend fun updateSessionIdsForTimeRange(sessionId: Long, startTime: Long, endTime: Long) {
@@ -252,7 +432,20 @@ class ActivityRepository(
 
     suspend fun insertSummary(summary: SessionSummary): Long {
         return withContext(Dispatchers.IO) {
-            summaryDao.insert(summary)
+            val id = summaryDao.insert(summary)
+            
+            // Upload to cloud if user is signed in
+            currentUserId?.let { userId ->
+                try {
+                    Log.d(TAG, "🌐 Uploading session summary to cloud: ${summary.id}")
+                    val summaryWithId = summary.copy(id = id)
+                    historyCloudSync.uploadSessionSummary(userId, summaryWithId)
+                } catch (e: Exception) {
+                    Log.e(TAG, "🌐 Failed to upload session summary to cloud", e)
+                }
+            }
+            
+            id
         }
     }
 
@@ -270,8 +463,19 @@ class ActivityRepository(
     suspend fun updateSummary(summary: SessionSummary) =
         summaryDao.update(summary)
 
-    suspend fun deleteSummary(summary: SessionSummary) =
+    suspend fun deleteSummary(summary: SessionSummary) {
+        // Delete from local database
         summaryDao.delete(summary)
+        
+        // Delete from cloud if user is signed in
+        currentUserId?.let { userId ->
+            try {
+                historyCloudSync.deleteSessionSummary(userId, summary.id)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete session from cloud", e)
+            }
+        }
+    }
 
     suspend fun getMostRecentSummary(): SessionSummary? {
         return withContext(Dispatchers.IO) {

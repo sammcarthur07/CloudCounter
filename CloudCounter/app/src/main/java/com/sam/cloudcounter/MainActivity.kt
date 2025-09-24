@@ -80,6 +80,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var smokerManager: SmokerManager
     private lateinit var smokerAdapterNew: SmokerAdapter
+    private lateinit var ratioManager: SmokeRatioManager
 
     companion object {
         private const val TAG = "MainActivity"
@@ -712,6 +713,7 @@ class MainActivity : AppCompatActivity() {
     // Add this function to show the quantity selection dialog
     private fun showBowlQuantityDialog() {
         val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        var selectedRatio: SmokeRatio? = null  // Move this up for broader scope
 
         val container = FrameLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -835,7 +837,7 @@ class MainActivity : AppCompatActivity() {
                             // Save the selected quantity to preferences
                             prefs.edit().putInt("last_bowl_quantity", quantity).apply()
                             dialog.dismiss()
-                            logBowlsWithQuantity(quantity)
+                            logBowlsWithQuantity(quantity, selectedRatio)
                         }
                     }
                 }
@@ -844,6 +846,78 @@ class MainActivity : AppCompatActivity() {
         }
 
         contentLayout.addView(gridLayout)
+        
+        // Add ratio dropdown
+        val ratioSection = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 16.dpToPx(this@MainActivity)
+            }
+        }
+        
+        val ratioLabel = TextView(this).apply {
+            text = "Ratio:"
+            textSize = 14f
+            setTextColor(Color.parseColor("#B0B0B0"))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 8.dpToPx(this@MainActivity)
+            }
+        }
+        ratioSection.addView(ratioLabel)
+        
+        // Create dropdown button
+        val lastSelectedBowlRatioId = prefs.getString("last_bowl_ratio_id", null)
+        val bowlRatios = ratioManager.getRatiosForType(SmokeRatio.RatioType.BOWL)
+        
+        // Try to find last selected ratio
+        if (lastSelectedBowlRatioId != null) {
+            selectedRatio = bowlRatios.firstOrNull { it.id == lastSelectedBowlRatioId }
+        }
+        // If no last selected or not found, use the one marked as selected
+        if (selectedRatio == null) {
+            selectedRatio = bowlRatios.firstOrNull { it.isSelected }
+        }
+        
+        val dropdownButton = TextView(this).apply {
+            text = selectedRatio?.name ?: "Normal ratio"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.parseColor("#3A3A3A"))
+            setPadding(12.dpToPx(this@MainActivity), 10.dpToPx(this@MainActivity),
+                12.dpToPx(this@MainActivity), 10.dpToPx(this@MainActivity))
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                48.dpToPx(this@MainActivity)
+            )
+            
+            // Add dropdown arrow
+            setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.arrow_down_float, 0)
+            compoundDrawablePadding = 8.dpToPx(this@MainActivity)
+            
+            setOnClickListener {
+                // Show ratio selection dropdown
+                showRatioDropdown(this, bowlRatios, selectedRatio) { ratio ->
+                    selectedRatio = ratio
+                    text = ratio?.name ?: "Normal ratio"
+                    // Save selected ratio ID
+                    if (ratio != null) {
+                        prefs.edit().putString("last_bowl_ratio_id", ratio.id).apply()
+                    } else {
+                        prefs.edit().remove("last_bowl_ratio_id").apply()
+                    }
+                }
+            }
+        }
+        ratioSection.addView(dropdownButton)
+        
+        contentLayout.addView(ratioSection)
         card.addView(contentLayout)
         container.addView(card)
 
@@ -1276,6 +1350,13 @@ class MainActivity : AppCompatActivity() {
             val originalAutoMode = isAutoMode
             isAutoMode = false
 
+            // Update bulk bowl count in session stats for cone auto-calculation
+            if (quantity > 1) {
+                val currentStats = sessionStatsVM.groupStats.value ?: GroupStats()
+                sessionStatsVM.updateGroupStats(currentStats.copy(bulkBowlAdditions = quantity))
+                Log.d(TAG, "🎯 Updated bulk bowl additions: $quantity bowls")
+            }
+
             // Add the bowls first
             for (i in 0 until quantity) {
                 val bowlTimestamp = coneTimestamp - ((quantity - i) * 100) // Bowls before cone
@@ -1312,8 +1393,455 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Handle cone to cigarette tracking through bowl conversion
+    private suspend fun handleConeToBasedOnBowlRatio(
+        timestamp: Long,
+        smoker: Smoker,
+        payerStashOwnerId: String?
+    ) {
+        // Get the bowl ratio if one is selected
+        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val lastSelectedBowlRatioId = prefs.getString("last_bowl_ratio_id", null)
+        
+        val bowlRatio = if (lastSelectedBowlRatioId != null) {
+            val ratios = ratioManager.getRatiosForType(SmokeRatio.RatioType.BOWL)
+            ratios.firstOrNull { it.id == lastSelectedBowlRatioId }
+                ?: ratios.firstOrNull { it.isSelected }
+        } else {
+            val ratios = ratioManager.getRatiosForType(SmokeRatio.RatioType.BOWL)
+            ratios.firstOrNull { it.isSelected }
+        }
+        
+        if (bowlRatio == null) {
+            Log.d(TAG, "🚬 No bowl ratio selected, skipping cone cigarette tracking")
+            return
+        }
+        
+        Log.d(TAG, "🚬 Bowl ratio: ${bowlRatio.name}, cigarettesPerBowl=${bowlRatio.cigarettesPerSmoke}")
+        
+        // Get the cone/bowl conversion ratio
+        val stashViewModel = ViewModelProvider(this).get(StashViewModel::class.java)
+        val ratios = stashViewModel.ratios.value
+        // Calculate cones per bowl from grams: bowlGrams / coneGrams
+        val conesPerBowl = if (ratios != null && ratios.coneGrams > 0) {
+            val calculated = ratios.bowlGrams / ratios.coneGrams
+            Log.d(TAG, "🚬 Cone/Bowl calculation: ${ratios.bowlGrams}g bowl / ${ratios.coneGrams}g cone = $calculated cones/bowl")
+            calculated // Keep as float for accurate fraction calculation
+        } else {
+            Log.d(TAG, "🚬 No ratios found, using default 4 cones = 1 bowl")
+            4.0 // Default 4 cones = 1 bowl
+        }
+        
+        // When custom bowl ratio is selected, cones should track cigarettes directly
+        // Instead of cone -> bowl -> cigarette, we go cone -> cigarette
+        val cigarettesPerCone = bowlRatio.cigarettesPerSmoke / conesPerBowl
+        
+        // Track cigarette fraction directly for cones
+        var cigaretteFraction = ratioManager.getCigaretteFraction(smoker.smokerId)
+        Log.d(TAG, "🚬 Cone tracking: ${smoker.name} - previous cigarette fraction: $cigaretteFraction")
+        
+        // Add the cigarette fraction for this cone
+        cigaretteFraction += cigarettesPerCone
+        Log.d(TAG, "🚬 Cone tracking: 1 cone = ${String.format("%.3f", cigarettesPerCone)} cigarettes (${String.format("%.2f", conesPerBowl)} cones = 1 bowl = ${bowlRatio.cigarettesPerSmoke} cigarettes)")
+        Log.d(TAG, "🚬 Cone tracking: ${smoker.name} - new cigarette fraction: $cigaretteFraction")
+        
+        // Add whole cigarettes when fraction >= 1.0
+        var cigarettesAdded = 0
+        while (cigaretteFraction >= 1.0) {
+            cigarettesAdded++
+            val cigaretteLog = ActivityLog(
+                id = 0L,
+                smokerId = smoker.smokerId,
+                consumerId = smoker.smokerId,
+                payerStashOwnerId = payerStashOwnerId,
+                type = ActivityType.CIGARETTE,
+                timestamp = timestamp,
+                sessionId = sessionStatsVM.currentSessionId.value,
+                sessionStartTime = if (sessionActive) sessionStart else null,
+                gramsAtLog = 0.0,
+                pricePerGramAtLog = 0.0,
+                customRatioName = "From cones via ${bowlRatio.name}"
+            )
+            
+            withContext(Dispatchers.IO) {
+                val id = repo.insert(cigaretteLog)
+                Log.d(TAG, "🚬 Added cigarette from cones to ActivityLog with ID: $id")
+            }
+            
+            // Sync cigarette to cloud if in session
+            if (currentShareCode != null) {
+                val smokerActivityUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
+                    smoker.cloudUserId!!
+                } else {
+                    "local_${smoker.uid}"
+                }
+                
+                sessionSyncService.addActivityToRoom(
+                    shareCode = currentShareCode!!,
+                    smokerUid = smokerActivityUid,
+                    smokerName = smoker.name,
+                    activityType = ActivityType.CIGARETTE,
+                    timestamp = timestamp,
+                    deviceId = getAndroidDeviceId()
+                ).fold(
+                    onSuccess = { Log.d(TAG, "🚬 Synced cigarette to cloud") },
+                    onFailure = { Log.e(TAG, "🚬 Failed to sync cigarette to cloud", it) }
+                )
+            }
+            
+            cigaretteFraction -= 1.0
+        }
+        
+        if (cigarettesAdded > 0) {
+            Log.d(TAG, "🚬 Added $cigarettesAdded cigarette(s) from cones to ActivityLog")
+            
+            // Update goals for each cigarette added
+            val sessionShareCode = if (sessionActive) currentShareCode else null
+            repeat(cigarettesAdded) {
+                Log.d(TAG, "🎯 Updating goals for cigarette activity (from cones)")
+                goalService.updateGoalProgressForSelectedActivity(
+                    activityType = ActivityType.CIGARETTE,
+                    sessionShareCode = sessionShareCode,
+                    currentSmokerName = smoker.name
+                )
+            }
+        } else {
+            Log.d(TAG, "🚬 No cigarettes added yet (cigarette fraction: $cigaretteFraction)")
+        }
+        
+        // Save cigarette fraction
+        ratioManager.saveCigaretteFraction(cigaretteFraction, smoker.smokerId)
+        Log.d(TAG, "🚬 Saved cigarette fraction: $cigaretteFraction for ${smoker.name}")
+    }
+    
+    // Handle cigarette tracking based on smoke ratio
+    private suspend fun handleCigaretteTracking(
+        ratio: SmokeRatio,
+        activityType: ActivityType,
+        timestamp: Long,
+        smoker: Smoker,
+        payerStashOwnerId: String?
+    ) {
+        // Calculate cigarettes per activity (not per smoke)
+        // cigarettesPerSmoke field represents cigarettes per bowl/joint
+        val quantity = if (activityType == ActivityType.BOWL) pendingBowlQuantity else 1
+        val cigarettesToAdd = ratio.cigarettesPerSmoke * quantity
+        
+        // Get current fraction from SharedPreferences for this smoker BEFORE logging
+        var currentFraction = ratioManager.getCigaretteFraction(smoker.smokerId)
+        Log.d(TAG, "🚬 Cigarette tracking: ${ratio.name} - $quantity ${activityType.name.lowercase()} × ${ratio.cigarettesPerSmoke} cigs/activity = $cigarettesToAdd cigarettes")
+        Log.d(TAG, "🚬 Previous fraction: $currentFraction for smoker ${smoker.name}")
+        
+        currentFraction += cigarettesToAdd
+        Log.d(TAG, "🚬 New total fraction: $currentFraction for smoker ${smoker.name}")
+        
+        // Only add whole cigarettes to ActivityLog when we have >= 1.0
+        var cigarettesAdded = 0
+        while (currentFraction >= 1.0) {
+            cigarettesAdded++
+            // Create cigarette activity log
+            val currentSessionId = sessionStatsVM.currentSessionId.value
+            val currentSessionStart = if (sessionActive) sessionStart else null
+            
+            Log.d(TAG, "🚬 Creating cigarette log: smoker=${smoker.name}(${smoker.smokerId}), timestamp=$timestamp")
+            Log.d(TAG, "🚬 Session info: sessionId=$currentSessionId, sessionStart=$currentSessionStart, sessionActive=$sessionActive")
+            
+            val cigaretteLog = ActivityLog(
+                id = 0L,
+                smokerId = smoker.smokerId,
+                consumerId = smoker.smokerId,
+                payerStashOwnerId = payerStashOwnerId,
+                type = ActivityType.CIGARETTE,
+                timestamp = timestamp,
+                sessionId = currentSessionId,
+                sessionStartTime = currentSessionStart,
+                gramsAtLog = 0.0,  // No cannabis in cigarettes
+                pricePerGramAtLog = 0.0,
+                customRatioName = "From ${ratio.name}"
+            )
+            
+            withContext(Dispatchers.IO) {
+                val id = repo.insert(cigaretteLog)
+                Log.d(TAG, "🚬 Added cigarette to ActivityLog with ID: $id, sessionId=$currentSessionId")
+            }
+            
+            // Sync cigarette to cloud if in session
+            if (currentShareCode != null) {
+                val smokerActivityUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
+                    smoker.cloudUserId!!
+                } else {
+                    "local_${smoker.uid}"
+                }
+                
+                sessionSyncService.addActivityToRoom(
+                    shareCode = currentShareCode!!,
+                    smokerUid = smokerActivityUid,
+                    smokerName = smoker.name,
+                    activityType = ActivityType.CIGARETTE,
+                    timestamp = timestamp,
+                    deviceId = getAndroidDeviceId()
+                ).fold(
+                    onSuccess = { Log.d(TAG, "🚬 Synced cigarette to cloud") },
+                    onFailure = { Log.e(TAG, "🚬 Failed to sync cigarette: ${it.message}") }
+                )
+            }
+            
+            currentFraction -= 1.0
+        }
+        
+        if (cigarettesAdded > 0) {
+            Log.d(TAG, "🚬 Added $cigarettesAdded cigarette(s) to ActivityLog")
+            
+            // Update goals for each cigarette added
+            val sessionShareCode = if (sessionActive) currentShareCode else null
+            repeat(cigarettesAdded) {
+                Log.d(TAG, "🎯 Updating goals for cigarette activity")
+                goalService.updateGoalProgressForSelectedActivity(
+                    activityType = ActivityType.CIGARETTE,
+                    sessionShareCode = sessionShareCode,
+                    currentSmokerName = smoker.name
+                )
+            }
+        } else {
+            Log.d(TAG, "🚬 No cigarettes added yet (fraction: $currentFraction)")
+        }
+        
+        // Save remaining fraction for this smoker (including when no cigarettes were added)
+        ratioManager.saveCigaretteFraction(currentFraction, smoker.smokerId)
+        Log.d(TAG, "🚬 Saved remaining fraction: $currentFraction for smoker ${smoker.name}")
+    }
+    
+    // Helper function to create ratio display content
+    private fun createRatioDisplayContent(ratio: SmokeRatio?): View {
+        // Get stash ratios for Normal ratio display
+        val stashViewModel = ViewModelProvider(this).get(StashViewModel::class.java)
+        val stashRatios = stashViewModel.ratios.value
+        
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        
+        // Text container
+        val textContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        }
+        
+        // Name text with checkmark if selected
+        val nameText = TextView(this).apply {
+            text = if (ratio != null) {
+                "✓ ${ratio.name}"
+            } else {
+                "Normal ratio"
+            }
+            textSize = 16f
+            setTextColor(if (ratio != null) Color.parseColor("#98FB98") else Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
+        }
+        textContainer.addView(nameText)
+        
+        // Details text
+        if (ratio != null) {
+            val detailsText = TextView(this).apply {
+                text = "${ratio.numberOfSmokes} smokes, ${ratio.thcPercent.toInt()}% THC, ${String.format("%.4f", ratio.chopAmount)}g chop"
+                textSize = 12f
+                setTextColor(Color.parseColor("#707070"))
+            }
+            textContainer.addView(detailsText)
+        } else {
+            val detailsText = TextView(this).apply {
+                text = if (stashRatios != null) {
+                    "Bowl: ${String.format("%.2f", stashRatios.bowlGrams)}g, Joint: ${String.format("%.2f", stashRatios.jointGrams)}g, Cone: ${String.format("%.2f", stashRatios.coneGrams)}g"
+                } else {
+                    "Bowl: 0.20g, Joint: 0.50g, Cone: 0.30g"
+                }
+                textSize = 12f
+                setTextColor(Color.parseColor("#707070"))
+            }
+            textContainer.addView(detailsText)
+        }
+        
+        container.addView(textContainer)
+        
+        // Arrow indicator
+        val arrowText = TextView(this).apply {
+            text = "▼"
+            textSize = 14f
+            setTextColor(Color.parseColor("#707070"))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                marginStart = 8.dpToPx(this@MainActivity)
+            }
+        }
+        container.addView(arrowText)
+        
+        return container
+    }
+    
+    // Helper function to show ratio dropdown
+    private fun showRatioDropdown(
+        anchorView: View,
+        ratios: List<SmokeRatio>,
+        currentRatio: SmokeRatio?,
+        onRatioSelected: (SmokeRatio?) -> Unit
+    ) {
+        // Get current stash ratios for Normal ratio display
+        val stashViewModel = ViewModelProvider(this).get(StashViewModel::class.java)
+        val stashRatios = stashViewModel.ratios.value
+        // Create a custom dropdown dialog
+        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        
+        val container = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setOnClickListener { dialog.dismiss() }
+        }
+        
+        // Create card for dropdown with green border
+        val cardContainer = LinearLayout(this).apply {
+            val location = IntArray(2)
+            anchorView.getLocationOnScreen(location)
+            
+            layoutParams = FrameLayout.LayoutParams(
+                anchorView.width,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                leftMargin = location[0]
+                topMargin = location[1] + anchorView.height
+            }
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
+                setColor(Color.parseColor("#1a1a1a"))
+                // Removed border as it was getting cut off
+            }
+        }
+        
+        // Create scroll view for the dropdown items
+        val scrollView = ScrollView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            // Limit max height
+            val maxHeight = 300.dpToPx(this@MainActivity)
+            minimumHeight = 0
+            layoutParams.height = maxHeight
+        }
+        
+        val itemsLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#1a1a1a"))
+        }
+        
+        // Add "Normal ratio" option with stash ratios
+        val normalRatioItem = createDropdownItem(null, currentRatio == null, stashRatios)
+        normalRatioItem.setOnClickListener {
+            onRatioSelected(null)
+            dialog.dismiss()
+        }
+        itemsLayout.addView(normalRatioItem)
+        
+        // Add divider
+        itemsLayout.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1.dpToPx(this@MainActivity)
+            )
+            setBackgroundColor(Color.parseColor("#444444"))
+        })
+        
+        // Add ratio items
+        ratios.forEach { ratio ->
+            val item = createDropdownItem(ratio, currentRatio?.id == ratio.id)
+            item.setOnClickListener {
+                onRatioSelected(ratio)
+                dialog.dismiss()
+            }
+            itemsLayout.addView(item)
+            
+            // Add divider between items
+            if (ratio != ratios.last()) {
+                itemsLayout.addView(View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        1.dpToPx(this@MainActivity)
+                    )
+                    setBackgroundColor(Color.parseColor("#444444"))
+                })
+            }
+        }
+        
+        scrollView.addView(itemsLayout)
+        cardContainer.addView(scrollView)
+        container.addView(cardContainer)
+        dialog.setContentView(container)
+        dialog.show()
+    }
+    
+    // Helper function to create styled dropdown item
+    private fun createDropdownItem(ratio: SmokeRatio?, isSelected: Boolean, stashRatios: ConsumptionRatio? = null): View {
+        val itemContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#2a2a2a"))
+            }
+            setPadding(12.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity),
+                12.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        
+        // Name text
+        val nameText = TextView(this).apply {
+            text = if (ratio != null) {
+                if (isSelected) "✓ ${ratio.name}" else ratio.name
+            } else {
+                if (isSelected) "✓ Normal ratio" else "Normal ratio"
+            }
+            textSize = 16f
+            setTextColor(if (isSelected) Color.parseColor("#98FB98") else Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
+        }
+        itemContainer.addView(nameText)
+        
+        // Details text
+        val detailsText = TextView(this).apply {
+            text = if (ratio != null) {
+                "${ratio.numberOfSmokes} smokes, ${ratio.thcPercent.toInt()}% THC, ${String.format("%.4f", ratio.chopAmount)}g chop"
+            } else {
+                // Show actual user ratios for Normal ratio
+                if (stashRatios != null) {
+                    "Bowl: ${String.format("%.2f", stashRatios.bowlGrams)}g, Joint: ${String.format("%.2f", stashRatios.jointGrams)}g, Cone: ${String.format("%.2f", stashRatios.coneGrams)}g"
+                } else {
+                    "Bowl: 0.20g, Joint: 0.50g, Cone: 0.30g"
+                }
+            }
+            textSize = 12f
+            setTextColor(Color.parseColor("#707070"))
+        }
+        itemContainer.addView(detailsText)
+        
+        return itemContainer
+    }
+    
     // Add this function to log bowls with quantity
-    private fun logBowlsWithQuantity(quantity: Int) {
+    private fun logBowlsWithQuantity(quantity: Int, selectedRatio: SmokeRatio? = null) {
         if (quantity <= 0) return
 
         Log.d(TAG, "🎯 Logging $quantity bowls")
@@ -1620,6 +2148,106 @@ class MainActivity : AppCompatActivity() {
         
         contentLayout.addView(customQuantityLayout)
         
+        // Ratio dropdown section
+        var selectedRatio: SmokeRatio? = null
+        val ratioSection = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 12.dpToPx(this@MainActivity)
+                bottomMargin = 12.dpToPx(this@MainActivity)
+            }
+        }
+        
+        val ratioLabel = TextView(this).apply {
+            text = "Ratio:"
+            textSize = 14f
+            setTextColor(Color.parseColor("#B0B0B0"))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                bottomMargin = 8.dpToPx(this@MainActivity)
+            }
+        }
+        ratioSection.addView(ratioLabel)
+        
+        // Get ratios based on activity type
+        val lastSelectedRatioKey = if (activityType == ActivityType.BOWL) "last_bowl_ratio_id" else "last_joint_ratio_id"
+        val lastSelectedRatioId = prefs.getString(lastSelectedRatioKey, null)
+        val ratios = ratioManager.getRatiosForType(
+            if (activityType == ActivityType.BOWL) SmokeRatio.RatioType.BOWL else SmokeRatio.RatioType.JOINT
+        )
+        
+        // Try to find last selected ratio
+        if (lastSelectedRatioId != null) {
+            selectedRatio = ratios.firstOrNull { it.id == lastSelectedRatioId }
+        }
+        // If no last selected or not found, use the one marked as selected
+        if (selectedRatio == null) {
+            selectedRatio = ratios.firstOrNull { it.isSelected }
+        }
+        
+        // Create a container that looks like the ratio cards
+        val dropdownContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 8.dpToPx(this@MainActivity).toFloat()
+                setColor(Color.parseColor("#2a2a2a"))
+                // Set border based on selection
+                if (selectedRatio != null) {
+                    setStroke(1.dpToPx(this@MainActivity), Color.parseColor("#98FB98"))
+                } else {
+                    setStroke(1.dpToPx(this@MainActivity), Color.parseColor("#444444"))
+                }
+            }
+            setPadding(12.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity),
+                12.dpToPx(this@MainActivity), 12.dpToPx(this@MainActivity))
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            
+            setOnClickListener {
+                // Show ratio selection dropdown
+                showRatioDropdown(this, ratios, selectedRatio) { ratio ->
+                    selectedRatio = ratio
+                    
+                    // Update the container styling and content
+                    removeAllViews()
+                    
+                    // Update border color based on selection
+                    (background as? GradientDrawable)?.apply {
+                        if (ratio != null) {
+                            setStroke(1.dpToPx(this@MainActivity), Color.parseColor("#98FB98"))
+                        } else {
+                            setStroke(1.dpToPx(this@MainActivity), Color.parseColor("#444444"))
+                        }
+                    }
+                    
+                    // Add the content
+                    addView(createRatioDisplayContent(ratio))
+                    
+                    // Save selected ratio ID
+                    if (ratio != null) {
+                        prefs.edit().putString(lastSelectedRatioKey, ratio.id).apply()
+                    } else {
+                        prefs.edit().remove(lastSelectedRatioKey).apply()
+                    }
+                }
+            }
+        }
+        
+        // Add initial content
+        dropdownContainer.addView(createRatioDisplayContent(selectedRatio))
+        
+        ratioSection.addView(dropdownContainer)
+        
+        contentLayout.addView(ratioSection)
+        
         // Time control section
         val timeTitle = TextView(this).apply {
             text = "Time Control"
@@ -1731,7 +2359,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 // Add retroactive activities based on selected mode
-                addRetroactiveActivities(activityType, finalQuantity, selectedTimeMode)
+                addRetroactiveActivities(activityType, finalQuantity, selectedTimeMode, selectedRatio)
                 
                 // Dismiss dialog
                 dialog.dismiss()
@@ -1799,7 +2427,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     // Add retroactive activities based on selected mode
-    private fun addRetroactiveActivities(activityType: ActivityType, quantity: Int, timeMode: Int) {
+    private fun addRetroactiveActivities(activityType: ActivityType, quantity: Int, timeMode: Int, selectedRatio: SmokeRatio? = null) {
         lifecycleScope.launch {
             try {
                 val now = System.currentTimeMillis()
@@ -1862,8 +2490,8 @@ class MainActivity : AppCompatActivity() {
                         binding.spinnerSmoker.setSelection(originalPosition)
                     }
                     
-                    // Use the internal logHit function with specific timestamp
-                    logHit(activityType, timestamp)
+                    // Use the internal logHit function with specific timestamp and ratio
+                    logHit(activityType, timestamp, selectedRatio)
                     
                     // Track timestamp for undo
                     retroactiveActivities.add(timestamp)
@@ -1934,6 +2562,7 @@ class MainActivity : AppCompatActivity() {
         confettiHelper = ConfettiHelper(this)
         confettiHelper.setupKonfettiOverlay(this)
         customActivityManager = CustomActivityManager(this)
+        ratioManager = SmokeRatioManager(this)
 
         // Initialize cloud services and restore session
         initializeCloudServices()
@@ -8084,11 +8713,15 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                // Count total cigarettes from all activities
+                val totalCigarettes = roomActivities.count { it.type == "CIGARETTE" }
+                
                 // Create GroupStats with the calculated gaps
                 val groupStats = GroupStats(
                     totalCones = roomStats.totalCones,
                     totalJoints = roomStats.totalJoints,
                     totalBowls = roomStats.totalBowls,
+                    totalCigarettes = totalCigarettes,  // Add cigarette count
                     longestGapMs = roomStats.longestGapMs,
                     shortestGapMs = roomStats.shortestGapMs,
                     sinceLastGapMs = roomStats.sinceLastConeMs,
@@ -8127,6 +8760,7 @@ class MainActivity : AppCompatActivity() {
                     val coneActivities = smokerActivities.filter { it.type == "CONE" }
                     val jointActivities = smokerActivities.filter { it.type == "JOINT" }
                     val bowlActivities = smokerActivities.filter { it.type == "BOWL" }
+                    val cigaretteActivities = smokerActivities.filter { it.type == "CIGARETTE" }
                     
                     // Calculate custom activity stats for this smoker
                     val customActivityStats = mutableMapOf<String, CustomActivityStat>()
@@ -8192,10 +8826,31 @@ class MainActivity : AppCompatActivity() {
                         last[1].timestamp - last[0].timestamp
                     } else 0L
                     
+                    val lastCigaretteGap = if (cigaretteActivities.size >= 2) {
+                        val last = cigaretteActivities.takeLast(2)
+                        last[1].timestamp - last[0].timestamp
+                    } else 0L
+                    
+                    // Calculate cigarette gap statistics
+                    val cigaretteGaps = if (cigaretteActivities.size >= 2) {
+                        val gaps = mutableListOf<Long>()
+                        for (i in 1 until cigaretteActivities.size) {
+                            gaps.add(cigaretteActivities[i].timestamp - cigaretteActivities[i - 1].timestamp)
+                        }
+                        Triple(
+                            if (gaps.isNotEmpty()) gaps.average().toLong() else 0L,  // avg
+                            gaps.maxOrNull() ?: 0L,  // longest
+                            gaps.minOrNull() ?: 0L   // shortest
+                        )
+                    } else {
+                        Triple(0L, 0L, 0L)
+                    }
+                    
                     // Get last activity times
                     val lastConeTime = coneActivities.lastOrNull()?.timestamp ?: 0L
                     val lastJointTime = jointActivities.lastOrNull()?.timestamp ?: 0L
                     val lastBowlTime = bowlActivities.lastOrNull()?.timestamp ?: 0L
+                    val lastCigaretteTime = cigaretteActivities.lastOrNull()?.timestamp ?: 0L
                     val lastActivityTime = smokerActivities.lastOrNull()?.timestamp ?: 0L
                     
                     PerSmokerStats(
@@ -8203,6 +8858,7 @@ class MainActivity : AppCompatActivity() {
                         totalCones = serverData.totalCones,
                         totalJoints = serverData.totalJoints,
                         totalBowls = serverData.totalBowls,
+                        totalCigarettes = cigaretteActivities.size,  // Count cigarettes locally
                         avgGapMs = serverData.avgGapMs,
                         longestGapMs = serverData.longestGapMs,
                         shortestGapMs = serverData.shortestGapMs,
@@ -8218,6 +8874,11 @@ class MainActivity : AppCompatActivity() {
                         shortestBowlGapMs = serverData.shortestBowlGapMs,
                         lastBowlGapMs = lastBowlGap,
                         lastBowlTime = lastBowlTime,
+                        avgCigaretteGapMs = cigaretteGaps.first,
+                        longestCigaretteGapMs = cigaretteGaps.second,
+                        shortestCigaretteGapMs = cigaretteGaps.third,
+                        lastCigaretteGapMs = lastCigaretteGap,
+                        lastCigaretteTime = lastCigaretteTime,
                         lastActivityTime = lastActivityTime,
                         customActivityStats = customActivityStats
                     )
@@ -9726,7 +10387,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "🔁 Activity reconciliation complete")
     }
 
-    private suspend fun logHit(type: ActivityType, now: Long) {
+    private suspend fun logHit(type: ActivityType, now: Long, customRatio: SmokeRatio? = null) {
         Log.d("CUSTOM_STASH_DEBUG", "🚀 === logHit ENTRY ===")
         Log.d("CUSTOM_STASH_DEBUG", "🚀 Activity type: $type")
         Log.d("CUSTOM_STASH_DEBUG", "🚀 Is custom type: ${type == ActivityType.CUSTOM}")
@@ -9810,6 +10471,22 @@ class MainActivity : AppCompatActivity() {
         val sessionId = sessionStatsVM.currentSessionId.value
         Log.d(TAG, "🎯 Creating activity with sessionId: $sessionId")
 
+        // Calculate grams based on custom ratio or default ratios
+        val gramsForActivity = when {
+            customRatio != null && (type == ActivityType.BOWL || type == ActivityType.JOINT) -> {
+                // Use custom ratio: chopAmount divided by numberOfSmokes
+                val gramsPerSmoke = customRatio.chopAmount / customRatio.numberOfSmokes
+                Log.d(TAG, "🎯 Using custom ratio: ${customRatio.name} - ${gramsPerSmoke}g per smoke")
+                gramsPerSmoke * (if (type == ActivityType.BOWL) pendingBowlQuantity else 1)
+            }
+            else -> when (type) {
+                ActivityType.CONE -> ratios?.coneGrams ?: 0.3
+                ActivityType.JOINT -> ratios?.jointGrams ?: 0.5
+                ActivityType.BOWL -> (ratios?.bowlGrams ?: 0.2) * pendingBowlQuantity
+                else -> 0.0
+            }
+        }
+
         val activityLog = ActivityLog(
             smokerId = selectedSmoker.smokerId,
             consumerId = selectedSmoker.smokerId,
@@ -9819,19 +10496,25 @@ class MainActivity : AppCompatActivity() {
             sessionId = sessionId,
             sessionStartTime = if (sessionActive) sessionStart else null,
             bowlQuantity = if (type == ActivityType.BOWL) pendingBowlQuantity else 1,
-            gramsAtLog = when (type) {
-                ActivityType.CONE -> ratios?.coneGrams ?: 0.3
-                ActivityType.JOINT -> ratios?.jointGrams ?: 0.5
-                ActivityType.BOWL -> (ratios?.bowlGrams ?: 0.2) * pendingBowlQuantity
-                else -> 0.0
-            },
-            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0
+            gramsAtLog = gramsForActivity,
+            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0,
+            customRatioId = customRatio?.id,
+            customRatioName = customRatio?.name
         )
 
         // ALWAYS insert to local database first
         withContext(Dispatchers.IO) {
             val insertedId = repo.insert(activityLog)
             Log.d(TAG, "🎯 Inserted activity to local DB with ID: $insertedId, sessionId: $sessionId")
+        }
+        
+        // Handle cigarette tracking if using custom ratio (joints only, not bowls)
+        // Wait for cigarette tracking to complete before continuing
+        if (customRatio != null && type == ActivityType.JOINT) {
+            handleCigaretteTracking(customRatio, type, adjustedNow, selectedSmoker, payerStashOwnerId)
+            // Add a small delay to ensure database write completes
+            delay(100)
+            Log.d(TAG, "🚬 CIGARETTE_STATS: Cigarette tracking completed for joint")
         }
         
         // Update active session summary
@@ -9897,8 +10580,10 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         } else {
-            // Local session - refresh stats
-            Log.d(TAG, "🎯 Local session, refreshing stats...")
+            // Local session - refresh stats will be done after cigarette tracking completes
+            Log.d(TAG, "🎯 Local session, will refresh stats after cigarette tracking...")
+            
+            // Refresh stats - cigarette tracking has already been handled with delays above
             refreshLocalSessionStatsIfNeeded()
         }
 
@@ -9954,6 +10639,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
                 ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -10219,11 +10905,13 @@ class MainActivity : AppCompatActivity() {
             var totalCones = 0
             var totalJoints = 0
             var totalBowls = 0
+            var totalCigarettes = 0
 
             // Track last smoker info for each activity type
             var lastConeSmokerName: String? = null
             var lastJointSmokerName: String? = null
             var lastBowlSmokerName: String? = null
+            var lastCigaretteSmokerName: String? = null
             var lastConeTimestamp: Long = 0L
             var lastBowlTimestamp: Long = 0L
             var conesSinceLastBowl = 0
@@ -10246,6 +10934,13 @@ class MainActivity : AppCompatActivity() {
             }.sortedBy { it.timestamp }
 
             Log.d(TAG, "🔍 Total activities in session: ${allSessionActivities.size}")
+            
+            // Debug: Check for cigarettes specifically
+            val cigaretteCount = allSessionActivities.count { it.type == ActivityType.CIGARETTE }
+            Log.d(TAG, "🚬 CIGARETTE_DEBUG: Found $cigaretteCount cigarettes in allSessionActivities")
+            allSessionActivities.filter { it.type == ActivityType.CIGARETTE }.forEach { cig ->
+                Log.d(TAG, "🚬 CIGARETTE_DEBUG: Cigarette - timestamp=${cig.timestamp}, smokerId=${cig.smokerId}, sessionId=${cig.sessionId}")
+            }
 
             // CRITICAL FIX: Calculate "last gap" from ALL activities, not just cones
             if (allSessionActivities.size >= 2) {
@@ -10390,6 +11085,20 @@ class MainActivity : AppCompatActivity() {
             } else {
                 conesSinceLastBowl = coneLogs.size
             }
+            
+            // Find last cigarette and its smoker
+            val cigaretteLogs = allSessionActivities.filter { it.type == ActivityType.CIGARETTE }
+            Log.d(TAG, "🚬 CIGARETTE_STATS: Found ${cigaretteLogs.size} cigarettes in session")
+            val lastCigarette = cigaretteLogs.lastOrNull()
+            if (lastCigarette != null) {
+                val cigaretteSmoker = withContext(Dispatchers.IO) {
+                    repo.getSmokerById(lastCigarette.smokerId)
+                }
+                lastCigaretteSmokerName = cigaretteSmoker?.name
+                Log.d(TAG, "🚬 CIGARETTE_STATS: Found last CIGARETTE smoker: $lastCigaretteSmokerName")
+            } else {
+                Log.d(TAG, "🚬 CIGARETTE_STATS: No CIGARETTE found in session")
+            }
 
             // Track custom activities stats
             val customActivityGroupStats = mutableMapOf<String, CustomActivityGroupStat>()
@@ -10401,6 +11110,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val sessionLogs = allLogs.filter { it.timestamp >= sessionStart && it.timestamp <= now }
+                
+                // Debug log all activity types for this smoker
+                val activityTypes = sessionLogs.groupBy { it.type }
+                Log.d(TAG, "🚬 CIGARETTE_STATS: ${smoker.name} activities breakdown:")
+                activityTypes.forEach { (type, logs) ->
+                    Log.d(TAG, "🚬 CIGARETTE_STATS:   $type: ${logs.size} activities")
+                }
 
                 // UNDO FIX: Filter out recently undone activities when counting
                 val cones = sessionLogs.count { log -> 
@@ -10425,6 +11141,27 @@ class MainActivity : AppCompatActivity() {
                         !recentlyUndoneActivities.contains(activityKey)
                     } else {
                         false
+                    }
+                }
+                val cigarettes = sessionLogs.count { log ->
+                    if (log.type == ActivityType.CIGARETTE) {
+                        val activityKey = "${log.type}:${log.timestamp}"
+                        val isUndone = recentlyUndoneActivities.contains(activityKey)
+                        Log.d(TAG, "🚬 CIGARETTE_STATS: Found cigarette at ${log.timestamp}, sessionId=${log.sessionId}, sessionStart=$sessionStart, undone=$isUndone")
+                        !isUndone
+                    } else {
+                        false
+                    }
+                }
+                
+                Log.d(TAG, "🚬 CIGARETTE_STATS: ${smoker.name} - sessionLogs=${sessionLogs.size}, cigarettes=$cigarettes")
+                Log.d(TAG, "🚬 CIGARETTE_STATS: Session time range: $sessionStart to $now")
+                
+                // Extra debug: List all cigarettes for this smoker
+                if (cigarettes == 0 && sessionLogs.any { it.type == ActivityType.CIGARETTE }) {
+                    Log.d(TAG, "🚬 CIGARETTE_STATS: WARNING - Found cigarette logs but count is 0!")
+                    sessionLogs.filter { it.type == ActivityType.CIGARETTE }.forEach { log ->
+                        Log.d(TAG, "🚬 CIGARETTE_STATS:   Cigarette log: timestamp=${log.timestamp}, sessionId=${log.sessionId}")
                     }
                 }
 
@@ -10531,7 +11268,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 
-                val hasRegularActivities = cones > 0 || joints > 0 || adjustedBowls > 0
+                val hasRegularActivities = cones > 0 || joints > 0 || adjustedBowls > 0 || cigarettes > 0
                 val hasCustomActivities = customActivityStats.isNotEmpty()
                 
                 if (hasRegularActivities || hasCustomActivities) {
@@ -10539,6 +11276,8 @@ class MainActivity : AppCompatActivity() {
                         totalCones += cones
                         totalJoints += joints
                         totalBowls += bowls  // Still sum raw bowls for group total
+                        totalCigarettes += cigarettes
+                        Log.d(TAG, "🚬 CIGARETTE_STATS: Added $cigarettes cigarettes to total, now totalCigarettes=$totalCigarettes")
                     }
 
                     // Calculate gaps for each activity type (exclude custom activities from regular types)
@@ -10546,17 +11285,20 @@ class MainActivity : AppCompatActivity() {
                     val coneGaps = calculateGapsForType(regularLogs, ActivityType.CONE)
                     val jointGaps = calculateGapsForType(regularLogs, ActivityType.JOINT)
                     val bowlGaps = calculateGapsForType(regularLogs, ActivityType.BOWL)
+                    val cigaretteGaps = calculateGapsForType(regularLogs, ActivityType.CIGARETTE)
 
                     // Get last timestamps for time calculations
                     val lastConeLog = regularLogs.filter { it.type == ActivityType.CONE }.maxByOrNull { it.timestamp }
                     val lastJointLog = regularLogs.filter { it.type == ActivityType.JOINT }.maxByOrNull { it.timestamp }
                     val lastBowlLog = regularLogs.filter { it.type == ActivityType.BOWL }.maxByOrNull { it.timestamp }
+                    val lastCigaretteLog = regularLogs.filter { it.type == ActivityType.CIGARETTE }.maxByOrNull { it.timestamp }
                     
                     val perSmokerStat = PerSmokerStats(
                         smokerName = smoker.name,
                         totalCones = cones,
                         totalJoints = joints,
                         totalBowls = adjustedBowls,  // Use adjusted bowls for display
+                        totalCigarettes = cigarettes,
                         avgGapMs = coneGaps.avg,
                         longestGapMs = coneGaps.longest,
                         shortestGapMs = coneGaps.shortest,
@@ -10572,13 +11314,19 @@ class MainActivity : AppCompatActivity() {
                         shortestBowlGapMs = bowlGaps.shortest,
                         lastBowlGapMs = bowlGaps.last,
                         lastBowlTime = lastBowlLog?.timestamp ?: 0L,
+                        avgCigaretteGapMs = cigaretteGaps.avg,
+                        longestCigaretteGapMs = cigaretteGaps.longest,
+                        shortestCigaretteGapMs = cigaretteGaps.shortest,
+                        lastCigaretteGapMs = cigaretteGaps.last,
+                        lastCigaretteTime = lastCigaretteLog?.timestamp ?: 0L,
                         lastActivityTime = sessionLogs.maxByOrNull { it.timestamp }?.timestamp ?: 0L,
                         customActivityStats = customActivityStats
                     )
 
                     perSmokerList.add(perSmokerStat)
                     
-                    Log.d(TAG, "🔍📊 ${smoker.name} stats: C=$cones, J=$joints, B=$adjustedBowls (session=$bowls, carried=$carriedOverBowls)")
+                    Log.d(TAG, "🔍📊 ${smoker.name} stats: C=$cones, J=$joints, B=$adjustedBowls (session=$bowls, carried=$carriedOverBowls), Cig=$cigarettes")
+                    Log.d(TAG, "🚬 CIGARETTE_STATS: Creating PerSmokerStat for ${smoker.name} with totalCigarettes=$cigarettes")
                 }
             }
 
@@ -10602,14 +11350,23 @@ class MainActivity : AppCompatActivity() {
             } else {
                 0L
             }
+            
+            val sinceLastCigaretteMs = if (cigaretteLogs.isNotEmpty()) {
+                val lastCigaretteTimestamp = cigaretteLogs.maxOf { it.timestamp }
+                now - lastCigaretteTimestamp
+            } else {
+                0L
+            }
 
             Log.d(TAG, "🔍🔴 DEBUG: Creating GroupStats with:")
             Log.d(TAG, "🔍🔴   - lastConeSmokerName = $lastConeSmokerName")
             Log.d(TAG, "🔍🔴   - lastJointSmokerName = $lastJointSmokerName")
             Log.d(TAG, "🔍🔴   - lastBowlSmokerName = $lastBowlSmokerName")
+            Log.d(TAG, "🔍🔴   - lastCigaretteSmokerName = $lastCigaretteSmokerName")
             Log.d(TAG, "🔍🔴   - sinceLastConeMs = $sinceLastConeMs")
             Log.d(TAG, "🔍🔴   - sinceLastJointMs = $sinceLastJointMs")
             Log.d(TAG, "🔍🔴   - sinceLastBowlMs = $sinceLastBowlMs")
+            Log.d(TAG, "🔍🔴   - sinceLastCigaretteMs = $sinceLastCigaretteMs")
             
             // Adjust stats based on continue mode
             var groupTotalCones = if (isInContinueMode) {
@@ -10664,17 +11421,20 @@ class MainActivity : AppCompatActivity() {
                 totalCones = groupTotalCones,  // This includes carried-over cones
                 totalJoints = totalJoints,
                 totalBowls = adjustedTotalBowls,  // This includes carried-over bowls
+                totalCigarettes = totalCigarettes,
                 longestGapMs = longestConeGapMs,  // This is specifically for cones
                 shortestGapMs = shortestConeGapMs,  // This is specifically for cones
                 sinceLastGapMs = sinceLastConeMs,
                 sinceLastJointMs = sinceLastJointMs,
                 sinceLastBowlMs = sinceLastBowlMs,
+                sinceLastCigaretteMs = sinceLastCigaretteMs,
                 totalRounds = adjustedTotalRounds,
                 hitsInCurrentRound = hitsThisRound,
                 participantCount = perSmokerList.size,
                 lastConeSmokerName = lastConeSmokerName,
                 lastJointSmokerName = lastJointSmokerName,
                 lastBowlSmokerName = lastBowlSmokerName,
+                lastCigaretteSmokerName = lastCigaretteSmokerName,
                 conesSinceLastBowl = adjustedConesSinceLastBowl,
                 lastGapMs = lastGapMs,  // Gap between last two activities of ANY type
                 previousGapMs = previousGapMs,  // Gap before that
@@ -10701,9 +11461,11 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "🔍📤 Sending to ViewModel:")
                 Log.d(TAG, "🔍📤 Per-smoker count: ${perSmokerList.size}")
                 perSmokerList.forEach { stat ->
-                    Log.d(TAG, "🔍📤   ${stat.smokerName}: C=${stat.totalCones}, J=${stat.totalJoints}, B=${stat.totalBowls}")
+                    Log.d(TAG, "🔍📤   ${stat.smokerName}: C=${stat.totalCones}, J=${stat.totalJoints}, B=${stat.totalBowls}, Cig=${stat.totalCigarettes}")
+                    Log.d(TAG, "🚬 CIGARETTE_STATS: Sending ${stat.smokerName} with ${stat.totalCigarettes} cigarettes to ViewModel")
                 }
-                Log.d(TAG, "🔍📤 Group: C=${groupStats.totalCones}, J=${groupStats.totalJoints}, B=${groupStats.totalBowls}, R=${groupStats.totalRounds}")
+                Log.d(TAG, "🔍📤 Group: C=${groupStats.totalCones}, J=${groupStats.totalJoints}, B=${groupStats.totalBowls}, Cig=${groupStats.totalCigarettes}, R=${groupStats.totalRounds}")
+                Log.d(TAG, "🚬 CIGARETTE_STATS: Sending GroupStats with totalCigarettes=${groupStats.totalCigarettes}")
                 
                 // Log custom activity group stats
                 Log.d(TAG, "🌟 CUSTOM_ACTIVITY: Group stats for custom activities:")
@@ -10850,6 +11612,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
                 ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -11103,9 +11866,38 @@ class MainActivity : AppCompatActivity() {
         type: ActivityType,
         timestamp: Long,
         stashSource: StashSource,
-        capturedSmoker: Smoker
+        capturedSmoker: Smoker,
+        customRatio: SmokeRatio? = null
     ) {
         Log.d(TAG, "🎯 proceedWithLogHitWithSourceAndSmoker: type=$type, source=$stashSource, smoker=${capturedSmoker.name}")
+        
+        // Get the selected ratio if not provided
+        val ratioToUse = if (customRatio == null && (type == ActivityType.BOWL || type == ActivityType.JOINT)) {
+            val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            val lastSelectedRatioKey = if (type == ActivityType.BOWL) "last_bowl_ratio_id" else "last_joint_ratio_id"
+            val lastSelectedRatioId = prefs.getString(lastSelectedRatioKey, null)
+            
+            if (lastSelectedRatioId != null) {
+                val ratios = ratioManager.getRatiosForType(
+                    if (type == ActivityType.BOWL) SmokeRatio.RatioType.BOWL else SmokeRatio.RatioType.JOINT
+                )
+                val selectedRatio = ratios.firstOrNull { it.id == lastSelectedRatioId }
+                    ?: ratios.firstOrNull { it.isSelected }
+                if (selectedRatio != null) {
+                    Log.d(TAG, "🚬 Selected ratio: ${selectedRatio.name}, numberOfSmokes: ${selectedRatio.numberOfSmokes}, cigarettesPerSmoke: ${selectedRatio.cigarettesPerSmoke}")
+                }
+                selectedRatio
+            } else {
+                val ratios = ratioManager.getRatiosForType(
+                    if (type == ActivityType.BOWL) SmokeRatio.RatioType.BOWL else SmokeRatio.RatioType.JOINT
+                )
+                ratios.firstOrNull { it.isSelected }
+            }
+        } else {
+            customRatio
+        }
+        
+        Log.d(TAG, "🎯 Using ratio: ${ratioToUse?.name ?: "none"}")
 
         val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
 
@@ -11146,7 +11938,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             // No password needed or already verified - use captured smoker
-            logHitWithPayerAndSmoker(type, timestamp, payerStashOwnerId, capturedSmoker)
+            logHitWithPayerAndSmoker(type, timestamp, payerStashOwnerId, capturedSmoker, ratioToUse)
         }
     }
 
@@ -11185,7 +11977,8 @@ class MainActivity : AppCompatActivity() {
         type: ActivityType,
         now: Long,
         payerStashOwnerId: String?,
-        capturedSmoker: Smoker
+        capturedSmoker: Smoker,
+        customRatio: SmokeRatio? = null
     ) {
         Log.d(TAG, "🎯 === logHitWithPayerAndSmoker START ===")
         Log.d(TAG, "🎯 Type: $type, Time: $now, PayerStashOwnerId: '$payerStashOwnerId', Smoker: ${capturedSmoker.name}")
@@ -11200,6 +11993,22 @@ class MainActivity : AppCompatActivity() {
         val currentStash = stashViewModel.currentStash.value
         val ratios = stashViewModel.ratios.value
 
+        // Calculate grams based on custom ratio or default ratios
+        val gramsForActivity = when {
+            customRatio != null && (type == ActivityType.BOWL || type == ActivityType.JOINT) -> {
+                // Use custom ratio: chopAmount divided by numberOfSmokes
+                val gramsPerSmoke = customRatio.chopAmount / customRatio.numberOfSmokes
+                Log.d(TAG, "🎯 Using custom ratio: ${customRatio.name} - ${gramsPerSmoke}g per smoke")
+                gramsPerSmoke
+            }
+            else -> when (type) {
+                ActivityType.CONE -> ratios?.coneGrams ?: 0.3
+                ActivityType.JOINT -> ratios?.jointGrams ?: 0.5
+                ActivityType.BOWL -> ratios?.bowlGrams ?: 0.2
+                else -> 0.0
+            }
+        }
+
         // Create the activity log with the CAPTURED smoker
         val activityLog = ActivityLog(
             id = 0L,
@@ -11210,13 +12019,10 @@ class MainActivity : AppCompatActivity() {
             timestamp = adjustedNow,
             sessionId = sessionStatsVM.currentSessionId.value,
             sessionStartTime = if (sessionActive) sessionStart else null,
-            gramsAtLog = when (type) {
-                ActivityType.CONE -> ratios?.coneGrams ?: 0.3
-                ActivityType.JOINT -> ratios?.jointGrams ?: 0.5
-                ActivityType.BOWL -> ratios?.bowlGrams ?: 0.2
-                else -> 0.0
-            },
-            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0
+            gramsAtLog = gramsForActivity,
+            pricePerGramAtLog = currentStash?.pricePerGram ?: 15.0,
+            customRatioId = customRatio?.id,
+            customRatioName = customRatio?.name
         )
 
         // ALWAYS store in local database first
@@ -11224,6 +12030,19 @@ class MainActivity : AppCompatActivity() {
             val id = repo.insert(activityLog)
             Log.d(TAG, "🎯 INSERTED activity ID $id for smoker ${capturedSmoker.name}")
             id
+        }
+        
+        // Handle cigarette tracking if using custom ratio (joints only, not bowls)
+        if (customRatio != null && type == ActivityType.JOINT) {
+            handleCigaretteTracking(customRatio, type, adjustedNow, capturedSmoker, payerStashOwnerId)
+            // Add a small delay to ensure database write completes
+            delay(100)
+            Log.d(TAG, "🚬 CIGARETTE_STATS: Cigarette tracking completed for joint")
+        } else if (type == ActivityType.CONE) {
+            // For cones, check if we should add cigarettes based on bowl conversion
+            handleConeToBasedOnBowlRatio(adjustedNow, capturedSmoker, payerStashOwnerId)
+            delay(100)
+            Log.d(TAG, "🚬 CIGARETTE_STATS: Cigarette tracking completed for cone")
         }
         
         // Update active session summary
@@ -11297,6 +12116,7 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
                 ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
 
@@ -12230,11 +13050,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Count total cigarettes from all activities
+        val totalCigarettes = roomActivities.count { it.type == "CIGARETTE" }
+        
         // Create GroupStats mirroring onChange path
         val groupStats = GroupStats(
             totalCones = roomStats.totalCones,
             totalJoints = roomStats.totalJoints,
             totalBowls = roomStats.totalBowls,
+            totalCigarettes = totalCigarettes,  // Add cigarette count
             longestGapMs = roomStats.longestGapMs,
             shortestGapMs = roomStats.shortestGapMs,
             sinceLastGapMs = roomStats.sinceLastConeMs,
