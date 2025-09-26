@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "com.sam.cloudcounter"
+    namespace = "com.vibecode.cloudcounter"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.sam.cloudcounter"
+        applicationId = "com.vibecode.cloudcounter"
         minSdk = 21
         targetSdk = 35
-        versionCode = 16
-        versionName = "16.0"
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,16 +34,18 @@ android {
             
             // Firebase App Distribution configuration
             firebaseAppDistribution {
-                appId = "1:778271181918:android:2225b29f4fe7cea4d338cf"
-                testers = "mcarthur.sp@gmail.com"
+                appId = "1:480997623880:android:dcd93d0b88be0fcbdcf07d"
+                testers = "vibecode.sam@gmail.com, mcarthur.sp@gmail.com"
                 releaseNotes = "Latest build from hybrid workflow"
             }
         }
         debug {
+            // Removed applicationIdSuffix to fix Firebase configuration
+            // applicationIdSuffix = ".debug"
             // Firebase App Distribution configuration for debug builds
             firebaseAppDistribution {
-                appId = "1:778271181918:android:2225b29f4fe7cea4d338cf"
-                testers = "mcarthur.sp@gmail.com"
+                appId = "1:480997623880:android:dcd93d0b88be0fcbdcf07d"
+                testers = "vibecode.sam@gmail.com, mcarthur.sp@gmail.com"
                 releaseNotes = "Debug build from hybrid workflow"
             }
         }

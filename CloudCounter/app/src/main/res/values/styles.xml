@@ -98,6 +98,15 @@
         <item name="buttonTint">#98FB98</item>
     </style>
 
+    <style name="StashRadioButton" parent="Widget.AppCompat.CompoundButton.RadioButton">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="buttonTint">@color/radio_button_tint</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+    </style>
+
     <style name="ThemedButton.Primary" parent="Widget.MaterialComponents.CardView">
         <item name="cardCornerRadius">20dp</item>
         <item name="cardElevation">4dp</item>

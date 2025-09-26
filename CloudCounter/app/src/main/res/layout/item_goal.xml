@@ -14,7 +14,7 @@
         android:padding="16dp">
 
         <!-- Custom circular progress bar -->
-        <com.sam.cloudcounter.CustomCircularProgressBar
+        <com.vibecode.cloudcounter.CustomCircularProgressBar
             android:id="@+id/circularProgressBar"
             android:layout_width="80dp"
             android:layout_height="80dp"

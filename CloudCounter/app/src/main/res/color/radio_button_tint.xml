@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Checked state - neon green -->
+    <item android:color="@color/neon_green" android:state_checked="true"/>
+    <!-- Default unchecked state - lighter grey for visibility -->
+    <item android:color="#808080"/>
+</selector>

@@ -6,15 +6,51 @@
     android:padding="8dp"
     android:background="@drawable/calendar_popup_item_background">
 
-    <TextView
-        android:id="@+id/tvActivityName"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Joints"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@color/neon_green"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="4dp">
+        
+        <TextView
+            android:id="@+id/tvActivityName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toStartOf="@+id/actionsContainer"
+            android:text="Joints"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/neon_green" />
+            
+        <LinearLayout
+            android:id="@+id/actionsContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:orientation="vertical">
+            
+            <ImageButton
+                android:id="@+id/btnDeleteActivity"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_delete"
+                android:contentDescription="Delete"
+                android:tint="@android:color/holo_red_dark" />
+                
+            <ImageButton
+                android:id="@+id/btnEditActivity"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_edit"
+                android:contentDescription="Edit"
+                android:tint="@color/neon_green" />
+            
+        </LinearLayout>
+            
+    </RelativeLayout>
 
     <TextView
         android:id="@+id/tvCount"

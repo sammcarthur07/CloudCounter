@@ -171,28 +171,28 @@
 
                     <RadioButton
                         android:id="@+id/radioMyStashAttribution"
+                        style="@style/StashRadioButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="My Stash"
-                        android:checked="true"
-                        android:textSize="12sp"/>
+                        android:checked="true"/>
 
                     <RadioButton
                         android:id="@+id/radioTheirStashAttribution"
+                        style="@style/StashRadioButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Their Stash"
-                        android:textSize="12sp"/>
+                        android:text="Their Stash"/>
 
                     <RadioButton
                         android:id="@+id/radioEachToOwnAttribution"
+                        style="@style/StashRadioButton"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Each to their own"
-                        android:textSize="12sp"/>
+                        android:text="Each to their own"/>
                 </RadioGroup>
 
                 <!-- Horizontal layout for both stash counters -->

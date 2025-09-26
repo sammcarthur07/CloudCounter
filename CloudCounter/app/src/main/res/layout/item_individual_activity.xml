@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/tvActivityTime"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="10:30 AM — Sam"
+        android:textSize="14sp"
+        android:textColor="@color/text_primary"
+        android:lineSpacingExtra="4dp" />
+
+    <ImageButton
+        android:id="@+id/btnDeleteIndividual"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_delete"
+        android:contentDescription="Delete"
+        android:tint="@android:color/holo_red_dark" />
+
+</LinearLayout>

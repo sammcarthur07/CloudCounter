@@ -17,39 +17,25 @@
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/tvDate"
+            android:id="@+id/tvTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="January 15, 2024"
-            android:textSize="20sp"
+            android:text="Delete Activity"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/neon_green"
             android:gravity="center"
-            android:layout_marginBottom="16dp" />
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:id="@+id/layoutActivities"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-
-        </ScrollView>
+            android:layout_marginBottom="12dp" />
 
         <TextView
-            android:id="@+id/tvTotalStats"
+            android:id="@+id/tvMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text=""
+            android:text="Are you sure you want to delete this activity?"
             android:textSize="14sp"
             android:textColor="@color/text_primary"
             android:gravity="center"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="16dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -58,28 +44,28 @@
             android:layout_marginTop="8dp">
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDeleteAll"
+                android:id="@+id/btnCancel"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Delete All"
+                android:text="Cancel"
                 android:textAllCaps="false"
-                android:textColor="@android:color/white"
-                app:backgroundTint="@android:color/holo_red_dark"
+                android:textColor="@android:color/black"
+                app:backgroundTint="@color/neon_green"
                 app:cornerRadius="8dp"
                 android:layout_marginEnd="8dp" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnClose"
+                android:id="@+id/btnConfirm"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Close"
+                android:text="Delete"
                 android:textAllCaps="false"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/neon_green"
+                android:textColor="@android:color/white"
+                app:backgroundTint="@android:color/holo_red_dark"
                 app:cornerRadius="8dp" />
-                
+
         </LinearLayout>
 
     </LinearLayout>
