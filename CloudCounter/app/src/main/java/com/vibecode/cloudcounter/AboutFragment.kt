@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -553,6 +554,11 @@ class AboutFragment : Fragment() {
 
             // Show the user manual dialog
             showUserManualDialog()
+        }
+        
+        // Setup Delete Account button
+        binding.btnDeleteAccount.setOnClickListener {
+            showDeleteAccountDialog()
         }
     }
 
@@ -2200,5 +2206,475 @@ This app is vibe coded without writing a single line of code with the help of Cl
         // Finally nullify binding
         Log.d(TAG, "🛑 Nullifying binding")
         _binding = null
+    }
+    
+    private fun showDeleteAccountDialog() {
+        val dialog = android.app.Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_delete_account_confirmation)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        
+        val window = dialog.window
+        window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
+            WindowManager.LayoutParams.WRAP_CONTENT
+        )
+        window?.setGravity(android.view.Gravity.CENTER)
+        
+        val tvUserEmail = dialog.findViewById<TextView>(R.id.tvUserEmail)
+        val btnCancel = dialog.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCancel)
+        val btnContinue = dialog.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnContinue)
+        
+        // Get current user email
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        tvUserEmail.text = currentUser?.email ?: "Not logged in"
+        
+        btnCancel.setOnClickListener { 
+            dialog.dismiss() 
+        }
+        
+        btnContinue.setOnClickListener {
+            dialog.dismiss()
+            showFinalDeleteConfirmation()
+        }
+        
+        dialog.show()
+    }
+    
+    private fun showFinalDeleteConfirmation() {
+        val dialog = android.app.Dialog(requireContext())
+        dialog.setContentView(R.layout.dialog_delete_account_final)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        
+        val window = dialog.window
+        window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.85).toInt(),
+            WindowManager.LayoutParams.WRAP_CONTENT
+        )
+        window?.setGravity(android.view.Gravity.CENTER)
+        
+        val btnCancel = dialog.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCancel)
+        val btnDeleteForever = dialog.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDeleteForever)
+        
+        btnCancel.setOnClickListener { 
+            dialog.dismiss() 
+        }
+        
+        btnDeleteForever.setOnClickListener {
+            dialog.dismiss()
+            deleteAccountAndData()
+        }
+        
+        dialog.show()
+    }
+    
+    private fun deleteAccountAndData() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        
+        if (currentUser == null) {
+            Log.e(TAG, "deleteAccountAndData: No user logged in")
+            showSnackbar("No user logged in")
+            return
+        }
+        
+        Log.d(TAG, "Starting account deletion for user: ${currentUser.uid}, email: ${currentUser.email}")
+        
+        // Show progress dialog
+        val progressDialog = android.app.ProgressDialog(context)
+        progressDialog.setMessage("Deleting account and all data...")
+        progressDialog.setCancelable(false)
+        progressDialog.show()
+        
+        lifecycleScope.launch {
+            try {
+                Log.d(TAG, "DELETE_ACCOUNT: Step 1 - Clearing local data first")
+                // Clear local data before Firebase deletion
+                withContext(Dispatchers.IO) {
+                    clearLocalDataSync()
+                }
+                
+                Log.d(TAG, "DELETE_ACCOUNT: Step 2 - Starting Firestore data deletion for user: ${currentUser.uid}")
+                // Delete all Firestore data for this user
+                deleteUserFirestoreData(currentUser.uid)
+                
+                Log.d(TAG, "DELETE_ACCOUNT: Step 3 - Deleting Firebase Auth account")
+                // For account deletion, we might need to re-authenticate first
+                // If this fails, user needs to sign in again
+                try {
+                    withContext(Dispatchers.IO) {
+                        currentUser.delete().await()
+                    }
+                    Log.d(TAG, "DELETE_ACCOUNT: Step 3 - Firebase Auth account deleted successfully")
+                } catch (authError: Exception) {
+                    Log.e(TAG, "DELETE_ACCOUNT: Auth deletion failed, may need re-authentication", authError)
+                    Log.e(TAG, "DELETE_ACCOUNT: Error type: ${authError.javaClass.simpleName}")
+                    
+                    if (authError is com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                        progressDialog.dismiss()
+                        // Show re-authentication dialog
+                        showReauthenticationDialog(currentUser)
+                        return@launch
+                    }
+                    
+                    progressDialog.dismiss()
+                    showSnackbar("Account deletion failed. Please try again.")
+                    return@launch
+                }
+                
+                progressDialog.dismiss()
+                
+                Log.d(TAG, "DELETE_ACCOUNT: Step 4 - Signing out")
+                // Sign out completely
+                FirebaseAuth.getInstance().signOut()
+                
+                Log.d(TAG, "DELETE_ACCOUNT: Account deletion completed successfully")
+                // Show success message
+                showSnackbar("Account deleted successfully")
+                
+                // Restart app cleanly to avoid state restoration issues
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val intent = requireActivity().packageManager
+                        .getLaunchIntentForPackage(requireActivity().packageName)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    requireActivity().startActivity(intent)
+                    requireActivity().finish()
+                    Runtime.getRuntime().exit(0)
+                }, 2000)
+                
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                Log.e(TAG, "DELETE_ACCOUNT: Error in deleteAccountAndData", e)
+                Log.e(TAG, "DELETE_ACCOUNT: Error type: ${e.javaClass.simpleName}")
+                Log.e(TAG, "DELETE_ACCOUNT: Stack trace:", e)
+                showSnackbar("Error deleting account: ${e.message}")
+            }
+        }
+    }
+    
+    private suspend fun deleteUserFirestoreData(userId: String) = withContext(Dispatchers.IO) {
+        val db = FirebaseFirestore.getInstance()
+        Log.d(TAG, "FIRESTORE_DELETE: Starting deletion for user: $userId")
+        
+        try {
+            // Note: User document deletion often requires admin privileges
+            // We'll attempt it but continue if it fails
+            Log.d(TAG, "FIRESTORE_DELETE: Attempting to delete user document...")
+            try {
+                db.collection("users").document(userId).delete().await()
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ User document deleted")
+            } catch (e: Exception) {
+                Log.w(TAG, "FIRESTORE_DELETE: Could not delete user document (may require admin): ${e.message}")
+                // Continue with other deletions
+            }
+            
+            // Delete all activities - using batch delete for better performance
+            Log.d(TAG, "FIRESTORE_DELETE: Querying activities...")
+            try {
+                val batch = db.batch()
+                val activities = db.collection("activities")
+                    .whereEqualTo("userId", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${activities.documents.size} activities")
+                
+                activities.documents.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                
+                if (activities.documents.isNotEmpty()) {
+                    batch.commit().await()
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Activities deleted")
+            } catch (e: Exception) {
+                Log.w(TAG, "FIRESTORE_DELETE: Could not delete activities: ${e.message}")
+                // Continue with other deletions
+            }
+            
+            // Delete all chat messages
+            Log.d(TAG, "FIRESTORE_DELETE: Querying chat messages...")
+            try {
+                val messages = db.collection("chat_messages")
+                    .whereEqualTo("userId", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${messages.documents.size} chat messages")
+                    
+                for (doc in messages.documents) {
+                    doc.reference.delete().await()
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Chat messages deleted")
+            } catch (e: Exception) {
+                Log.e(TAG, "FIRESTORE_DELETE: ✗ Failed to delete chat messages: ${e.message}")
+                Log.e(TAG, "FIRESTORE_DELETE: Error type: ${e.javaClass.simpleName}")
+            }
+            
+            // Delete all sessions - using batch delete
+            Log.d(TAG, "FIRESTORE_DELETE: Querying sessions...")
+            try {
+                val batch = db.batch()
+                val sessions = db.collection("sessions")
+                    .whereEqualTo("userId", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${sessions.documents.size} sessions")
+                    
+                sessions.documents.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                
+                if (sessions.documents.isNotEmpty()) {
+                    batch.commit().await()
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Sessions deleted")
+            } catch (e: Exception) {
+                Log.w(TAG, "FIRESTORE_DELETE: Could not delete sessions: ${e.message}")
+                // Continue with other deletions
+            }
+            
+            // Delete all goals - using batch delete
+            Log.d(TAG, "FIRESTORE_DELETE: Querying goals...")
+            try {
+                val batch = db.batch()
+                val goals = db.collection("goals")
+                    .whereEqualTo("userId", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${goals.documents.size} goals")
+                    
+                goals.documents.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                
+                if (goals.documents.isNotEmpty()) {
+                    batch.commit().await()
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Goals deleted")
+            } catch (e: Exception) {
+                Log.w(TAG, "FIRESTORE_DELETE: Could not delete goals: ${e.message}")
+                // Continue with other deletions
+            }
+            
+            // Delete all stash records - using batch delete
+            Log.d(TAG, "FIRESTORE_DELETE: Querying stash records...")
+            try {
+                val batch = db.batch()
+                val stashRecords = db.collection("stash")
+                    .whereEqualTo("userId", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${stashRecords.documents.size} stash records")
+                    
+                stashRecords.documents.forEach { doc ->
+                    batch.delete(doc.reference)
+                }
+                
+                if (stashRecords.documents.isNotEmpty()) {
+                    batch.commit().await()
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Stash records deleted")
+            } catch (e: Exception) {
+                Log.w(TAG, "FIRESTORE_DELETE: Could not delete stash records: ${e.message}")
+                // Continue with other deletions
+            }
+            
+            // Delete from any shared sessions/rooms
+            Log.d(TAG, "FIRESTORE_DELETE: Querying rooms...")
+            try {
+                val rooms = db.collection("rooms")
+                    .whereArrayContains("participants", userId)
+                    .get()
+                    .await()
+                Log.d(TAG, "FIRESTORE_DELETE: Found ${rooms.documents.size} rooms with user")
+                    
+                for (doc in rooms.documents) {
+                    // Remove user from participants
+                    doc.reference.update("participants", FieldValue.arrayRemove(userId)).await()
+                    Log.d(TAG, "FIRESTORE_DELETE: Removed user from room: ${doc.id}")
+                }
+                Log.d(TAG, "FIRESTORE_DELETE: ✓ Room memberships updated")
+            } catch (e: Exception) {
+                Log.e(TAG, "FIRESTORE_DELETE: ✗ Failed to update rooms: ${e.message}")
+                Log.e(TAG, "FIRESTORE_DELETE: Error type: ${e.javaClass.simpleName}")
+            }
+            
+            Log.d(TAG, "FIRESTORE_DELETE: Completed all Firestore deletions for user: $userId")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "FIRESTORE_DELETE: Unexpected error during deletion", e)
+            Log.e(TAG, "FIRESTORE_DELETE: Error type: ${e.javaClass.simpleName}")
+            throw e
+        }
+    }
+    
+    private fun showReauthenticationDialog(currentUser: com.google.firebase.auth.FirebaseUser) {
+        val dialog = android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Re-authentication Required")
+            .setMessage("For security reasons, you need to sign in again before deleting your account.\n\nWould you like to sign out now and sign back in?")
+            .setPositiveButton("Sign Out") { _, _ ->
+                // Sign out and navigate to login
+                FirebaseAuth.getInstance().signOut()
+                showSnackbar("Please sign in again and retry account deletion")
+                
+                // Clear local data first to prevent state issues
+                clearLocalData()
+                
+                // Instead of recreating, restart the app cleanly
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val intent = requireActivity().packageManager
+                        .getLaunchIntentForPackage(requireActivity().packageName)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    requireActivity().startActivity(intent)
+                    requireActivity().finish()
+                    Runtime.getRuntime().exit(0)
+                }, 1000)
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+        
+        dialog.show()
+    }
+    
+    private suspend fun clearLocalDataSync() = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "DELETE_ACCOUNT: Starting synchronous local data cleanup")
+            
+            val context = requireContext()
+            
+            // Clear SharedPreferences
+            val sharedPref = context.getSharedPreferences("cloud_counter_prefs", Context.MODE_PRIVATE)
+            sharedPref.edit().clear().apply()
+            
+            val seshPref = context.getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            seshPref.edit().clear().apply()
+            
+            // Clear Room database
+            val database = AppDatabase.getDatabase(context)
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+            
+            Log.d(TAG, "DELETE_ACCOUNT: Clearing local data for user: $currentUserId")
+            
+            if (currentUserId != null) {
+                // Get DAOs
+                val smokerDao = database.smokerDao()
+                val activityDao = database.activityLogDao()
+                
+                // Get the user's smoker record
+                val allSmokers = smokerDao.getAllSmokersList()
+                val userSmoker = allSmokers.firstOrNull { smoker ->
+                    smoker.cloudUserId == currentUserId ||
+                    smoker.uid == currentUserId
+                }
+                
+                if (userSmoker != null) {
+                    Log.d(TAG, "DELETE_ACCOUNT: Found user smoker with ID: ${userSmoker.smokerId}")
+                    
+                    // Delete all activities for this smoker
+                    val userActivities = activityDao.getLogsForSmokerSync(userSmoker.smokerId)
+                    Log.d(TAG, "DELETE_ACCOUNT: Found ${userActivities.size} activities to delete")
+                    for (activity in userActivities) {
+                        activityDao.delete(activity)
+                    }
+                    
+                    // Delete the smoker record
+                    smokerDao.delete(userSmoker)
+                    Log.d(TAG, "DELETE_ACCOUNT: Deleted smoker record")
+                }
+                
+                // Clear all session summaries
+                val sessionDao = database.sessionSummaryDao()
+                val allSessions = sessionDao.getAllSummariesSync()
+                Log.d(TAG, "DELETE_ACCOUNT: Found ${allSessions.size} sessions to delete")
+                allSessions.forEach { session ->
+                    sessionDao.delete(session)
+                }
+                
+                // Clear stash history
+                val stashDao = database.stashDao()
+                stashDao.clearStashHistory()
+                Log.d(TAG, "DELETE_ACCOUNT: Cleared stash history")
+            }
+            
+            Log.d(TAG, "DELETE_ACCOUNT: Local Room database cleared successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "DELETE_ACCOUNT: Error clearing local data synchronously", e)
+        }
+    }
+    
+    private fun clearLocalData() {
+        try {
+            Log.d(TAG, "DELETE_ACCOUNT: Starting local data cleanup")
+            
+            // Clear SharedPreferences
+            val sharedPref = requireContext().getSharedPreferences("cloud_counter_prefs", Context.MODE_PRIVATE)
+            sharedPref.edit().clear().apply()
+            
+            val seshPref = requireContext().getSharedPreferences("sesh", Context.MODE_PRIVATE)
+            seshPref.edit().clear().apply()
+            
+            // Clear Room database - delete all local data
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val database = AppDatabase.getDatabase(requireContext())
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+                    
+                    Log.d(TAG, "DELETE_ACCOUNT: Clearing local data for user: $currentUserId")
+                    
+                    if (currentUserId != null) {
+                        // Get DAOs
+                        val smokerDao = database.smokerDao()
+                        val activityDao = database.activityLogDao()
+                        
+                        // Get the user's smoker record
+                        val allSmokers = smokerDao.getAllSmokersList()
+                        val userSmoker = allSmokers.firstOrNull { smoker ->
+                            smoker.cloudUserId == currentUserId ||
+                            smoker.uid == currentUserId
+                        }
+                        
+                        if (userSmoker != null) {
+                            Log.d(TAG, "DELETE_ACCOUNT: Found user smoker with ID: ${userSmoker.smokerId}")
+                            
+                            // Delete all activities for this smoker
+                            val userActivities = activityDao.getLogsForSmokerSync(userSmoker.smokerId)
+                            Log.d(TAG, "DELETE_ACCOUNT: Found ${userActivities.size} activities to delete")
+                            for (activity in userActivities) {
+                                activityDao.delete(activity)
+                            }
+                            
+                            // Delete the smoker record
+                            smokerDao.delete(userSmoker)
+                            Log.d(TAG, "DELETE_ACCOUNT: Deleted smoker record")
+                        }
+                        
+                        // Clear all session summaries (they might belong to this user)
+                        val sessionDao = database.sessionSummaryDao()
+                        val allSessions = sessionDao.getAllSummariesSync()
+                        Log.d(TAG, "DELETE_ACCOUNT: Found ${allSessions.size} sessions to delete")
+                        allSessions.forEach { session ->
+                            sessionDao.delete(session)
+                        }
+                        
+                        // Clear stash history
+                        val stashDao = database.stashDao()
+                        stashDao.clearStashHistory()
+                        Log.d(TAG, "DELETE_ACCOUNT: Cleared stash history")
+                        
+                        // Note: Goals and chat are handled through LiveData/Flow, 
+                        // so we can't easily clear them synchronously here
+                        // They will be cleared when Firebase data is deleted
+                        Log.d(TAG, "DELETE_ACCOUNT: Skipping goals and chat (handled by Firebase)")
+                    }
+                    
+                    Log.d(TAG, "DELETE_ACCOUNT: Room database cleared successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "DELETE_ACCOUNT: Error clearing Room database", e)
+                }
+            }
+            
+            Log.d(TAG, "DELETE_ACCOUNT: Local data clearing initiated")
+        } catch (e: Exception) {
+            Log.e(TAG, "DELETE_ACCOUNT: Error clearing local data", e)
+        }
     }
 }

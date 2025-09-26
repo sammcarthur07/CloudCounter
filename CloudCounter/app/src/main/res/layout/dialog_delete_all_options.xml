@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="@color/dialog_background"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="8dp"
+    app:strokeColor="@color/neon_green"
+    app:strokeWidth="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Delete All Activities"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/neon_green"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Choose delete option"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancel"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Cancel"
+                android:textAllCaps="false"
+                android:textColor="@android:color/black"
+                android:textSize="10sp"
+                app:backgroundTint="@color/neon_green"
+                app:cornerRadius="8dp"
+                android:layout_marginEnd="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeleteWithoutSesh"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.3"
+                android:text="Delete Without\nSesh"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:lineSpacingExtra="-2dp"
+                app:backgroundTint="@android:color/holo_orange_dark"
+                app:cornerRadius="8dp"
+                android:layout_marginEnd="4dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDeleteWithSesh"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.3"
+                android:text="Delete With\nSesh"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:lineSpacingExtra="-2dp"
+                app:backgroundTint="@android:color/holo_red_dark"
+                app:cornerRadius="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

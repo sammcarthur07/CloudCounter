@@ -452,6 +452,7 @@ R.color.dialog_background
                                     logsToDelete.forEach { log ->
                                         viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
                                     }
+                                    delay(100) // Small delay to allow database operations to complete
                                     refreshHourDetails()
                                 }
                             }
@@ -488,12 +489,13 @@ R.color.dialog_background
 
                     // Handle delete all button
                     btnDeleteAll.setOnClickListener {
-                        showDeleteAllConfirmation("hour") {
+                        showDeleteAllConfirmation("hour", calendar, allLogs) {
                             lifecycleScope.launch {
                                 val smokersMap = viewModel.getSmokersMap()
                                 allLogs.forEach { log ->
                                     viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
                                 }
+                                delay(100) // Small delay to allow database operations to complete
                                 refreshHourDetails()
                             }
                         }
@@ -509,17 +511,24 @@ R.color.dialog_background
     }
 
     private fun showMonthDetails(calendar: Calendar) {
-        val dialog = Dialog(requireContext())
-        dialog.setContentView(R.layout.dialog_calendar_day_details)
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        Log.d("CalendarFragment", "showMonthDetails() called - popup should open now!")
+        try {
+            Log.d("CalendarFragment", "Creating dialog...")
+            val dialog = Dialog(requireContext())
+            Log.d("CalendarFragment", "Setting content view...")
+            dialog.setContentView(R.layout.dialog_calendar_day_details)
+            Log.d("CalendarFragment", "Setting background...")
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        // Set dialog width and position
-        val window = dialog.window
-        window?.setLayout(
-            (resources.displayMetrics.widthPixels * 0.9).toInt(),
-            WindowManager.LayoutParams.WRAP_CONTENT
-        )
-        window?.setGravity(Gravity.CENTER)
+            Log.d("CalendarFragment", "Setting dialog layout...")
+            // Set dialog width and position
+            val window = dialog.window
+            window?.setLayout(
+                (resources.displayMetrics.widthPixels * 0.9).toInt(),
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            window?.setGravity(Gravity.CENTER)
+            Log.d("CalendarFragment", "Dialog setup complete, finding views...")
 
         // Get views
         val cardView = dialog.findViewById<MaterialCardView>(R.id.cardContainer)
@@ -543,10 +552,18 @@ R.color.dialog_background
         tvDate.setTextColor(ContextCompat.getColor(requireContext(), R.color.neon_green))
 
         fun refreshMonthDetails() {
+            Log.d("CalendarFragment", "refreshMonthDetails() called for month: ${monthFormat.format(calendar.time)}")
             layoutActivities.removeAllViews()
             lifecycleScope.launch {
                 val activities = viewModel.getDetailedActivitiesForMonthDetailed(calendar)
                 val allLogs = viewModel.getActivityLogsForMonth(calendar)
+                Log.d("CalendarFragment", "refreshMonthDetails() loaded ${activities.size} activities, ${allLogs.size} logs")
+                activities.forEach { activity ->
+                    Log.d("CalendarFragment", "Activity: ${activity.name}, count: ${activity.count}")
+                }
+                allLogs.forEach { log ->
+                    Log.d("CalendarFragment", "Log: ${log.type} at ${log.timestamp}, id: ${log.id}")
+                }
 
                 if (activities.isEmpty()) {
                     val noDataText = TextView(context).apply {
@@ -610,11 +627,25 @@ R.color.dialog_background
                                             else -> log.customActivityName == activity.name
                                         }
                                     }
+                                    Log.d("CalendarFragment", "Delete ${activity.name} clicked, deleting ${logsToDelete.size} logs sequentially")
                                     val smokersMap = viewModel.getSmokersMap()
-                                    logsToDelete.forEach { log ->
-                                        viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
+                                    
+                                    // Delete logs one by one and refresh after each deletion
+                                    for (log in logsToDelete) {
+                                        // Use repository directly for proper suspend behavior
+                                        viewModel.repository.deleteWithCallbacks(
+                                            log = log,
+                                            onReverseGoal = { activityLog: ActivityLog, smoker: Smoker ->
+                                                // Call goal reversal callback if available
+                                                CalendarViewModel.onReverseGoal?.invoke(activityLog, smoker, null)
+                                            },
+                                            onRestoreStash = { activityLog: ActivityLog, smoker: Smoker ->
+                                                // Call stash restoration callback if available
+                                                CalendarViewModel.onRestoreStash?.invoke(activityLog, smoker)
+                                            }
+                                        )
+                                        refreshMonthDetails()
                                     }
-                                    refreshMonthDetails()
                                 }
                             }
                         }
@@ -654,26 +685,50 @@ R.color.dialog_background
 
                     // Handle delete all button
                     btnDeleteAll.setOnClickListener {
-                        showDeleteAllConfirmation("month") {
+                        showDeleteAllConfirmation("month", calendar, allLogs) {
                             lifecycleScope.launch {
+                                Log.d("CalendarFragment", "Delete all clicked for month, deleting ${allLogs.size} logs sequentially")
                                 val smokersMap = viewModel.getSmokersMap()
-                                allLogs.forEach { log ->
-                                    viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
+                                
+                                // Delete logs one by one and refresh after each deletion
+                                for (log in allLogs) {
+                                    Log.d("CalendarFragment", "Deleting log: ${log.type} at ${log.timestamp}")
+                                    // Use repository directly for proper suspend behavior
+                                    viewModel.repository.deleteWithCallbacks(
+                                        log = log,
+                                        onReverseGoal = { activityLog: ActivityLog, smoker: Smoker ->
+                                            // Call goal reversal callback if available
+                                            CalendarViewModel.onReverseGoal?.invoke(activityLog, smoker, null)
+                                        },
+                                        onRestoreStash = { activityLog: ActivityLog, smoker: Smoker ->
+                                            // Call stash restoration callback if available
+                                            CalendarViewModel.onRestoreStash?.invoke(activityLog, smoker)
+                                        }
+                                    )
+                                    Log.d("CalendarFragment", "Log deleted, refreshing popup")
+                                    refreshMonthDetails()
                                 }
-                                refreshMonthDetails()
+                                Log.d("CalendarFragment", "All logs deleted and popup refreshed")
                             }
                         }
                     }
                 }
             }
+        }
 
-            refreshMonthDetails()
+        refreshMonthDetails()
 
-            btnClose.setOnClickListener {
-                dialog.dismiss()
-            }
+        btnClose.setOnClickListener {
+            dialog.dismiss()
+        }
 
-            dialog.show()
+        Log.d("CalendarFragment", "About to show dialog...")
+        dialog.show()
+        Log.d("CalendarFragment", "Dialog.show() called successfully!")
+        
+        } catch (e: Exception) {
+            Log.e("CalendarFragment", "Error in showMonthDetails(): $e")
+            e.printStackTrace()
         }
     }
 
@@ -779,6 +834,7 @@ ContextCompat.getColor(
                                         logsToDelete.forEach { log ->
                                             viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
                                         }
+                                        delay(100) // Small delay to allow database operations to complete
                                         refreshDayDetails()
                                     }
                                 }
@@ -826,12 +882,13 @@ ContextCompat.getColor(
 
                         // Handle delete all button
                         btnDeleteAll.setOnClickListener {
-                            showDeleteAllConfirmation("day") {
+                            showDeleteAllConfirmation("day", calendar, allLogs) {
                                 lifecycleScope.launch {
                                     val smokersMap = viewModel.getSmokersMap()
                                     allLogs.forEach { log ->
                                         viewModel.deleteLogWithCloudSync(log, smokersMap[log.smokerId])
                                     }
+                                    delay(100) // Small delay to allow database operations to complete
                                     refreshDayDetails()
                                 }
                             }
@@ -995,14 +1052,14 @@ ContextCompat.getColor(
         dialog.show()
     }
 
-    private fun showDeleteAllConfirmation(period: String, onConfirm: () -> Unit) {
+    private fun showDeleteAllConfirmation(period: String, calendar: Calendar, allLogs: List<ActivityLog>, onConfirm: () -> Unit) {
         val dialog = Dialog(requireContext())
-        dialog.setContentView(R.layout.dialog_confirmation)
+        dialog.setContentView(R.layout.dialog_delete_all_options)
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val window = dialog.window
         window?.setLayout(
-            (resources.displayMetrics.widthPixels * 0.85).toInt(),
+            (resources.displayMetrics.widthPixels * 0.9).toInt(),
             WindowManager.LayoutParams.WRAP_CONTENT
         )
         window?.setGravity(Gravity.CENTER)
@@ -1010,14 +1067,43 @@ ContextCompat.getColor(
         val tvTitle = dialog.findViewById<TextView>(R.id.tvTitle)
         val tvMessage = dialog.findViewById<TextView>(R.id.tvMessage)
         val btnCancel = dialog.findViewById<MaterialButton>(R.id.btnCancel)
-        val btnConfirm = dialog.findViewById<MaterialButton>(R.id.btnConfirm)
+        val btnDeleteWithoutSesh = dialog.findViewById<MaterialButton>(R.id.btnDeleteWithoutSesh)
+        val btnDeleteWithSesh = dialog.findViewById<MaterialButton>(R.id.btnDeleteWithSesh)
 
         tvTitle.text = "Delete All Activities"
-        tvMessage.text = "Are you sure you want to delete all activities from this $period?"
+        tvMessage.text = "Delete all activities from this $period?"
 
         btnCancel.setOnClickListener { dialog.dismiss() }
-        btnConfirm.setOnClickListener {
+        
+        // Delete Without Sesh - current behavior (deletes activities only)
+        btnDeleteWithoutSesh.setOnClickListener {
             onConfirm()
+            dialog.dismiss()
+        }
+        
+        // Delete With Sesh - deletes activities AND session summary
+        btnDeleteWithSesh.setOnClickListener {
+            lifecycleScope.launch {
+                // Get all unique session IDs from the activities being deleted BEFORE deletion
+                val sessionIds = allLogs.mapNotNull { it.sessionId }.toSet()
+                Log.d("CalendarFragment", "Delete With Sesh clicked, found ${sessionIds.size} unique session IDs: $sessionIds")
+                
+                // First delete the activities (this calls onConfirm which handles the deletion)
+                onConfirm()
+                
+                // Wait a bit for activities to be deleted
+                delay(500)
+                
+                // Then delete each session summary (sessionId is actually a timestamp)
+                sessionIds.forEach { sessionTimestamp ->
+                    Log.d("CalendarFragment", "Attempting to delete session summary with timestamp: $sessionTimestamp")
+                    viewModel.deleteSessionSummary(sessionTimestamp)
+                }
+                
+                if (sessionIds.isNotEmpty()) {
+                    Log.d("CalendarFragment", "Successfully requested deletion of ${sessionIds.size} session summaries")
+                }
+            }
             dialog.dismiss()
         }
 
@@ -1179,6 +1265,7 @@ ContextCompat.getColor(
             }
 
             cardView.setOnClickListener {
+                Log.d("CalendarFragment", "MONTHLY: Day card clicked, opening popup")
                 onDayClick(dayData)
             }
         } ?: run {
@@ -1246,12 +1333,19 @@ inner class DayViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
             // Ensure taps anywhere (including inside the ScrollView) open the popup
             layoutActivities.isClickable = true
             layoutActivities.isFocusable = false
-            layoutActivities.setOnClickListener { onDayClick(dayData) }
+            layoutActivities.setOnClickListener { 
+                Log.d("CalendarFragment", "WEEKLY: layoutActivities clicked, opening popup")
+                onDayClick(dayData) 
+            }
             scrollView?.isClickable = true
             scrollView?.isFocusable = false
-            scrollView?.setOnClickListener { onDayClick(dayData) }
+            scrollView?.setOnClickListener { 
+                Log.d("CalendarFragment", "WEEKLY: scrollView clicked, opening popup")
+                onDayClick(dayData) 
+            }
 
             cardView.setOnClickListener {
+                Log.d("CalendarFragment", "WEEKLY: Day card clicked, opening popup")
                 onDayClick(dayData)
             }
         }
@@ -1320,6 +1414,9 @@ inner class MonthViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) 
                     textSize = 12f
                     setTextColor(activity.color)
                     setPadding(8, 4, 8, 4)
+                    // Make TextView non-clickable so clicks bubble up to cardView
+                    isClickable = false
+                    isFocusable = false
                 }
                 layoutActivities.addView(activityText)
 
@@ -1346,15 +1443,35 @@ inner class MonthViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) 
             cardView.strokeWidth = 0
         }
 
-        // Ensure taps anywhere (including inside the ScrollView) open the popup
+        // Copy weekly approach EXACTLY - set click listeners on ALL views
         layoutActivities.isClickable = true
         layoutActivities.isFocusable = false
-        layoutActivities.setOnClickListener { onMonthClick(monthData) }
+        layoutActivities.setOnClickListener { 
+            Log.d("CalendarFragment", "YEARLY: layoutActivities clicked: ${monthNames[month]}")
+            onMonthClick(monthData) 
+        }
+        
         scrollView?.isClickable = true
         scrollView?.isFocusable = false
-        scrollView?.setOnClickListener { onMonthClick(monthData) }
+        scrollView?.setOnClickListener { 
+            Log.d("CalendarFragment", "YEARLY: scrollView clicked: ${monthNames[month]}")
+            onMonthClick(monthData) 
+        }
+        
+        tvMonthName.isClickable = true
+        tvMonthName.setOnClickListener {
+            Log.d("CalendarFragment", "YEARLY: tvMonthName clicked: ${monthNames[month]}")
+            onMonthClick(monthData)
+        }
+        
+        tvTotal.isClickable = true
+        tvTotal.setOnClickListener {
+            Log.d("CalendarFragment", "YEARLY: tvTotal clicked: ${monthNames[month]}")
+            onMonthClick(monthData)
+        }
 
         cardView.setOnClickListener {
+            Log.d("CalendarFragment", "YEARLY: cardView clicked: ${monthNames[month]}")
             onMonthClick(monthData)
         }
     }
@@ -1430,6 +1547,7 @@ inner class HourViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         layoutActivities.isFocusable = false
 
         cardView.setOnClickListener {
+            Log.d("CalendarFragment", "DAILY: Hour card clicked, opening popup")
             onHourClick(hourData)
         }
     }

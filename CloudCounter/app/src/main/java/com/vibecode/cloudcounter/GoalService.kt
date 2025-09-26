@@ -120,6 +120,9 @@ class GoalService(private val application: Application) {
                         kotlin.math.max(0, goal.currentBowls - reverseAmount)
                     } else goal.currentBowls
 
+                    Log.d(TAG, "🎯↩️ Goal ${goal.goalId} reversal: ${goal.currentJoints}→${newJoints} joints, ${goal.currentCones}→${newCones} cones, ${goal.currentBowls}→${newBowls} bowls")
+                    Log.d(TAG, "🎯↩️ Goal ${goal.goalId} targets: ${goal.targetJoints} joints, ${goal.targetCones} cones, ${goal.targetBowls} bowls, targetValue=${goal.targetValue}, currentValue=${goal.currentValue}")
+
                     val smokerProgress = try {
                         val progressMap: MutableMap<String, SmokerProgress> = if (goal.smokerProgress.isNotEmpty()) {
                             gson.fromJson(goal.smokerProgress, object : TypeToken<Map<String, SmokerProgress>>() {}.type)
@@ -299,7 +302,9 @@ class GoalService(private val application: Application) {
     private suspend fun reverseSingleGoalForSelectedActivity(goalId: Long) {
         val goal = goalDao.getGoalById(goalId) ?: return
         val newValue = kotlin.math.max(0, goal.currentValue - 1)
+        Log.d(TAG, "🎯↩️ SELECTED goal ${goalId} reversal: currentValue ${goal.currentValue}→${newValue}, targetValue=${goal.targetValue}")
         goalDao.updateGoalCurrentValue(goalId, newValue)
+        Log.d(TAG, "🎯↩️ SELECTED goal ${goalId} currentValue updated to ${newValue}")
     }
 
     private fun shouldGoalBeAffected(

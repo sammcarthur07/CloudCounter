@@ -252,19 +252,19 @@ class ActivityRepository(
         onReverseGoal: (suspend (ActivityLog, Smoker) -> Unit)? = null,
         onRestoreStash: (suspend (ActivityLog, Smoker) -> Unit)? = null
     ) {
-        // Get smoker for callbacks
+        // Get smoker for callbacks BEFORE deletion
         val smoker = smokerDao.getSmokerById(log.smokerId)
         
+        // Delete the activity FIRST so it's not included in recalculations
+        delete(log)
+        
         if (smoker != null) {
-            // Execute goal reversal callback if provided
+            // Execute goal reversal callback after deletion
             onReverseGoal?.invoke(log, smoker)
             
-            // Execute stash restoration callback if provided
+            // Execute stash restoration callback after deletion  
             onRestoreStash?.invoke(log, smoker)
         }
-        
-        // Now proceed with regular deletion
-        delete(log)
     }
     
     suspend fun delete(log: ActivityLog) {

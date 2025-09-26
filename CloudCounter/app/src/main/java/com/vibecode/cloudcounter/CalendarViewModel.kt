@@ -21,7 +21,7 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     private val activityLogDao = appDatabase.activityLogDao()
     private val smokerDao = appDatabase.smokerDao()
     private val customActivityManager = CustomActivityManager(application)
-    private val repository = ActivityRepository(
+    val repository = ActivityRepository(
         activityLogDao = appDatabase.activityLogDao(),
         smokerDao = appDatabase.smokerDao(),
         summaryDao = appDatabase.sessionSummaryDao(),
@@ -619,5 +619,26 @@ class CalendarViewModel(application: Application) : AndroidViewModel(application
     
     suspend fun getSmokersMap(): Map<Long, Smoker> {
         return smokerDao.getAllSmokersList().associateBy { it.smokerId }
+    }
+    
+    /** Delete session summaries that match the given timestamp/sessionId */
+    suspend fun deleteSessionSummary(sessionTimestamp: Long) {
+        val sessionSummaryDao = appDatabase.sessionSummaryDao()
+        
+        // First try to find by timestamp (sessionId in ActivityLog is actually a timestamp)
+        val allSummaries = sessionSummaryDao.getAllSummariesSync()
+        val matchingSummaries = allSummaries.filter { summary ->
+            // Check if the timestamp matches or is very close (within 10 seconds)
+            kotlin.math.abs(summary.timestamp - sessionTimestamp) < 10000
+        }
+        
+        if (matchingSummaries.isNotEmpty()) {
+            matchingSummaries.forEach { summary ->
+                sessionSummaryDao.delete(summary)
+                android.util.Log.d("CalendarViewModel", "Deleted session summary ID ${summary.id} with timestamp ${summary.timestamp}")
+            }
+        } else {
+            android.util.Log.d("CalendarViewModel", "No session summary found for timestamp: $sessionTimestamp")
+        }
     }
 }

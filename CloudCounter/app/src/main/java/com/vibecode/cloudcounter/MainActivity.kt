@@ -2601,6 +2601,16 @@ class MainActivity : AppCompatActivity() {
                         currentSmokerName = smoker.name
                     )
                 } else {
+                    // For regular activities, try the new selected activity system first
+                    goalService.reverseGoalProgressForSelectedActivity(
+                        activityType = activityLog.type,
+                        customActivityId = null,
+                        customActivityName = null,
+                        sessionShareCode = sessionShareCode,
+                        currentSmokerName = smoker.name
+                    )
+                    
+                    // Also try the legacy system for backwards compatibility
                     goalService.reverseGoalProgressForActivity(
                         activityType = activityLog.type,
                         sessionShareCode = sessionShareCode,
@@ -2622,6 +2632,53 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "📦✅ CalendarViewModel: Stash restored successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "📦❌ CalendarViewModel: Error restoring stash: ${e.message}", e)
+            }
+        }
+        
+        // Setup HistoryViewModel callbacks for goal and stash handling
+        HistoryViewModel.onReverseGoal = { activityLog, smoker, sessionShareCode ->
+            Log.d(TAG, "🎯 HistoryViewModel: Reversing goal progress for ${activityLog.type} by ${smoker.name}")
+            try {
+                if (activityLog.type == ActivityType.CUSTOM && !activityLog.customActivityId.isNullOrEmpty()) {
+                    goalService.reverseGoalProgressForSelectedActivity(
+                        activityType = activityLog.type,
+                        customActivityId = activityLog.customActivityId,
+                        customActivityName = activityLog.customActivityName,
+                        sessionShareCode = sessionShareCode,
+                        currentSmokerName = smoker.name
+                    )
+                } else {
+                    // For regular activities, try the new selected activity system first
+                    goalService.reverseGoalProgressForSelectedActivity(
+                        activityType = activityLog.type,
+                        customActivityId = null,
+                        customActivityName = null,
+                        sessionShareCode = sessionShareCode,
+                        currentSmokerName = smoker.name
+                    )
+                    
+                    // Also try the legacy system for backwards compatibility
+                    goalService.reverseGoalProgressForActivity(
+                        activityType = activityLog.type,
+                        sessionShareCode = sessionShareCode,
+                        smokerName = smoker.name
+                    )
+                }
+                Log.d(TAG, "🎯✅ HistoryViewModel: Goal progress reversed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯❌ HistoryViewModel: Error reversing goal progress: ${e.message}", e)
+            }
+        }
+        
+        HistoryViewModel.onRestoreStash = { activityLog, smoker ->
+            Log.d(TAG, "📦 HistoryViewModel: Restoring stash for ${activityLog.type} by ${smoker.name}")
+            try {
+                withContext(Dispatchers.Main) {
+                    stashViewModel.undoStashConsumption(activityLog, smoker.name)
+                }
+                Log.d(TAG, "📦✅ HistoryViewModel: Stash restored successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "📦❌ HistoryViewModel: Error restoring stash: ${e.message}", e)
             }
         }
 

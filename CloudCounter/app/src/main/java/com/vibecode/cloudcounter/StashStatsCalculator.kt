@@ -338,7 +338,10 @@ class StashStatsCalculator(
             val keep = when (dataScope) {
                 DataScope.MY_STASH -> {
                     // MY_STASH: Activities where I paid (null) or explicitly me
-                    activity.payerStashOwnerId == null || activity.payerStashOwnerId == currentUserId
+                    // ALSO include "their_stash" activities in session context to show live consumption during sessions
+                    activity.payerStashOwnerId == null || 
+                    activity.payerStashOwnerId == currentUserId ||
+                    activity.payerStashOwnerId == "their_stash"
                 }
                 DataScope.THEIR_STASH -> {
                     // THEIR_STASH: Activities marked as "their_stash"

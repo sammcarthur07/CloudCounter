@@ -20,6 +20,11 @@ sealed class HistoryItem {
 
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        var onReverseGoal: (suspend (ActivityLog, Smoker, String?) -> Unit)? = null
+        var onRestoreStash: (suspend (ActivityLog, Smoker) -> Unit)? = null
+    }
+
     private val repository = (application as CloudCounterApplication).repository
 
     private val logsSource: LiveData<List<ActivityLog>> =
@@ -80,8 +85,26 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteLog(log: ActivityLog) {
         viewModelScope.launch(Dispatchers.IO) {
-            // Repository handles both local and cloud deletion
-            repository.delete(log)
+            android.util.Log.d("HistoryViewModel", "🗑️ Deleting activity with callbacks: ${log.type}")
+            
+            // Get session share code if available
+            val prefs = getApplication<CloudCounterApplication>().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+            val sessionShareCode = if (log.sessionId != null && log.sessionId != 0L) {
+                prefs.getString("currentShareCode", null)
+            } else null
+            
+            // Use deleteWithCallbacks to handle goal and stash reversal
+            repository.deleteWithCallbacks(
+                log = log,
+                onReverseGoal = if (onReverseGoal != null) { activityLog, smoker ->
+                    android.util.Log.d("HistoryViewModel", "🎯 Reversing goal progress for ${activityLog.type} by ${smoker.name}")
+                    onReverseGoal?.invoke(activityLog, smoker, sessionShareCode)
+                } else null,
+                onRestoreStash = if (onRestoreStash != null) { activityLog, smoker ->
+                    android.util.Log.d("HistoryViewModel", "📦 Restoring stash for ${activityLog.type} by ${smoker.name}")
+                    onRestoreStash?.invoke(activityLog, smoker)
+                } else null
+            )
         }
     }
     
@@ -98,20 +121,29 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             android.util.Log.d("HistoryViewModel", "🗑️   - Session ID: ${log.sessionId ?: "null"}")
             android.util.Log.d("HistoryViewModel", "🗑️   - Timestamp: ${log.timestamp}")
             
-            // First, delete from local database
-            android.util.Log.d("HistoryViewModel", "🗑️ Deleting from local database...")
-            repository.delete(log)
-            android.util.Log.d("HistoryViewModel", "🗑️   ✅ Deleted from local database")
+            // Get session share code if available
+            val prefs = getApplication<CloudCounterApplication>().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+            val sessionShareCode = if (log.sessionId != null && log.sessionId != 0L) {
+                prefs.getString("currentShareCode", null)
+            } else null
             
-            // Also ensure it's removed from any active cloud room if in a session
-            if (log.sessionId != null && log.sessionId != 0L) {
-                val prefs = getApplication<CloudCounterApplication>().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
-                val currentShareCode = prefs.getString("currentShareCode", null)
-                
-                if (!currentShareCode.isNullOrEmpty()) {
-                    android.util.Log.d("HistoryViewModel", "🗑️ Activity is part of cloud room: $currentShareCode")
-                    // Additional cloud room cleanup could go here if needed
-                }
+            // Delete with callbacks to handle goal and stash reversal
+            android.util.Log.d("HistoryViewModel", "🗑️ Deleting from local database with callbacks...")
+            repository.deleteWithCallbacks(
+                log = log,
+                onReverseGoal = if (onReverseGoal != null) { activityLog, smoker ->
+                    android.util.Log.d("HistoryViewModel", "🎯 Reversing goal progress for ${activityLog.type} by ${smoker.name}")
+                    onReverseGoal?.invoke(activityLog, smoker, sessionShareCode)
+                } else null,
+                onRestoreStash = if (onRestoreStash != null) { activityLog, smoker ->
+                    android.util.Log.d("HistoryViewModel", "📦 Restoring stash for ${activityLog.type} by ${smoker.name}")
+                    onRestoreStash?.invoke(activityLog, smoker)
+                } else null
+            )
+            android.util.Log.d("HistoryViewModel", "🗑️   ✅ Deleted from local database with callbacks")
+            
+            if (!sessionShareCode.isNullOrEmpty()) {
+                android.util.Log.d("HistoryViewModel", "🗑️ Activity was part of cloud room: $sessionShareCode")
             }
             
             android.util.Log.d("HistoryViewModel", "🗑️ ========== SINGLE ACTIVITY DELETION COMPLETE ==========")
@@ -167,13 +199,29 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             
             android.util.Log.d("HistoryViewModel", "🗑️ Total unique activities to delete: ${sessionActivities.size}")
             
-            // Delete each activity (repository handles both local and cloud deletion)
+            // Get session share code if available
+            val prefs = getApplication<CloudCounterApplication>().getSharedPreferences("sesh", android.content.Context.MODE_PRIVATE)
+            val sessionShareCode = if (summary.timestamp != 0L) {
+                prefs.getString("currentShareCode", null)
+            } else null
+            
+            // Delete each activity with callbacks for goal and stash reversal
             sessionActivities.forEach { activity ->
                 android.util.Log.d("HistoryViewModel", "🗑️ Deleting activity ${activity.id}: ${activity.type} at ${activity.timestamp}")
                 
-                // Repository.delete() handles both local and cloud deletion
-                repository.delete(activity)
-                android.util.Log.d("HistoryViewModel", "🗑️   ✅ Deleted activity ${activity.id}")
+                // Use deleteWithCallbacks to handle goal and stash reversal
+                repository.deleteWithCallbacks(
+                    log = activity,
+                    onReverseGoal = if (onReverseGoal != null) { activityLog, smoker ->
+                        android.util.Log.d("HistoryViewModel", "🎯 Reversing goal progress for ${activityLog.type} by ${smoker.name}")
+                        onReverseGoal?.invoke(activityLog, smoker, sessionShareCode)
+                    } else null,
+                    onRestoreStash = if (onRestoreStash != null) { activityLog, smoker ->
+                        android.util.Log.d("HistoryViewModel", "📦 Restoring stash for ${activityLog.type} by ${smoker.name}")
+                        onRestoreStash?.invoke(activityLog, smoker)
+                    } else null
+                )
+                android.util.Log.d("HistoryViewModel", "🗑️   ✅ Deleted activity ${activity.id} with callbacks")
             }
             
             // Delete the summary itself (repository handles both local and cloud deletion)
