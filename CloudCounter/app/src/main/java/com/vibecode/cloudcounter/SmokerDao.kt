@@ -7,34 +7,34 @@ import androidx.room.*
 @Dao
 interface SmokerDao {
 
-    @Query("SELECT * FROM smokers ORDER BY displayOrder ASC, name ASC")
+    @Query("SELECT * FROM smokers WHERE isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
     fun getAllSmokers(): LiveData<List<Smoker>>
 
-    @Query("SELECT * FROM smokers ORDER BY displayOrder ASC, name ASC")
+    @Query("SELECT * FROM smokers WHERE isDeleted = 0 ORDER BY displayOrder ASC, name ASC")
     suspend fun getAllSmokersList(): List<Smoker>
 
     @Query("SELECT * FROM smokers WHERE smokerId = :id")
     suspend fun getSmokerById(id: Long): Smoker?
 
-    @Query("SELECT * FROM smokers WHERE name = :name LIMIT 1")
+    @Query("SELECT * FROM smokers WHERE name = :name AND isDeleted = 0 LIMIT 1")
     suspend fun getSmokerByName(name: String): Smoker?
 
-    @Query("SELECT * FROM smokers WHERE name = :name")
+    @Query("SELECT * FROM smokers WHERE name = :name AND isDeleted = 0")
     suspend fun getAllSmokersByName(name: String): List<Smoker>
 
-    @Query("SELECT * FROM smokers WHERE cloudUserId = :cloudUserId LIMIT 1")
+    @Query("SELECT * FROM smokers WHERE cloudUserId = :cloudUserId AND isDeleted = 0 LIMIT 1")
     suspend fun getSmokerByCloudUserId(cloudUserId: String): Smoker?
 
-    @Query("SELECT * FROM smokers WHERE shareCode = :shareCode LIMIT 1")
+    @Query("SELECT * FROM smokers WHERE shareCode = :shareCode AND isDeleted = 0 LIMIT 1")
     suspend fun getSmokerByShareCode(shareCode: String): Smoker?
 
     @Query("SELECT * FROM smokers WHERE smokerId IN (:smokerIds) AND isCloudSmoker = 1")
     suspend fun getCloudSmokersByIds(smokerIds: List<Long>): List<Smoker>
 
-    @Query("SELECT * FROM smokers WHERE uid = :uid LIMIT 1")
+    @Query("SELECT * FROM smokers WHERE uid = :uid AND isDeleted = 0 LIMIT 1")
     suspend fun getSmokerByUid(uid: String): Smoker?
 
-    @Query("SELECT * FROM smokers WHERE needsSync = 1")
+    @Query("SELECT * FROM smokers WHERE needsSync = 1 AND isDeleted = 0")
     suspend fun getSmokersNeedingSync(): List<Smoker>
 
     @Insert
@@ -61,14 +61,32 @@ interface SmokerDao {
     @Query("UPDATE smokers SET passwordHash = :passwordHash WHERE smokerId = :smokerId")
     suspend fun updateSmokerPassword(smokerId: Long, passwordHash: String?)
 
-    @Query("SELECT * FROM smokers WHERE cloudUserId = :cloudId LIMIT 1")
+    @Query("SELECT * FROM smokers WHERE cloudUserId = :cloudId AND isDeleted = 0 LIMIT 1")
     fun getSmokerByCloudIdSync(cloudId: String): Smoker?
 
     @Query("UPDATE smokers SET displayOrder = :order WHERE smokerId = :smokerId")
     suspend fun updateDisplayOrder(smokerId: Long, order: Int)
     
-    @Query("SELECT MAX(displayOrder) FROM smokers")
+    @Query("SELECT MAX(displayOrder) FROM smokers WHERE isDeleted = 0")
     suspend fun getMaxDisplayOrder(): Int?
+
+    @Query("SELECT * FROM smokers WHERE name = :name LIMIT 1")
+    suspend fun getSmokerByNameIncludingDeleted(name: String): Smoker?
+    
+    @Query("SELECT COUNT(*) FROM smokers WHERE isDeleted = 0")
+    suspend fun getActiveSmokersCount(): Int
+    
+    @Query("UPDATE smokers SET isDeleted = 1, deletedAt = :deletedAt WHERE smokerId = :smokerId")
+    suspend fun softDeleteSmoker(smokerId: Long, deletedAt: Long = System.currentTimeMillis())
+    
+    @Query("UPDATE smokers SET isDeleted = 0, deletedAt = NULL WHERE smokerId = :smokerId")
+    suspend fun reactivateSmoker(smokerId: Long)
+    
+    @Query("DELETE FROM smokers WHERE isDeleted = 1 AND deletedAt < :cutoffTime")
+    suspend fun purgeOldSoftDeletedSmokers(cutoffTime: Long)
+    
+    @Query("SELECT * FROM smokers WHERE smokerId IN (:smokerIds)")
+    suspend fun getSmokersByIdsIncludingDeleted(smokerIds: List<Long>): List<Smoker>
 
     @Transaction
     suspend fun upsert(smoker: Smoker) {

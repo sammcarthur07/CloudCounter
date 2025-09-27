@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 27, // Changed from 26 to 27 for custom ratio fields
+    version = 28, // Changed from 27 to 28 for soft delete fields
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -475,6 +475,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 27 to 28 - Adding soft delete fields")
+                
+                // Add soft delete fields to smokers table
+                database.execSQL("ALTER TABLE smokers ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE smokers ADD COLUMN deletedAt INTEGER")
+                
+                Log.d("Migration", "Migration 27 to 28 completed successfully")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -501,7 +513,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_23_24,  // Added custom activities migration
                         MIGRATION_24_25,  // Added session activity breakdown
                         MIGRATION_25_26,  // Added session isActive field
-                        MIGRATION_26_27   // Added custom ratio fields
+                        MIGRATION_26_27,  // Added custom ratio fields
+                        MIGRATION_27_28   // Added soft delete fields
                     )
                     .fallbackToDestructiveMigration()
                     .build()

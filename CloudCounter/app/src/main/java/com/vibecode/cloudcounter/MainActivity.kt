@@ -41,6 +41,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Deferred
 import android.widget.Button
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
@@ -326,11 +329,22 @@ class MainActivity : AppCompatActivity() {
     private var lastLoadedSummary: SessionSummary? = null
     private var pendingResumeSummary: SessionSummary? = null // For safe end->resume handoff
 
-    // Prevent rapid clicks
-    private var isLoggingHit = false
-    private val hitLoggingLock = Any()
-    private var lastHitTime = 0L
-    private val MIN_HIT_INTERVAL_MS = 500L
+    // Activity queue for handling rapid clicks
+    data class QueuedActivity(
+        val type: ActivityType,
+        val timestamp: Long,
+        val smoker: Smoker,
+        val customActivity: CustomActivity? = null
+    )
+    
+    private val activityQueue = mutableListOf<QueuedActivity>()
+    private val queueLock = Any()
+    private var isProcessingQueue = false
+    private var isOptimisticMode = false // Prevent DB overwrites during batch processing
+    private var justRotatedFromUI = false // Prevent double rotation from room sync
+    
+    // Optimistic UI update tracking
+    private val optimisticCounts = mutableMapOf<String, MutableMap<ActivityType, Int>>()
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -1957,11 +1971,13 @@ class MainActivity : AppCompatActivity() {
                             lastSelectedActivityButton = button as Button
                             
                             // Your existing code
+                            Log.d(TAG, "📱 BUTTON: Activity button clicked - type: $activityType, timestamp: ${System.currentTimeMillis()}")
                             confettiHelper.showConfettiFromButton(button)
                             
                             // Track countdown timing when activity is logged
                             val now = System.currentTimeMillis()
                             countdownStartTime = now
+                            Log.d(TAG, "📱 BUTTON: Calling logHitSafe for $activityType")
                             
                             logHitSafe(activityType)
                         }
@@ -2865,6 +2881,18 @@ class MainActivity : AppCompatActivity() {
         repo.allSmokers.observe(this) { list ->
             handleSmokersListUpdate(list)
         }
+        
+        // Auto-purge soft-deleted smokers older than 30 days
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val cutoffTime = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000) // 30 days
+                val smokerDao = AppDatabase.getDatabase(this@MainActivity).smokerDao()
+                smokerDao.purgeOldSoftDeletedSmokers(cutoffTime)
+                Log.d(TAG, "Auto-purged soft-deleted smokers older than 30 days")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during auto-purge: ${e.message}", e)
+            }
+        }
 
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             private var isFirstSelection = true
@@ -2900,6 +2928,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSmokersListUpdate(list: List<Smoker>) {
+        Log.d("MainActivity", "📋 handleSmokersListUpdate: ${list.size} smokers")
+        Log.d("MainActivity", "📋 Smokers: ${list.map { "${it.name}(id:${it.smokerId},deleted:${it.isDeleted})" }}")
+        
         val app = application as CloudCounterApplication
         val previous = app.defaultSmokerId
 
@@ -3107,8 +3138,23 @@ class MainActivity : AppCompatActivity() {
             onSmokerAdded = { smoker ->
                 Log.d("WELCOME_DEBUG", "🎯 onSmokerAdded called - smoker: ${smoker.name}, isCloud: ${smoker.isCloudSmoker}")
                 lifecycleScope.launch(Dispatchers.IO) {
-                    repo.insertOrUpdateSmoker(smoker)
-                    Log.d("WELCOME_DEBUG", "✅ Smoker inserted/updated in DB")
+                    try {
+                        repo.insertOrUpdateSmoker(smoker)
+                        Log.d("WELCOME_DEBUG", "✅ Smoker inserted/updated in DB")
+                    } catch (e: IllegalStateException) {
+                        if (e.message?.contains("Maximum 50 active smokers") == true) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Maximum 50 active smokers reached. Please delete unused smokers first.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            return@launch
+                        } else {
+                            throw e
+                        }
+                    }
                     
                     // Check if this is the first cloud smoker and show welcome screen
                     Log.d("WELCOME_DEBUG", "🔍 Checking if smoker is cloud smoker: ${smoker.isCloudSmoker}")
@@ -3751,11 +3797,13 @@ class MainActivity : AppCompatActivity() {
             lastSelectedActivityButton = button
             
             // Show confetti
+            Log.d(TAG, "📱 BUTTON: Custom activity button clicked - name: ${activity.name}, timestamp: ${System.currentTimeMillis()}")
             confettiHelper.showConfettiFromButton(button)
             
             // Track countdown timing
             val now = System.currentTimeMillis()
             countdownStartTime = now
+            Log.d(TAG, "📱 BUTTON: Calling handleCustomActivityClick for ${activity.name}")
             
             handleCustomActivityClick(activity)
         }
@@ -4357,8 +4405,9 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun logCustomActivitySafe(activity: CustomActivity) {
-        Log.d("CUSTOM_ACTIVITY", "🎯 logCustomActivitySafe called - activity: ${activity.name}")
-        Log.d("CUSTOM_ACTIVITY", "🎯 Session state - active: $sessionActive, start: $sessionStart")
+        Log.d("CUSTOM_ACTIVITY", "📱 === CUSTOM BUTTON PRESS DETECTED ===")
+        Log.d("CUSTOM_ACTIVITY", "📱 logCustomActivitySafe called - activity: ${activity.name}")
+        Log.d("CUSTOM_ACTIVITY", "📱 Session state - active: $sessionActive, start: $sessionStart")
         
         if (smokers.isEmpty()) {
             Log.d("CUSTOM_ACTIVITY", "🎯 No smokers exist - showing add smoker dialog")
@@ -4385,83 +4434,31 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
+        // NO MORE THROTTLING for custom activities
         val now = System.currentTimeMillis()
-        synchronized(hitLoggingLock) {
-            if (isLoggingHit || now - lastHitTime < MIN_HIT_INTERVAL_MS) return
-            isLoggingHit = true
-            lastHitTime = now
-        }
         
         val selectedPosition = binding.spinnerSmoker.selectedItemPosition
         val organizedSmokers = organizeSmokers().flatMap { it.smokers }
         val capturedSmoker = organizedSmokers.getOrNull(selectedPosition)
         
         if (capturedSmoker == null) {
-            synchronized(hitLoggingLock) { isLoggingHit = false }
             Toast.makeText(this, "Please select a valid smoker!", Toast.LENGTH_SHORT).show()
             return
         }
         
-        lifecycleScope.launch {
-            try {
-                val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
-                val currentStash = stashViewModel.currentStash.value
-                val ratios = stashViewModel.ratios.value
-                
-                if (currentStash != null && ratios != null) {
-                    // Custom activities use joint ratios for stash deduction
-                    val requiredGrams = ratios.jointGrams
-                    
-                    val currentSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
-                    val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
-                    
-                    var switchedToTheirStash = false
-                    
-                    when (currentSource) {
-                        StashSource.MY_STASH -> {
-                            if (currentStash.currentGrams < requiredGrams) {
-                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
-                                switchedToTheirStash = true
-                                Log.d("CUSTOM_ACTIVITY", "🎯 Auto-switched to Their Stash due to insufficient My Stash")
-                            }
-                        }
-                        StashSource.EACH_TO_OWN -> {
-                            val isCurrentUser = (capturedSmoker.isCloudSmoker && capturedSmoker.cloudUserId == currentUserId) ||
-                                    (!capturedSmoker.isCloudSmoker && capturedSmoker.uid == currentUserId)
-                            
-                            if (isCurrentUser && currentStash.currentGrams < requiredGrams) {
-                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
-                                switchedToTheirStash = true
-                                Log.d("CUSTOM_ACTIVITY", "🎯 Auto-switched to Their Stash for current user in Each-to-Own mode")
-                            }
-                        }
-                        StashSource.THEIR_STASH -> {
-                            Log.d("CUSTOM_ACTIVITY", "🎯 Already on Their Stash, no switch needed")
-                        }
-                    }
-                    
-                    if (switchedToTheirStash) {
-                        withContext(Dispatchers.Main) {
-                            supportFragmentManager.fragments
-                                .filterIsInstance<StashFragment>()
-                                .firstOrNull()?.let { fragment ->
-                                    fragment.setAttributionRadioSilently(StashSource.THEIR_STASH)
-                                }
-                        }
-                        delay(100)
-                    }
-                }
-                
-                val finalStashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
-                Log.d("CUSTOM_ACTIVITY", "🎯 CRITICAL: Final stash source before logging: $finalStashSource")
-                
-                proceedWithCustomActivityLog(activity, now, finalStashSource, capturedSmoker)
-            } catch (e: Exception) {
-                Log.e("CUSTOM_ACTIVITY", "Error in logCustomActivitySafe", e)
-            } finally {
-                synchronized(hitLoggingLock) { isLoggingHit = false }
-            }
+        // Add custom activity to queue
+        synchronized(queueLock) {
+            val queuedActivity = QueuedActivity(ActivityType.CUSTOM, now, capturedSmoker, activity)
+            activityQueue.add(queuedActivity)
+            Log.d("CUSTOM_ACTIVITY", "📱 Added custom to queue: ${activity.name} for ${capturedSmoker.name}, queue size: ${activityQueue.size}")
         }
+        
+        // Update UI optimistically for custom activity - treat as JOINT for display purposes
+        updateOptimisticUI(capturedSmoker.name, ActivityType.JOINT)
+        
+        // Process the queue
+        processActivityQueue()
+        return
     }
     
     private suspend fun proceedWithCustomActivityLog(
@@ -4615,8 +4612,11 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         } else {
-            // Local session - just refresh stats
-            refreshLocalSessionStatsIfNeeded()
+            // Local session - skip immediate refresh if processing queue
+            // Stats will be refreshed after all queued activities are processed
+            if (!isProcessingQueue) {
+                refreshLocalSessionStatsIfNeeded()
+            }
         }
         
         // Add to activity history for undo functionality
@@ -8913,11 +8913,13 @@ class MainActivity : AppCompatActivity() {
                                 // New condition: Recent activity from any smoker (for notification-triggered activities)
                                 (timeSinceActivity < 1000)
                             )
-                            if (shouldAdvance) {
+                            if (shouldAdvance && !justRotatedFromUI) {
                                 runOnUiThread {
-                                    Log.d(TAG, "🎧 Auto-advancing to next smoker from room sync (fromUI=$isFromUI, recent=${timeSinceActivity < 1000})")
+                                    Log.d(TAG, "🎧 Auto-advancing to next smoker from room sync (fromUI=$isFromUI, recent=${timeSinceActivity < 1000}, justRotated=$justRotatedFromUI)")
                                     moveToNextActiveSmoker()
                                 }
+                            } else if (shouldAdvance && justRotatedFromUI) {
+                                Log.d(TAG, "🎧 Skipping auto-advance - just rotated from UI")
                             }
 
                             // Reset flag if enough time has passed
@@ -9570,6 +9572,7 @@ class MainActivity : AppCompatActivity() {
                         val bowls = smokerActivities.count { it.type == ActivityType.BOWL }
                         
                         if (cones > 0 || joints > 0 || bowls > 0) {
+                            Log.d(TAG, "📊 STATS: Creating PerSmokerStats for ${smoker.name} - C:$cones, J:$joints, B:$bowls")
                             perSmokerList.add(PerSmokerStats(
                                 smokerName = smoker.name,
                                 totalCones = cones,
@@ -9581,7 +9584,7 @@ class MainActivity : AppCompatActivity() {
                             totalJoints += joints
                             totalBowls += bowls
                             
-                            Log.d(TAG, "🎯 ${smoker.name}: C=$cones, J=$joints, B=$bowls")
+                            Log.d(TAG, "📊 STATS: Total so far - C:$totalCones, J:$totalJoints, B:$totalBowls")
                         }
                     }
                     
@@ -9728,29 +9731,99 @@ class MainActivity : AppCompatActivity() {
     private fun deleteLocalSmoker(smoker: Smoker, keepData: Boolean) {
         lifecycleScope.launch(Dispatchers.IO) {
             Log.d(TAG, "🗑️ Deleting locally - Keep data: $keepData")
+            Log.d(TAG, "🗑️ Smoker: ${smoker.name}, ID: ${smoker.smokerId}, isCloud: ${smoker.isCloudSmoker}")
 
-            if (!keepData) {
-                // Delete all activity logs
-                val logs = repo.getLogsForSmoker(smoker.smokerId)
-                Log.d(TAG, "🗑️ Deleting ${logs.size} activity logs")
-                logs.forEach { log ->
-                    repo.delete(log)
+            val sessionDao = AppDatabase.getDatabase(this@MainActivity).sessionSummaryDao()
+            val smokerDao = AppDatabase.getDatabase(this@MainActivity).smokerDao()
+            
+            // Check if this smoker has participated in cloud sessions
+            val hasCloudParticipation = sessionDao.hasSmokerParticipatedInCloudSessions(smoker.name)
+            Log.d(TAG, "🗑️ Has cloud participation: $hasCloudParticipation")
+            
+            // Use soft delete for local smokers with cloud participation OR when keeping data
+            if ((hasCloudParticipation && !smoker.isCloudSmoker) || (keepData && !smoker.isCloudSmoker)) {
+                // Local smoker with cloud participation or keeping data - use soft delete
+                Log.d(TAG, "🗑️ Using SOFT DELETE for ${smoker.name}")
+                
+                smokerDao.softDeleteSmoker(smoker.smokerId)
+                
+                withContext(Dispatchers.Main) {
+                    val message = if (hasCloudParticipation) {
+                        "${smoker.name} removed (cloud data preserved)"
+                    } else {
+                        "${smoker.name} removed (historical data kept)"
+                    }
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Log.d(TAG, "🗑️ Keeping ${repo.getLogsForSmoker(smoker.smokerId).size} activity logs")
-            }
-
-            // Always delete the smoker entity
-            repo.deleteSmoker(smoker)
-            Log.d(TAG, "🗑️ ✅ Smoker deleted from local database")
-
-            withContext(Dispatchers.Main) {
-                val message = if (keepData) {
-                    "${smoker.name} removed (historical data kept)"
+                // No cloud participation or is a cloud smoker - proceed with hard delete
+                if (!keepData) {
+                    // Delete or update session summaries that include this smoker
+                    val allSummaries = sessionDao.getAllSummariesSync()
+                    var sessionsDeleted = 0
+                    var sessionsUpdated = 0
+                    
+                    Log.d(TAG, "🗑️ Checking ${allSummaries.size} session summaries for ${smoker.name}")
+                    
+                    for (summary in allSummaries) {
+                        if (summary.smokerNames.contains(smoker.name)) {
+                            if (summary.smokerNames.size == 1) {
+                                // Single smoker session - delete entirely
+                                sessionDao.delete(summary)
+                                sessionsDeleted++
+                                Log.d(TAG, "🗑️ Deleted session ${summary.id} (single smoker)")
+                            } else {
+                                // Multi-smoker session - remove this smoker from the list
+                                val updatedNames = summary.smokerNames.filter { name -> name != smoker.name }
+                                val smokerIndex = summary.smokerNames.indexOf(smoker.name)
+                                
+                                // Update cones per smoker list if index is valid
+                                val updatedConesPerSmoker = if (smokerIndex >= 0 && smokerIndex < summary.conesPerSmoker.size) {
+                                    summary.conesPerSmoker.filterIndexed { index, value -> index != smokerIndex }
+                                } else {
+                                    summary.conesPerSmoker
+                                }
+                                
+                                // Recalculate total cones
+                                val updatedTotalCones = updatedConesPerSmoker.sum()
+                                
+                                val updatedSummary = summary.copy(
+                                    smokerNames = updatedNames,
+                                    conesPerSmoker = updatedConesPerSmoker,
+                                    totalCones = updatedTotalCones
+                                )
+                                sessionDao.update(updatedSummary)
+                                sessionsUpdated++
+                                Log.d(TAG, "🗑️ Updated session ${summary.id} (removed ${smoker.name})")
+                            }
+                        }
+                    }
+                    
+                    Log.d(TAG, "🗑️ Sessions deleted: $sessionsDeleted, updated: $sessionsUpdated")
+                    
+                    // Delete all activity logs
+                    val logs = repo.getLogsForSmoker(smoker.smokerId)
+                    Log.d(TAG, "🗑️ Deleting ${logs.size} activity logs")
+                    logs.forEach { log ->
+                        repo.delete(log)
+                    }
                 } else {
-                    "${smoker.name} and all data deleted"
+                    Log.d(TAG, "🗑️ Keeping ${repo.getLogsForSmoker(smoker.smokerId).size} activity logs")
+                    Log.d(TAG, "🗑️ Keeping session summaries intact")
                 }
-                Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+
+                // Hard delete the smoker entity
+                repo.deleteSmoker(smoker)
+                Log.d(TAG, "🗑️ ✅ Smoker deleted from local database")
+
+                withContext(Dispatchers.Main) {
+                    val message = if (keepData) {
+                        "${smoker.name} removed (historical data kept)"
+                    } else {
+                        "${smoker.name} and all data deleted"
+                    }
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -9815,7 +9888,7 @@ class MainActivity : AppCompatActivity() {
         contentLayout.addView(titleText)
 
         val messageText = TextView(this).apply {
-            text = "What would you like to do?"
+            text = "What would you like to do?\n\n'Delete Everything' will remove all activities and session history"
             textSize = 14f
             setTextColor(Color.WHITE)
             gravity = android.view.Gravity.CENTER
@@ -10404,6 +10477,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun logHit(type: ActivityType, now: Long, customRatio: SmokeRatio? = null) {
+        Log.d(TAG, "📱 === logHit ENTRY ===")
+        Log.d(TAG, "📱 Activity type: $type, timestamp: $now")
+        Log.d(TAG, "📱 Thread: ${Thread.currentThread().name}")
         Log.d("CUSTOM_STASH_DEBUG", "🚀 === logHit ENTRY ===")
         Log.d("CUSTOM_STASH_DEBUG", "🚀 Activity type: $type")
         Log.d("CUSTOM_STASH_DEBUG", "🚀 Is custom type: ${type == ActivityType.CUSTOM}")
@@ -10885,8 +10961,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun refreshLocalSessionStatsIfNeeded(forceRefresh: Boolean = false) {
-        Log.d(TAG, "🔍 === refreshLocalSessionStatsIfNeeded CALLED ===")
-        Log.d(TAG, "🔍 Session active: $sessionActive, forceRefresh: $forceRefresh")
+        val timestamp = System.currentTimeMillis()
+        Log.d(TAG, "📊 === STATS REFRESH CALLED ===")
+        Log.d(TAG, "📊 refreshLocalSessionStatsIfNeeded at timestamp: $timestamp")
+        Log.d(TAG, "📊 Session active: $sessionActive, forceRefresh: $forceRefresh, isOptimisticMode: $isOptimisticMode")
+        Log.d(TAG, "📊 Thread: ${Thread.currentThread().name}")
+
+        // Don't refresh if in optimistic mode (batch processing)
+        if (isOptimisticMode && !forceRefresh) {
+            Log.d(TAG, "📊 Skipping stats refresh - in optimistic mode")
+            return
+        }
 
         // IMPORTANT: Don't refresh stats if session is not active
         if (!sessionActive) {
@@ -11785,9 +11870,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun logHitSafe(type: ActivityType) {
-        Log.d(TAG, "🎯 logHitSafe called - type: $type")
-        Log.d(TAG, "🎯 Session state - active: $sessionActive, start: $sessionStart")
-        Log.d(TAG, "🎯 Current smokers count: ${smokers.size}")
+        val timestamp = System.currentTimeMillis()
+        Log.d(TAG, "📱 === BUTTON PRESS DETECTED ===")
+        Log.d(TAG, "📱 logHitSafe called - type: $type at timestamp: $timestamp")
+        Log.d(TAG, "📱 Session state - active: $sessionActive, start: $sessionStart")
+        Log.d(TAG, "📱 Current smokers count: ${smokers.size}")
+        Log.d(TAG, "📱 Thread: ${Thread.currentThread().name}")
 
         if (smokers.isEmpty()) {
             Log.d(TAG, "🎯 No smokers exist - showing add smoker dialog")
@@ -11801,10 +11889,10 @@ class MainActivity : AppCompatActivity() {
 
         if (!sessionActive) {
             Log.w(TAG, "🎯 WARNING: Activity logged without active session!")
-
+            
             // Store the pending activity type
             pendingActivityType = type
-
+            
             // If no cloud smokers, show the new popup directly
             if (!hasCloudSmokers) {
                 Log.d(TAG, "🎯 No cloud smokers - showing no cloud user popup")
@@ -11816,101 +11904,317 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // NO MORE THROTTLING - process every click
         val now = System.currentTimeMillis()
-        synchronized(hitLoggingLock) {
-            if (isLoggingHit || now - lastHitTime < MIN_HIT_INTERVAL_MS) return
-            isLoggingHit = true
-            lastHitTime = now
-        }
-
+        
         val selectedPosition = binding.spinnerSmoker.selectedItemPosition
         val organizedSmokers = organizeSmokers().flatMap { it.smokers }
         val capturedSmoker = organizedSmokers.getOrNull(selectedPosition)
-
+        
         if (capturedSmoker == null) {
-            synchronized(hitLoggingLock) { isLoggingHit = false }
             Toast.makeText(this, "Please select a valid smoker!", Toast.LENGTH_SHORT).show()
             return
         }
-
+        
+        // Add to queue instead of processing immediately
+        synchronized(queueLock) {
+            val queuedActivity = QueuedActivity(type, now, capturedSmoker, null)
+            activityQueue.add(queuedActivity)
+            Log.d(TAG, "📱 Added to queue: $type for ${capturedSmoker.name}, queue size: ${activityQueue.size}")
+        }
+        
+        // Update UI optimistically for immediate feedback
+        updateOptimisticUI(capturedSmoker.name, type)
+        
+        // IMMEDIATELY rotate to next smoker if auto mode is on (before processing)
+        if (isAutoMode && smokers.size > 1 && type != ActivityType.BOWL) {
+            Log.d(TAG, "📱 Immediately rotating to next smoker")
+            justRotatedFromUI = true
+            moveToNextActiveSmoker()
+            // Reset flag after a short delay
+            handler.postDelayed({
+                justRotatedFromUI = false
+            }, 500)
+        }
+        
+        // Process the queue
+        processActivityQueue()
+    }
+    
+    private fun updateOptimisticUI(smokerName: String, type: ActivityType) {
+        // Update optimistic counts
+        val smokerCounts = optimisticCounts.getOrPut(smokerName) { mutableMapOf() }
+        smokerCounts[type] = (smokerCounts[type] ?: 0) + 1
+        
+        // Immediately update the UI with optimistic counts
+        val currentStats = sessionStatsVM.perSmokerStats.value ?: emptyList()
+        val updatedStats = currentStats.map { stat ->
+            if (stat.smokerName == smokerName) {
+                when (type) {
+                    ActivityType.CONE -> stat.copy(totalCones = stat.totalCones + 1)
+                    ActivityType.JOINT -> stat.copy(totalJoints = stat.totalJoints + 1)
+                    ActivityType.BOWL -> stat.copy(totalBowls = stat.totalBowls + 1)
+                    ActivityType.CIGARETTE -> stat.copy(totalCigarettes = stat.totalCigarettes + 1)
+                    else -> stat
+                }
+            } else {
+                stat
+            }
+        }.toMutableList()
+        
+        // If smoker not in list yet, add them
+        if (updatedStats.none { it.smokerName == smokerName }) {
+            val newStat = PerSmokerStats(
+                smokerName = smokerName,
+                totalCones = if (type == ActivityType.CONE) 1 else 0,
+                totalJoints = if (type == ActivityType.JOINT) 1 else 0,
+                totalBowls = if (type == ActivityType.BOWL) 1 else 0,
+                totalCigarettes = if (type == ActivityType.CIGARETTE) 1 else 0
+            )
+            updatedStats.add(newStat)
+        }
+        
+        // Update group stats optimistically
+        val currentGroup = sessionStatsVM.groupStats.value ?: GroupStats()
+        val updatedGroup = when (type) {
+            ActivityType.CONE -> currentGroup.copy(totalCones = currentGroup.totalCones + 1)
+            ActivityType.JOINT -> currentGroup.copy(totalJoints = currentGroup.totalJoints + 1)
+            ActivityType.BOWL -> currentGroup.copy(totalBowls = currentGroup.totalBowls + 1)
+            ActivityType.CIGARETTE -> currentGroup.copy(totalCigarettes = currentGroup.totalCigarettes + 1)
+            else -> currentGroup
+        }
+        
+        // Post updates to UI immediately using postValue for thread safety
+        Log.d(TAG, "📊 OPTIMISTIC UI: Updating stats for $smokerName - $type")
+        sessionStatsVM._perSmokerStats.postValue(updatedStats)
+        sessionStatsVM._groupStats.postValue(updatedGroup)
+        
+        // Force immediate UI refresh on main thread
+        runOnUiThread {
+            sessionStatsVM._perSmokerStats.value = updatedStats
+            sessionStatsVM._groupStats.value = updatedGroup
+        }
+    }
+    
+    // Batch update for multiple activities at once
+    private fun updateOptimisticUIBatch(activities: List<QueuedActivity>) {
+        if (activities.isEmpty()) return
+        
+        // Group activities by smoker and type for efficient counting
+        val countsBySmoker = activities.groupBy { it.smoker.name }
+            .mapValues { entry ->
+                entry.value.groupBy { it.type }
+                    .mapValues { it.value.size }
+            }
+        
+        // Update all stats at once
+        val currentStats = sessionStatsVM.perSmokerStats.value ?: emptyList()
+        val updatedStats = currentStats.map { stat ->
+            val counts = countsBySmoker[stat.smokerName]
+            if (counts != null) {
+                stat.copy(
+                    totalCones = stat.totalCones + (counts[ActivityType.CONE] ?: 0),
+                    totalJoints = stat.totalJoints + (counts[ActivityType.JOINT] ?: 0),
+                    totalBowls = stat.totalBowls + (counts[ActivityType.BOWL] ?: 0),
+                    totalCigarettes = stat.totalCigarettes + (counts[ActivityType.CIGARETTE] ?: 0)
+                )
+            } else {
+                stat
+            }
+        }.toMutableList()
+        
+        // Add new smokers if needed
+        countsBySmoker.forEach { (smokerName, counts) ->
+            if (updatedStats.none { it.smokerName == smokerName }) {
+                val newStat = PerSmokerStats(
+                    smokerName = smokerName,
+                    totalCones = counts[ActivityType.CONE] ?: 0,
+                    totalJoints = counts[ActivityType.JOINT] ?: 0,
+                    totalBowls = counts[ActivityType.BOWL] ?: 0,
+                    totalCigarettes = counts[ActivityType.CIGARETTE] ?: 0
+                )
+                updatedStats.add(newStat)
+            }
+        }
+        
+        // Update group stats
+        val totalCones = activities.count { it.type == ActivityType.CONE }
+        val totalJoints = activities.count { it.type == ActivityType.JOINT }
+        val totalBowls = activities.count { it.type == ActivityType.BOWL }
+        val totalCigarettes = activities.count { it.type == ActivityType.CIGARETTE }
+        
+        val currentGroup = sessionStatsVM.groupStats.value ?: GroupStats()
+        val updatedGroup = currentGroup.copy(
+            totalCones = currentGroup.totalCones + totalCones,
+            totalJoints = currentGroup.totalJoints + totalJoints,
+            totalBowls = currentGroup.totalBowls + totalBowls,
+            totalCigarettes = currentGroup.totalCigarettes + totalCigarettes
+        )
+        
+        // Update UI all at once
+        Log.d(TAG, "📊 OPTIMISTIC UI BATCH: Updated ${activities.size} activities")
+        runOnUiThread {
+            sessionStatsVM._perSmokerStats.value = updatedStats
+            sessionStatsVM._groupStats.value = updatedGroup
+        }
+    }
+    
+    private fun processActivityQueue() {
+        if (isProcessingQueue) {
+            Log.d(TAG, "📱 Already processing queue, skipping")
+            return
+        }
+        
         lifecycleScope.launch {
+            isProcessingQueue = true
+            isOptimisticMode = true // Prevent DB overwrites while processing
+            
             try {
-                val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
-                val currentStash = stashViewModel.currentStash.value
-                val ratios = stashViewModel.ratios.value
-
-                if (currentStash != null && ratios != null) {
-                    val requiredGrams = when (type) {
-                        ActivityType.CONE -> ratios.coneGrams
-                        ActivityType.JOINT -> ratios.jointGrams
-                        ActivityType.BOWL -> ratios.bowlGrams
-                        else -> 0.0
-                    }
-
-                    val currentSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
-                    val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
-
-                    var switchedToTheirStash = false
-
-                    when (currentSource) {
-                        StashSource.MY_STASH -> {
-                            if (currentStash.currentGrams < requiredGrams) {
-                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
-                                switchedToTheirStash = true
-                                Log.d(TAG, "🎯 Auto-switched to Their Stash due to insufficient My Stash")
-                            }
-                        }
-                        StashSource.EACH_TO_OWN -> {
-                            val isCurrentUser = (capturedSmoker.isCloudSmoker && capturedSmoker.cloudUserId == currentUserId) ||
-                                    (!capturedSmoker.isCloudSmoker && capturedSmoker.uid == currentUserId)
-
-                            if (isCurrentUser && currentStash.currentGrams < requiredGrams) {
-                                stashViewModel.updateStashSource(StashSource.THEIR_STASH)
-                                switchedToTheirStash = true
-                                Log.d(TAG, "🎯 Auto-switched to Their Stash for current user in Each-to-Own mode")
-                            }
-                        }
-                        StashSource.THEIR_STASH -> {
-                            Log.d(TAG, "🎯 Already on Their Stash, no switch needed")
+                val activeJobs = mutableListOf<Deferred<*>>()
+                
+                // Process activities continuously as they come in
+                while (true) {
+                    // Get next activity from queue (or multiple if available)
+                    val activitiesToProcess = synchronized(queueLock) {
+                        if (activityQueue.isEmpty()) {
+                            null
+                        } else {
+                            // Take up to 10 activities at once for efficiency
+                            val batch = activityQueue.take(minOf(10, activityQueue.size)).toList()
+                            activityQueue.removeAll(batch)
+                            batch
                         }
                     }
-
-                    if (switchedToTheirStash) {
-                        withContext(Dispatchers.Main) {
-                            supportFragmentManager.fragments
-                                .filterIsInstance<StashFragment>()
-                                .firstOrNull()?.let { fragment ->
-                                    fragment.setAttributionRadioSilently(StashSource.THEIR_STASH)
-                                }
+                    
+                    if (activitiesToProcess.isNullOrEmpty()) {
+                        // No more activities, but wait for any still processing
+                        if (activeJobs.isNotEmpty()) {
+                            Log.d(TAG, "📱 Waiting for ${activeJobs.size} activities to finish processing")
+                            activeJobs.awaitAll()
+                            activeJobs.clear()
                         }
-                        delay(100)
+                        break
+                    }
+                    
+                    Log.d(TAG, "📱 Processing ${activitiesToProcess.size} activities")
+                    
+                    // Launch processing for these activities
+                    val newJobs = activitiesToProcess.map { activity ->
+                        async {
+                            Log.d(TAG, "📱 Processing: ${activity.type} for ${activity.smoker.name}")
+                            processQueuedActivityWithoutAutoAdvance(activity)
+                        }
+                    }
+                    activeJobs.addAll(newJobs)
+                    
+                    // Don't wait here - continue checking for more activities
+                    // But also don't let too many accumulate
+                    if (activeJobs.size > 20) {
+                        // Wait for some to complete before continuing
+                        activeJobs.awaitAll()
+                        activeJobs.clear()
                     }
                 }
-
-                val finalStashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
-                Log.d(TAG, "🎯 CRITICAL: Final stash source before logging: $finalStashSource")
-
-                if (type == ActivityType.CONE && sessionActive) {
-                    val sessionActivities = withContext(Dispatchers.IO) {
-                        repo.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
-                    }
-
-                    val hasBowl = sessionActivities.any { it.type == ActivityType.BOWL }
-                    val hasCone = sessionActivities.any { it.type == ActivityType.CONE }
-
-                    if (!hasBowl && !hasCone) {
-                        withContext(Dispatchers.Main) {
-                            showThemedConfirmationDialog(capturedSmoker, finalStashSource, now)
-                        }
-                        return@launch
-                    }
+                
+                // NO auto-advance here - it already happened immediately after button press
+                
+                // Small delay for DB writes to complete
+                delay(100)
+                
+                // Now refresh from database if local session
+                if (currentShareCode == null) {
+                    isOptimisticMode = false // Allow DB refresh now
+                    Log.d(TAG, "📱 Refreshing stats after processing")
+                    refreshLocalSessionStatsIfNeeded()
                 }
-
-                proceedWithLogHitWithSourceAndSmoker(type, now, finalStashSource, capturedSmoker)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error in logHitSafe", e)
+                
             } finally {
-                synchronized(hitLoggingLock) { isLoggingHit = false }
+                isProcessingQueue = false
+                isOptimisticMode = false
+                Log.d(TAG, "📱 Queue processing complete")
+            }
+        }
+    }
+    
+    private suspend fun processQueuedActivityWithoutAutoAdvance(activity: QueuedActivity) {
+        try {
+            val stashViewModel = ViewModelProvider(this@MainActivity).get(StashViewModel::class.java)
+            val currentStash = stashViewModel.currentStash.value
+            val ratios = stashViewModel.ratios.value
+            
+            if (currentStash != null && ratios != null) {
+                val requiredGrams = when (activity.type) {
+                    ActivityType.CONE -> ratios.coneGrams
+                    ActivityType.JOINT -> ratios.jointGrams
+                    ActivityType.BOWL -> ratios.bowlGrams
+                    else -> 0.0
+                }
+                
+                val currentSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+                val currentUserId = authManager.getCurrentUserId() ?: getAndroidDeviceId()
+                
+                var switchedToTheirStash = false
+                
+                when (currentSource) {
+                    StashSource.MY_STASH -> {
+                        if (currentStash.currentGrams < requiredGrams) {
+                            stashViewModel.updateStashSource(StashSource.THEIR_STASH)
+                            switchedToTheirStash = true
+                            Log.d(TAG, "🎯 Auto-switched to Their Stash due to insufficient My Stash")
+                        }
+                    }
+                    StashSource.EACH_TO_OWN -> {
+                        val isCurrentUser = (activity.smoker.isCloudSmoker && activity.smoker.cloudUserId == currentUserId) ||
+                                (!activity.smoker.isCloudSmoker && activity.smoker.uid == currentUserId)
+                        
+                        if (isCurrentUser && currentStash.currentGrams < requiredGrams) {
+                            stashViewModel.updateStashSource(StashSource.THEIR_STASH)
+                            switchedToTheirStash = true
+                            Log.d(TAG, "🎯 Auto-switched to Their Stash for current user in Each-to-Own mode")
+                        }
+                    }
+                    StashSource.THEIR_STASH -> {
+                        Log.d(TAG, "🎯 Already on Their Stash, no switch needed")
+                    }
+                }
+                
+                if (switchedToTheirStash) {
+                    withContext(Dispatchers.Main) {
+                        supportFragmentManager.fragments
+                            .filterIsInstance<StashFragment>()
+                            .firstOrNull()?.let { fragment ->
+                                fragment.setAttributionRadioSilently(StashSource.THEIR_STASH)
+                            }
+                    }
+                }
+            }
+            
+            val finalStashSource = stashViewModel.stashSource.value ?: StashSource.MY_STASH
+            
+            // Handle custom activities differently
+            if (activity.type == ActivityType.CUSTOM && activity.customActivity != null) {
+                proceedWithCustomActivityLog(activity.customActivity, activity.timestamp, finalStashSource, activity.smoker)
+            } else {
+                // Skip the cone/bowl confirmation dialog for queued activities
+                proceedWithLogHitWithSourceAndSmoker(activity.type, activity.timestamp, finalStashSource, activity.smoker)
+            }
+            
+            // NO auto-advance here - will be done once at the end of batch
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing queued activity", e)
+        }
+    }
+    
+    // Keep the original for backwards compatibility if needed
+    private suspend fun processQueuedActivity(activity: QueuedActivity) {
+        processQueuedActivityWithoutAutoAdvance(activity)
+        
+        // Auto-advance if enabled
+        if (isAutoMode && smokers.size > 1) {
+            withContext(Dispatchers.Main) {
+                Log.d(TAG, "📱 Auto-advancing to next smoker after activity")
+                moveToNextActiveSmoker()
             }
         }
     }
@@ -12130,8 +12434,11 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         } else {
-            // Local session - just refresh stats
-            refreshLocalSessionStatsIfNeeded()
+            // Local session - skip immediate refresh if processing queue
+            // Stats will be refreshed after all queued activities are processed
+            if (!isProcessingQueue) {
+                refreshLocalSessionStatsIfNeeded()
+            }
         }
 
         // Get the current spinner position BEFORE any changes
@@ -12843,6 +13150,16 @@ class MainActivity : AppCompatActivity() {
                                 currentSmokerName = smoker.name
                             )
                         } else {
+                            // Always call the selected-activity path first so single-activity goals roll back
+                            goalService.reverseGoalProgressForSelectedActivity(
+                                activityType = lastActivity.type,
+                                customActivityId = lastActivity.customActivityId,
+                                customActivityName = lastActivity.customActivityName,
+                                sessionShareCode = sessionShareCode,
+                                currentSmokerName = smoker.name
+                            )
+
+                            // Legacy multi-activity goals still use the aggregate reversal
                             goalService.reverseGoalProgressForActivity(
                                 activityType = lastActivity.type,
                                 sessionShareCode = sessionShareCode,
@@ -14386,15 +14703,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun nextSmoker() {
+        Log.d("MainActivity", "🔄 nextSmoker() called - smokers.size=${smokers.size}, currentIndex=$currentSmokerIndex")
+        Log.d("MainActivity", "🔄 Current smokers list: ${smokers.map { "${it.name}(id:${it.smokerId},deleted:${it.isDeleted})" }}")
+        
         if (smokers.size > 1) {
             val previousSmoker = smokers[currentSmokerIndex].name
             currentSmokerIndex = (currentSmokerIndex + 1) % smokers.size
-            val newSmoker = smokers[currentSmokerIndex].name
+            val newSmoker = smokers[currentSmokerIndex]
 
-            Log.d("MainActivity", "🔄 Switching smoker from $previousSmoker to $newSmoker (index: $currentSmokerIndex)")
+            Log.d("MainActivity", "🔄 Switching from $previousSmoker to ${newSmoker.name} (index: $currentSmokerIndex)")
+            Log.d("MainActivity", "🔄 New smoker details: id=${newSmoker.smokerId}, isDeleted=${newSmoker.isDeleted}")
 
             updateSmokerDisplay()
             saveCurrentSmokerIndex()
+        } else {
+            Log.d("MainActivity", "🔄 Not enough smokers to rotate (count: ${smokers.size})")
         }
     }
 
@@ -14750,8 +15073,11 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         } else {
-            // Local session - just refresh stats
-            refreshLocalSessionStatsIfNeeded()
+            // Local session - skip immediate refresh if processing queue
+            // Stats will be refreshed after all queued activities are processed
+            if (!isProcessingQueue) {
+                refreshLocalSessionStatsIfNeeded()
+            }
         }
 
         // CRITICAL FIX: Call handlePostHitActionsWithPayer instead of handlePostHitActionsSimple
@@ -16699,7 +17025,7 @@ class MainActivity : AppCompatActivity() {
         // Message - smaller text
         val messageText = TextView(this).apply {
             text = buildString {
-                append("Are you sure you want to delete ALL smokers and their activity logs?")
+                append("Are you sure you want to delete ALL smokers, their activities, and session history?")
                 if (currentShareCode != null) {
                     append("\n\nThis will delete for all participants in the room.")
                 }
@@ -17299,31 +17625,98 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "🗑️🔴 Proceeding with local deletion - Keep data: $keepData")
 
         val allSmokersToDelete = smokers.toList()
+        val sessionDao = AppDatabase.getDatabase(this@MainActivity).sessionSummaryDao()
+        val smokerDao = AppDatabase.getDatabase(this@MainActivity).smokerDao()
 
         lifecycleScope.launch(Dispatchers.IO) {
             var totalLogsDeleted = 0
             var totalLogsKept = 0
+            var totalSessionsDeleted = 0
+            var totalSessionsUpdated = 0
+            var softDeletedCount = 0
+            var hardDeletedCount = 0
 
-            allSmokersToDelete.forEach { smoker ->
-                Log.d(TAG, "🗑️🔴 Processing ${smoker.name}")
-
-                if (!keepData) {
-                    // Delete all activity logs
-                    val logs = repo.getLogsForSmoker(smoker.smokerId)
-                    logs.forEach { log ->
-                        repo.delete(log)
+            if (!keepData) {
+                // Handle session summaries first
+                val sessionDao = AppDatabase.getDatabase(this@MainActivity).sessionSummaryDao()
+                val allSummaries = sessionDao.getAllSummariesSync()
+                val smokerNamesToDelete = allSmokersToDelete.map { smoker -> smoker.name }.toSet()
+                
+                Log.d(TAG, "🗑️🔴 Processing ${allSummaries.size} session summaries")
+                
+                for (summary in allSummaries) {
+                    val remainingSmokers = summary.smokerNames.filter { name -> name !in smokerNamesToDelete }
+                    
+                    if (remainingSmokers.isEmpty()) {
+                        // All smokers in this session are being deleted
+                        sessionDao.delete(summary)
+                        totalSessionsDeleted++
+                        Log.d(TAG, "🗑️🔴 Deleted session ${summary.id} (all smokers deleted)")
+                    } else if (remainingSmokers.size < summary.smokerNames.size) {
+                        // Some smokers remain - update the session
+                        val indicesToKeep = summary.smokerNames.mapIndexedNotNull { index, name ->
+                            if (name !in smokerNamesToDelete) index else null
+                        }
+                        
+                        val updatedConesPerSmoker = indicesToKeep.mapNotNull { index ->
+                            summary.conesPerSmoker.getOrNull(index)
+                        }
+                        
+                        val updatedSummary = summary.copy(
+                            smokerNames = remainingSmokers,
+                            conesPerSmoker = updatedConesPerSmoker,
+                            totalCones = updatedConesPerSmoker.sum()
+                        )
+                        
+                        sessionDao.update(updatedSummary)
+                        totalSessionsUpdated++
+                        Log.d(TAG, "🗑️🔴 Updated session ${summary.id} (removed deleted smokers)")
                     }
-                    totalLogsDeleted += logs.size
-                    Log.d(TAG, "🗑️🔴 Deleted ${logs.size} logs for ${smoker.name}")
-                } else {
+                }
+                
+                Log.d(TAG, "🗑️🔴 Sessions: $totalSessionsDeleted deleted, $totalSessionsUpdated updated")
+            }
+
+            // Process each smoker
+            allSmokersToDelete.forEach { smoker ->
+                Log.d(TAG, "🗑️🔴 Processing ${smoker.name}, isCloud: ${smoker.isCloudSmoker}")
+                
+                // Check if this smoker has participated in cloud sessions
+                val hasCloudParticipation = sessionDao.hasSmokerParticipatedInCloudSessions(smoker.name)
+                Log.d(TAG, "🗑️🔴 ${smoker.name} has cloud participation: $hasCloudParticipation")
+                
+                // Use soft delete for local smokers with cloud participation OR when keeping data
+                if ((hasCloudParticipation && !smoker.isCloudSmoker) || (keepData && !smoker.isCloudSmoker)) {
+                    // Soft delete
+                    Log.d(TAG, "🗑️🔴 SOFT deleting ${smoker.name}")
+                    smokerDao.softDeleteSmoker(smoker.smokerId)
+                    softDeletedCount++
+                    
                     val logCount = repo.getLogsForSmoker(smoker.smokerId).size
                     totalLogsKept += logCount
-                    Log.d(TAG, "🗑️🔴 Keeping $logCount logs for ${smoker.name}")
+                } else {
+                    // Hard delete
+                    Log.d(TAG, "🗑️🔴 HARD deleting ${smoker.name}")
+                    
+                    if (!keepData) {
+                        // Delete all activity logs
+                        val logs = repo.getLogsForSmoker(smoker.smokerId)
+                        logs.forEach { log ->
+                            repo.delete(log)
+                        }
+                        totalLogsDeleted += logs.size
+                        Log.d(TAG, "🗑️🔴 Deleted ${logs.size} logs for ${smoker.name}")
+                    } else {
+                        val logCount = repo.getLogsForSmoker(smoker.smokerId).size
+                        totalLogsKept += logCount
+                        Log.d(TAG, "🗑️🔴 Keeping $logCount logs for ${smoker.name}")
+                    }
+                    
+                    // Hard delete the smoker entity
+                    repo.deleteSmoker(smoker)
+                    hardDeletedCount++
                 }
-
-                // Always delete the smoker entity
-                repo.deleteSmoker(smoker)
-                Log.d(TAG, "🗑️🔴 ✅ Deleted smoker: ${smoker.name}")
+                Log.d(TAG, "🗑️🔴 ✅ Processed smoker: ${smoker.name}")
             }
 
             withContext(Dispatchers.Main) {
@@ -17334,10 +17727,19 @@ class MainActivity : AppCompatActivity() {
                     authManager.signOut()
                 }
 
-                val message = if (keepData) {
-                    "Deleted ${allSmokersToDelete.size} smokers (kept $totalLogsKept activity logs)"
-                } else {
-                    "Deleted ${allSmokersToDelete.size} smokers and $totalLogsDeleted activity logs"
+                val message = when {
+                    softDeletedCount > 0 && hardDeletedCount > 0 -> {
+                        "Removed $softDeletedCount smokers (data kept), deleted $hardDeletedCount smokers"
+                    }
+                    softDeletedCount > 0 -> {
+                        "Removed ${allSmokersToDelete.size} smokers (data kept)"
+                    }
+                    keepData -> {
+                        "Deleted ${allSmokersToDelete.size} smokers (kept data)"
+                    }
+                    else -> {
+                        "Deleted ${allSmokersToDelete.size} smokers, $totalLogsDeleted activities, and $totalSessionsDeleted sessions"
+                    }
                 }
 
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()

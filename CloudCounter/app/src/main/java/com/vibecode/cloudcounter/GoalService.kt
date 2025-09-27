@@ -96,6 +96,12 @@ class GoalService(private val application: Application) {
                     if (!shouldGoalBeAffected(goal, sessionShareCode, currentSessionId, isSessionActive, smokerName)) {
                         return@forEach
                     }
+                    
+                    // Skip goals that use selectedActivityType (they're handled by reverseGoalProgressForSelectedActivity)
+                    if (!goal.selectedActivityType.isNullOrEmpty() && goal.selectedActivityType != "ALL") {
+                        Log.d(TAG, "🎯↩️ Skipping goal ${goal.goalId} - uses selectedActivityType: ${goal.selectedActivityType}")
+                        return@forEach
+                    }
 
                     val reverseAmount = when (activityType) {
                         ActivityType.JOINT -> if (goal.targetJoints > 0) 1 else 0
@@ -241,9 +247,24 @@ class GoalService(private val application: Application) {
                         reverseSingleGoalProgressForCustomActivity(goal.goalId, customActivityId, currentSmokerName)
                     }
 
-                    // Update notification silently
+                    // Update notification silently and reactivate if auto-complete was previously triggered
                     val updated = goalDao.getGoalById(goal.goalId)
-                    updated?.let { notificationHelper.showPersistentGoalNotification(it, isSilentUpdate = true) }
+                    updated?.let { updatedGoal ->
+                        val goalForNotification = if (!updatedGoal.allowOverflow && !updatedGoal.isActive && updatedGoal.targetValue > 0) {
+                            if (updatedGoal.currentValue < updatedGoal.targetValue) {
+                                val reactivatedGoal = updatedGoal.copy(isActive = true, completedAt = null)
+                                goalDao.updateGoal(reactivatedGoal)
+                                notificationHelper.showPersistentGoalNotification(reactivatedGoal, isSilentUpdate = true)
+                                Log.d(TAG, "🎯↩️ Reactivated goal ${updatedGoal.goalId} after undo")
+                                return@let
+                            }
+                            updatedGoal
+                        } else {
+                            updatedGoal
+                        }
+
+                        notificationHelper.showPersistentGoalNotification(goalForNotification, isSilentUpdate = true)
+                    }
                 }
 
                 Log.d(TAG, "🎯↩️ SELECTED Reverse complete")
@@ -303,8 +324,29 @@ class GoalService(private val application: Application) {
         val goal = goalDao.getGoalById(goalId) ?: return
         val newValue = kotlin.math.max(0, goal.currentValue - 1)
         Log.d(TAG, "🎯↩️ SELECTED goal ${goalId} reversal: currentValue ${goal.currentValue}→${newValue}, targetValue=${goal.targetValue}")
+        
+        // Update currentValue for selected activity goals
         goalDao.updateGoalCurrentValue(goalId, newValue)
-        Log.d(TAG, "🎯↩️ SELECTED goal ${goalId} currentValue updated to ${newValue}")
+        
+        // ALSO update the legacy fields for backwards compatibility and UI display
+        val newJoints = when (goal.selectedActivityType) {
+            "joints" -> kotlin.math.max(0, goal.currentJoints - 1)
+            "cigarettes" -> kotlin.math.max(0, goal.currentJoints - 1) // Cigarettes stored as joints
+            else -> goal.currentJoints
+        }
+        val newCones = when (goal.selectedActivityType) {
+            "cones" -> kotlin.math.max(0, goal.currentCones - 1)
+            else -> goal.currentCones
+        }
+        val newBowls = when (goal.selectedActivityType) {
+            "bowls" -> kotlin.math.max(0, goal.currentBowls - 1)
+            else -> goal.currentBowls
+        }
+        
+        // Update the legacy fields as well
+        goalDao.updateGoalProgress(goalId, newJoints, newCones, newBowls)
+        
+        Log.d(TAG, "🎯↩️ SELECTED goal ${goalId} updated: currentValue=${newValue}, joints=${newJoints}, cones=${newCones}, bowls=${newBowls}")
     }
 
     private fun shouldGoalBeAffected(
@@ -1122,8 +1164,27 @@ class GoalService(private val application: Application) {
         // Increment the current value
         val newCurrentValue = goal.currentValue + 1
         goalDao.updateGoalCurrentValue(goalId, newCurrentValue)
+        
+        // ALSO update the legacy fields for backwards compatibility and UI display
+        val newJoints = when (goal.selectedActivityType) {
+            "joints" -> goal.currentJoints + 1
+            "cigarettes" -> goal.currentJoints + 1 // Cigarettes stored as joints
+            else -> goal.currentJoints
+        }
+        val newCones = when (goal.selectedActivityType) {
+            "cones" -> goal.currentCones + 1
+            else -> goal.currentCones
+        }
+        val newBowls = when (goal.selectedActivityType) {
+            "bowls" -> goal.currentBowls + 1
+            else -> goal.currentBowls
+        }
+        
+        // Update the legacy fields as well
+        goalDao.updateGoalProgress(goalId, newJoints, newCones, newBowls)
 
         Log.d(TAG, "🎯 Updated goal ${goalId} current value: ${goal.currentValue} -> $newCurrentValue")
+        Log.d(TAG, "🎯 Updated legacy fields: joints=${newJoints}, cones=${newCones}, bowls=${newBowls}")
         Log.d(TAG, "🎯 Target value: ${goal.targetValue}")
 
         // Calculate progress percentage
@@ -1156,6 +1217,8 @@ class GoalService(private val application: Application) {
                 goal.isRecurring -> {
                     Log.d(TAG, "🎯 Goal is recurring, resetting...")
                     goalDao.updateGoalCurrentValue(goalId, 0)
+                    // Also reset legacy fields
+                    goalDao.updateGoalProgress(goalId, 0, 0, 0)
                 }
                 !goal.allowOverflow -> {
                     Log.d(TAG, "🎯 Auto-end enabled, marking goal as completed")

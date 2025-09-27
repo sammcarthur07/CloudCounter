@@ -220,12 +220,18 @@ class ActivityRepository(
     }
 
     suspend fun insert(log: ActivityLog): Long = withContext(Dispatchers.IO) {
+        Log.d(TAG, "📱 === INSERT ACTIVITY ===")
+        Log.d(TAG, "📱 Inserting activity: type=${log.type}, smokerId=${log.smokerId}, timestamp=${log.timestamp}")
+        Log.d(TAG, "📱 Thread: ${Thread.currentThread().name}")
+        
         // Insert locally first
         val id = if (log.gramsAtLog > 0 && log.pricePerGramAtLog > 0) {
             activityLogDao.insert(log)
         } else {
             insertWithRatio(log)
         }
+        
+        Log.d(TAG, "📱 Activity inserted with ID: $id")
         
         // Upload to cloud if user is signed in
         currentUserId?.let { userId ->
@@ -445,8 +451,46 @@ class ActivityRepository(
 
     val allSmokers: LiveData<List<Smoker>> = smokerDao.getAllSmokers()
 
-    suspend fun insertSmoker(smoker: Smoker): Long =
-        smokerDao.insert(smoker)
+    suspend fun insertSmoker(smoker: Smoker): Long {
+        // Check if there's a soft-deleted smoker with the same name
+        val existingDeleted = smokerDao.getSmokerByNameIncludingDeleted(smoker.name)
+        
+        return if (existingDeleted != null && existingDeleted.isDeleted) {
+            // Reactivate the soft-deleted smoker
+            Log.d("ActivityRepository", "Reactivating soft-deleted smoker: ${smoker.name}, ID: ${existingDeleted.smokerId}")
+            
+            // Update with new data while reactivating
+            val reactivated = existingDeleted.copy(
+                isDeleted = false,
+                deletedAt = null,
+                isCloudSmoker = smoker.isCloudSmoker,
+                cloudUserId = if (smoker.isCloudSmoker) smoker.cloudUserId else existingDeleted.cloudUserId,
+                shareCode = if (smoker.isCloudSmoker) smoker.shareCode else existingDeleted.shareCode,
+                passwordHash = if (smoker.isCloudSmoker) smoker.passwordHash else existingDeleted.passwordHash,
+                isPasswordVerified = if (smoker.isCloudSmoker) smoker.isPasswordVerified else existingDeleted.isPasswordVerified,
+                isOwner = if (smoker.isCloudSmoker) smoker.isOwner else existingDeleted.isOwner,
+                displayOrder = smoker.displayOrder,
+                needsSync = smoker.needsSync
+            )
+            smokerDao.update(reactivated)
+            Log.d("ActivityRepository", "Reactivated smoker ${smoker.name} with ID ${existingDeleted.smokerId}")
+            
+            existingDeleted.smokerId
+        } else if (existingDeleted != null && !existingDeleted.isDeleted) {
+            // Smoker already exists and is active - just return the existing ID
+            Log.d("ActivityRepository", "Smoker ${smoker.name} already exists with ID ${existingDeleted.smokerId}")
+            existingDeleted.smokerId
+        } else {
+            // Check active smoker limit before adding new smoker
+            val activeCount = smokerDao.getActiveSmokersCount()
+            if (activeCount >= 50) {
+                throw IllegalStateException("Maximum 50 active smokers allowed. Please delete unused smokers first.")
+            }
+            val newId = smokerDao.insert(smoker)
+            Log.d("ActivityRepository", "Created new smoker ${smoker.name} with ID $newId")
+            newId
+        }
+    }
 
     suspend fun updateSmoker(smoker: Smoker) =
         smokerDao.update(smoker)
@@ -533,7 +577,32 @@ class ActivityRepository(
         smokerDao.markSmokerSynced(smokerId)
 
     suspend fun insertOrUpdateSmoker(smoker: Smoker) = withContext(Dispatchers.IO) {
-        smokerDao.upsert(smoker)
+        // Check if there's a soft-deleted smoker with the same name first
+        val existingDeleted = smokerDao.getSmokerByNameIncludingDeleted(smoker.name)
+        
+        if (existingDeleted != null && existingDeleted.isDeleted) {
+            // Reactivate and update the soft-deleted smoker
+            Log.d("ActivityRepository", "Reactivating in upsert: ${smoker.name}, ID: ${existingDeleted.smokerId}")
+            val reactivated = smoker.copy(
+                smokerId = existingDeleted.smokerId,
+                isDeleted = false,
+                deletedAt = null
+            )
+            smokerDao.update(reactivated)
+        } else if (existingDeleted != null && !existingDeleted.isDeleted) {
+            // Update existing active smoker
+            Log.d("ActivityRepository", "Updating existing smoker: ${smoker.name}, ID: ${existingDeleted.smokerId}")
+            val updated = smoker.copy(smokerId = existingDeleted.smokerId)
+            smokerDao.update(updated)
+        } else {
+            // Check active smoker limit before inserting
+            val activeCount = smokerDao.getActiveSmokersCount()
+            if (activeCount >= 50) {
+                throw IllegalStateException("Maximum 50 active smokers allowed. Please delete unused smokers first.")
+            }
+            // Insert new smoker
+            smokerDao.upsert(smoker)
+        }
     }
 
     // REGION: SessionSummary operations

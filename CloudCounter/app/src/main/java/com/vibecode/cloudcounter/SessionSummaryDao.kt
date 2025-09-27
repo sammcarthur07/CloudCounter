@@ -26,4 +26,7 @@ interface SessionSummaryDao {
 
     @Delete
     suspend fun delete(summary: SessionSummary)
+    
+    @Query("SELECT COUNT(*) > 0 FROM session_summaries WHERE shareCode IS NOT NULL AND smokerNames LIKE '%' || :smokerName || '%'")
+    suspend fun hasSmokerParticipatedInCloudSessions(smokerName: String): Boolean
 }

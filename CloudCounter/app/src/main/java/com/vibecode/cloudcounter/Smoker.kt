@@ -34,5 +34,9 @@ data class Smoker(
     // Password protection fields
     val passwordHash: String? = null,
     val isPasswordVerified: Boolean = false,
-    val isOwner: Boolean = false
+    val isOwner: Boolean = false,
+    
+    // Soft delete fields
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )

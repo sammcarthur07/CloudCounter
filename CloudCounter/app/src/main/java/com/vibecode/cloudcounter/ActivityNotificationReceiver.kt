@@ -164,6 +164,19 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
                         // Get the smoker for this activity
                         val smokerForUndo = repo.getSmokerById(it.smokerId)
 
+                        // Reverse goal progress before removing the activity
+                        val goalSessionCode = if (sessionActive) sessionShareCode else null
+                        try {
+                            reverseGoalProgressForUndo(
+                                context = context,
+                                activityLog = it,
+                                smoker = smokerForUndo,
+                                sessionShareCode = goalSessionCode
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "🎯❌ Failed to reverse goal progress during notification undo: ${e.message}", e)
+                        }
+
                         // Handle stash restoration directly here
                         if (it.payerStashOwnerId == null && it.gramsAtLog > 0) {
                             // This activity consumed from MY stash, we need to restore it
@@ -598,7 +611,7 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
             Log.e(TAG, "Error updating session stats: ${e.message}")
         }
     }
-    
+
     private fun handleTurnNotificationAction(
         context: Context,
         intent: Intent,
@@ -699,6 +712,72 @@ class ActivityNotificationReceiver : BroadcastReceiver() {
                     Log.d(TAG, "🔄 Sent auto-advance broadcast for notification activity (type: ${type.name}, smoker: ${smoker.smokerId})")
                 }
             }
+        }
+    }
+
+    private suspend fun reverseGoalProgressForUndo(
+        context: Context,
+        activityLog: ActivityLog,
+        smoker: Smoker?,
+        sessionShareCode: String?
+    ) {
+        if (smoker == null) {
+            Log.w(TAG, "🎯 Undo requested from notification but smoker information is missing")
+            return
+        }
+
+        val smokerName = smoker.name
+
+        // Try using the shared callbacks first (wired up by MainActivity when it is alive)
+        val callback = CalendarViewModel.onReverseGoal ?: HistoryViewModel.onReverseGoal
+        if (callback != null) {
+            try {
+                Log.d(TAG, "🎯 Using ViewModel callback to reverse goal progress for ${activityLog.type} by $smokerName")
+                callback(activityLog, smoker, sessionShareCode)
+                return
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 Callback reversal failed, falling back to GoalService: ${e.message}", e)
+            }
+        }
+
+        // Fallback: use GoalService directly (singleton to avoid duplicate monitors)
+        val application = context.applicationContext as CloudCounterApplication
+        val goalService = GoalServiceHolder.get(application)
+
+        if (activityLog.type == ActivityType.CUSTOM && !activityLog.customActivityId.isNullOrEmpty()) {
+            Log.d(TAG, "🎯↩️ Reversing custom goal progress (notification undo)")
+            goalService.reverseGoalProgressForSelectedActivity(
+                activityType = activityLog.type,
+                customActivityId = activityLog.customActivityId,
+                customActivityName = activityLog.customActivityName,
+                sessionShareCode = sessionShareCode,
+                currentSmokerName = smokerName
+            )
+        } else {
+            Log.d(TAG, "🎯↩️ Reversing standard goal progress (notification undo)")
+            goalService.reverseGoalProgressForSelectedActivity(
+                activityType = activityLog.type,
+                customActivityId = null,
+                customActivityName = null,
+                sessionShareCode = sessionShareCode,
+                currentSmokerName = smokerName
+            )
+            goalService.reverseGoalProgressForActivity(
+                activityType = activityLog.type,
+                sessionShareCode = sessionShareCode,
+                smokerName = smokerName
+            )
+        }
+    }
+}
+
+private object GoalServiceHolder {
+    @Volatile
+    private var goalService: GoalService? = null
+
+    fun get(application: CloudCounterApplication): GoalService {
+        return goalService ?: synchronized(this) {
+            goalService ?: GoalService(application).also { goalService = it }
         }
     }
 }

@@ -81,7 +81,7 @@ class SessionStatsViewModel : ViewModel() {
     private val _elapsedTimeSec = MutableLiveData<Long>(0L)
     val elapsedTimeSec: LiveData<Long> = _elapsedTimeSec
 
-    private val _perSmokerStats = MutableLiveData<List<PerSmokerStats>>(emptyList())
+    val _perSmokerStats = MutableLiveData<List<PerSmokerStats>>(emptyList())
     val perSmokerStats: LiveData<List<PerSmokerStats>> = _perSmokerStats
 
     // ADD: Room info LiveData
@@ -102,7 +102,7 @@ class SessionStatsViewModel : ViewModel() {
     private val _conesSinceLastBowl = MutableLiveData<Int>(0)
     val conesSinceLastBowl: LiveData<Int> = _conesSinceLastBowl
 
-    private val _groupStats = MutableLiveData(GroupStats()) // Now valid
+    val _groupStats = MutableLiveData(GroupStats()) // Now valid
     val groupStats: LiveData<GroupStats> = _groupStats
 
     // Add this trigger to force updates
@@ -252,6 +252,10 @@ class SessionStatsViewModel : ViewModel() {
             } else {
                 list
             }
+        }
+        Log.d(TAG, "📊 STATS UI UPDATE: Posting ${perSmokerList.size} per-smoker stats to UI")
+        perSmokerList.forEach { stat ->
+            Log.d(TAG, "📊 STATS UI: ${stat.smokerName} - C:${stat.totalCones}, J:${stat.totalJoints}, B:${stat.totalBowls}")
         }
         _perSmokerStats.postValue(perSmokerList)
 
@@ -582,6 +586,10 @@ class SessionStatsViewModel : ViewModel() {
             adjustedPerSmoker.sortedBy { smokerDisplayOrder[it.smokerName] ?: Int.MAX_VALUE }
         } else {
             adjustedPerSmoker
+        }
+        Log.d(TAG, "📊 STATS UI UPDATE (loadStats): Setting ${sortedPerSmoker.size} per-smoker stats to UI")
+        sortedPerSmoker.forEach { stat ->
+            Log.d(TAG, "📊 STATS UI (loadStats): ${stat.smokerName} - C:${stat.totalCones}, J:${stat.totalJoints}, B:${stat.totalBowls}")
         }
         _perSmokerStats.value = sortedPerSmoker
         // FIX: Use the adjusted groupStats
