@@ -795,10 +795,15 @@ class NotificationHelper(private val context: Context) {
             .setShowWhen(true) // Show the timestamp
             .setOnlyAlertOnce(false) // Alert every time
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Show on lock screen
-            .setFullScreenIntent(pendingIntent, true) // Force heads-up with full screen intent
             .setTimeoutAfter(60000) // Auto dismiss after 60 seconds
             .setColorized(true) // Make it stand out
             .setColor(android.graphics.Color.BLUE) // Blue color
+        
+        // Only use full screen intent if we have permission (Android 14+)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || 
+            context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT) == PackageManager.PERMISSION_GRANTED) {
+            notificationBuilder.setFullScreenIntent(pendingIntent, true)
+        }
             
         // Set sound and vibration based on settings
         if (vibrationEnabled) {

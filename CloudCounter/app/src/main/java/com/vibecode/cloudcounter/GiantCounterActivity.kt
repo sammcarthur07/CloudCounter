@@ -1046,16 +1046,16 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: customActivityId: ${recentActivity.customActivityId}")
                         Log.d(TAG, "$LOG_PREFIX 🎯 CUSTOM DEBUG: customActivityName: ${recentActivity.customActivityName}")
                         
-                        currentActivityType = when (recentActivity.type) {
-                            com.vibecode.cloudcounter.ActivityType.CONE -> "cones"
-                            com.vibecode.cloudcounter.ActivityType.JOINT -> "joints"
-                            com.vibecode.cloudcounter.ActivityType.BOWL -> "bowls"
-                            com.vibecode.cloudcounter.ActivityType.CUSTOM -> {
-                                // Store custom activity info
-                                currentActivityId = recentActivity.customActivityId
-                                currentActivityName = recentActivity.customActivityName
-                                "custom"
-                            }
+                    currentActivityType = when (recentActivity.type) {
+                        com.vibecode.cloudcounter.ActivityType.CONE -> "cones"
+                        com.vibecode.cloudcounter.ActivityType.JOINT -> "joints"
+                        com.vibecode.cloudcounter.ActivityType.BOWL -> "bowls"
+                        com.vibecode.cloudcounter.ActivityType.CUSTOM -> {
+                            // Store custom activity info
+                            currentActivityId = recentActivity.customActivityId
+                            currentActivityName = recentActivity.customActivityName
+                            "custom"
+                        }
                             com.vibecode.cloudcounter.ActivityType.CIGARETTE -> "cigarettes"
                             com.vibecode.cloudcounter.ActivityType.SESSION_SUMMARY -> "cones" // Default for session
                         }
@@ -1066,7 +1066,10 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         }
                         recentSmoker = recentSmokerObj?.name ?: ""
                     } else {
-                        currentActivityType = "cones"
+                        val validTypes = setOf("cones", "joints", "bowls", "custom", "cigarettes")
+                        if (currentActivityType !in validTypes) {
+                            currentActivityType = "cones"
+                        }
                     }
                     
                     // Get session activities (from session start time)
@@ -1079,13 +1082,22 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         "cones" -> com.vibecode.cloudcounter.ActivityType.CONE
                         "joints" -> com.vibecode.cloudcounter.ActivityType.JOINT
                         "bowls" -> com.vibecode.cloudcounter.ActivityType.BOWL
+                        "custom" -> com.vibecode.cloudcounter.ActivityType.CUSTOM
+                        "cigarettes" -> com.vibecode.cloudcounter.ActivityType.CIGARETTE
                         else -> com.vibecode.cloudcounter.ActivityType.CONE
                     }
                     
-                    currentCount = sessionActivities.count { 
-                        it.smokerId == currentSmokerObj.smokerId && it.type == activityType 
+                    currentCount = sessionActivities.count { activity ->
+                        if (activity.smokerId != currentSmokerObj.smokerId) return@count false
+
+                        when (activityType) {
+                            com.vibecode.cloudcounter.ActivityType.CUSTOM -> matchesActiveCustomActivity(activity)
+                            com.vibecode.cloudcounter.ActivityType.CIGARETTE ->
+                                activity.type == com.vibecode.cloudcounter.ActivityType.CIGARETTE
+                            else -> activity.type == activityType
+                        }
                     }
-                    
+
                     Log.d(TAG, "$LOG_PREFIX Loaded count for ${currentSmokerObj.name}: $currentCount $currentActivityType")
                     
                     // Load counts for all smokers to have accurate data
@@ -1109,8 +1121,15 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             smokerDao.getSmokerByName(recentSmoker)
                         }
                         if (recentSmokerObj != null) {
-                            recentSmokerCount = sessionActivities.count {
-                                it.smokerId == recentSmokerObj.smokerId && it.type == activityType
+                            recentSmokerCount = sessionActivities.count { activity ->
+                                if (activity.smokerId != recentSmokerObj.smokerId) return@count false
+
+                                when (activityType) {
+                                    com.vibecode.cloudcounter.ActivityType.CUSTOM -> matchesActiveCustomActivity(activity)
+                                    com.vibecode.cloudcounter.ActivityType.CIGARETTE ->
+                                        activity.type == com.vibecode.cloudcounter.ActivityType.CIGARETTE
+                                    else -> activity.type == activityType
+                                }
                             }
                         }
                     } else {
@@ -1136,6 +1155,30 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 updateUI()
             }
         }
+    }
+
+    private fun matchesActiveCustomActivity(activity: com.vibecode.cloudcounter.ActivityLog): Boolean {
+        if (activity.type != com.vibecode.cloudcounter.ActivityType.CUSTOM) return false
+
+        val activeId = currentActivityId
+        val activeName = currentActivityName?.trim()?.lowercase()
+        val activityId = activity.customActivityId
+        val activityName = activity.customActivityName?.trim()?.lowercase()
+
+        // Direct ID match when both have IDs
+        if (!activeId.isNullOrEmpty() && activityId == activeId) return true
+
+        // Fallback to name match when IDs differ or are missing
+        if (!activeName.isNullOrEmpty() && activeName == activityName) return true
+
+        // When the active selection has no ID, treat activities without IDs as matching
+        if (activeId.isNullOrEmpty() && activityId.isNullOrEmpty()) {
+            // If we also have no name context, consider all custom entries
+            if (activeName.isNullOrEmpty()) return true
+            // Otherwise rely on name match (already handled above)
+        }
+
+        return false
     }
     
     private fun updateUI() {
@@ -1310,12 +1353,16 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             gramsAtLog = gramsForActivity,
                             pricePerGramAtLog = pricePerGram
                         )
+                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
                         
                         val insertedId = repository.insert(activity)
                         Log.d(TAG, "$LOG_PREFIX Activity inserted with ID: $insertedId")
+
+                        // Mark stats for refresh when returning to MainActivity
+                        prefs.edit().putBoolean("stats_need_refresh", true).apply()
+                        Log.d(TAG, "$LOG_PREFIX 🟢 stats_need_refresh flag set to true")
                         
                         // CRITICAL FIX: Sync activity to cloud room if connected
-                        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
                         val sessionActiveNow = prefs.getBoolean("sessionActive", false)
                         val currentShareCode = prefs.getString("currentShareCode", null)
                         

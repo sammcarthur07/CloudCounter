@@ -242,6 +242,11 @@ class MainActivity : AppCompatActivity() {
     private val customActivityButtons = mutableListOf<Button>()
     private val coreActivityButtons = mutableListOf<Button>()
 
+    // Track the most recent activity selection so GiantCounter launches with correct context
+    private var lastSelectedActivityType: ActivityType = ActivityType.CONE
+    private var lastSelectedCustomActivityId: String? = null
+    private var lastSelectedCustomActivityName: String? = null
+
     // Cloud functionality
     private lateinit var authManager: FirebaseAuthManager
     private lateinit var cloudSyncService: CloudSyncService
@@ -2028,12 +2033,13 @@ class MainActivity : AppCompatActivity() {
                             // Your existing code
                             Log.d(TAG, "📱 BUTTON: Activity button clicked - type: $activityType, timestamp: ${System.currentTimeMillis()}")
                             confettiHelper.showConfettiFromButton(button)
-                            
+
                             // Track countdown timing when activity is logged
                             val now = System.currentTimeMillis()
                             countdownStartTime = now
                             Log.d(TAG, "📱 BUTTON: Calling logHitSafe for $activityType")
-                            
+
+                            updateCurrentActivitySelection(activityType)
                             logHitSafe(activityType)
                         }
                     }
@@ -2042,6 +2048,54 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> false
             }
+        }
+    }
+
+    private fun updateCurrentActivitySelection(activityType: ActivityType, customActivity: CustomActivity? = null) {
+        lastSelectedActivityType = activityType
+        lastSelectedCustomActivityId = customActivity?.id
+        lastSelectedCustomActivityName = customActivity?.name
+
+        val editor = prefs.edit()
+        Log.d(TAG, "🎯 PREFS: Storing activity selection ${activityType.name} (customId=${customActivity?.id ?: "none"})")
+        editor.putString("current_activity_type", activityTypeToPrefValue(activityType))
+        if (activityType == ActivityType.CUSTOM && customActivity != null) {
+            editor.putString("current_custom_activity_id", customActivity.id)
+            editor.putString("current_custom_activity_name", customActivity.name)
+        } else {
+            editor.remove("current_custom_activity_id")
+            editor.remove("current_custom_activity_name")
+        }
+        editor.apply()
+    }
+
+    private fun activityTypeToPrefValue(activityType: ActivityType): String = when (activityType) {
+        ActivityType.CONE -> "cones"
+        ActivityType.JOINT -> "joints"
+        ActivityType.BOWL -> "bowls"
+        ActivityType.CUSTOM -> "custom"
+        ActivityType.CIGARETTE -> "cigarettes"
+        else -> activityType.name.lowercase()
+    }
+
+    private fun prefValueToActivityType(value: String?): ActivityType = when (value?.lowercase()) {
+        "joints" -> ActivityType.JOINT
+        "bowls" -> ActivityType.BOWL
+        "custom" -> ActivityType.CUSTOM
+        "cigarettes" -> ActivityType.CIGARETTE
+        else -> ActivityType.CONE
+    }
+
+    private fun SharedPreferences.Editor.applyCustomActivityPrefs(): SharedPreferences.Editor {
+        return if (lastSelectedActivityType == ActivityType.CUSTOM &&
+            !lastSelectedCustomActivityId.isNullOrEmpty() &&
+            !lastSelectedCustomActivityName.isNullOrEmpty()
+        ) {
+            putString("current_custom_activity_id", lastSelectedCustomActivityId)
+            putString("current_custom_activity_name", lastSelectedCustomActivityName)
+        } else {
+            remove("current_custom_activity_id")
+            remove("current_custom_activity_name")
         }
     }
 
@@ -2621,6 +2675,17 @@ class MainActivity : AppCompatActivity() {
         // CRITICAL: Initialize prefs FIRST before using it
         prefs = getSharedPreferences("sesh", Context.MODE_PRIVATE)
         onboardingPrefs = getSharedPreferences("onboarding_prefs", Context.MODE_PRIVATE)
+
+        // Restore last selected activity context for GiantCounter handoff
+        val storedActivityType = prefs.getString("current_activity_type", "cones")
+        lastSelectedActivityType = prefValueToActivityType(storedActivityType)
+        if (lastSelectedActivityType == ActivityType.CUSTOM) {
+            lastSelectedCustomActivityId = prefs.getString("current_custom_activity_id", null)
+            lastSelectedCustomActivityName = prefs.getString("current_custom_activity_name", null)
+        } else {
+            lastSelectedCustomActivityId = null
+            lastSelectedCustomActivityName = null
+        }
         
         // Initialize onboarding controller
         onboardingController = OnboardingFlowController(
@@ -3430,6 +3495,8 @@ class MainActivity : AppCompatActivity() {
         }
         
         val success = editor
+            .putString("current_activity_type", activityTypeToPrefValue(lastSelectedActivityType))
+            .applyCustomActivityPrefs()
             .putLong("rewindOffset", rewindOffset)  // Save rewind offset
             .putString("activitiesTimestamps", activitiesTimestamps.joinToString(","))
             .putLong("lastConeTimestamp", lastConeTimestamp)
@@ -3668,14 +3735,16 @@ class MainActivity : AppCompatActivity() {
                     .apply()
             }
             
-            prefs.edit()
+            val launchEditor = prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
-                .putString("current_activity_type", "cones") // Default to cones for now
+                .putString("current_activity_type", activityTypeToPrefValue(lastSelectedActivityType))
                 .putBoolean("is_auto_mode", isAutoMode)
                 .putBoolean("timer_enabled", false) // Default to false for now
                 .putString("stash_source", stashSourceString) // Pass stash source
-                .commit()  // Use commit() for synchronous save
-            
+
+            // Persist custom selection context for GiantCounter if applicable
+            launchEditor.applyCustomActivityPrefs().commit()
+
             // Launch Giant Counter Activity and expect result
             val intent = Intent(this, GiantCounterActivity::class.java)
             startActivityForResult(intent, GIANT_COUNTER_REQUEST_CODE)
@@ -3918,11 +3987,13 @@ class MainActivity : AppCompatActivity() {
             // Set this button as selected
             setActivityButtonSelected(button, true)
             lastSelectedActivityButton = button
-            
+
+            updateCurrentActivitySelection(ActivityType.CUSTOM, activity)
+
             // Show confetti
             Log.d(TAG, "📱 BUTTON: Custom activity button clicked - name: ${activity.name}, timestamp: ${System.currentTimeMillis()}")
             confettiHelper.showConfettiFromButton(button)
-            
+
             // Track countdown timing
             val now = System.currentTimeMillis()
             countdownStartTime = now
@@ -4576,8 +4647,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("CUSTOM_ACTIVITY", "📱 Added custom to queue: ${activity.name} for ${capturedSmoker.name}, queue size: ${activityQueue.size}")
         }
         
-        // Update UI optimistically for custom activity - treat as JOINT for display purposes
-        updateOptimisticUI(capturedSmoker.name, ActivityType.JOINT)
+        updateOptimisticUI(capturedSmoker.name, ActivityType.CUSTOM, activity)
         
         // Process the queue
         processActivityQueue()
@@ -9692,6 +9762,20 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // Refresh stats when returning from GiantCounterActivity or other activities
+        val statsNeedRefresh = prefs.getBoolean("stats_need_refresh", false)
+        if (statsNeedRefresh) {
+            Log.d(TAG, "🎯 Stats refresh flag detected on resume (sessionActive=$sessionActive)")
+            prefs.edit().putBoolean("stats_need_refresh", false).apply()
+
+            if (sessionActive) {
+                Log.d(TAG, "🎯 Forcing stats refresh due to GiantCounter activity")
+                refreshLocalSessionStatsIfNeeded(forceRefresh = true)
+                Log.d(TAG, "🎯 Forced stats refresh triggered")
+            } else {
+                Log.d(TAG, "🎯 Session inactive; skipping forced stats refresh")
+            }
+        }
+
         if (sessionActive) {
             // Reload timer data from SharedPreferences (in case it was updated in GiantCounter)
             lastLogTime = prefs.getLong("lastLogTime", lastLogTime)
@@ -9852,97 +9936,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             
-            // Force refresh session stats regardless of cloud connection
             if (sessionActive) {
-                // FORCE a refresh by directly calculating stats from database
-                // This bypasses the cloud connection check in refreshLocalSessionStatsIfNeeded()
-                lifecycleScope.launch {
-                    Log.d(TAG, "🎯 Force refreshing stats from database...")
-                    
-                    val allSmokersFromDb = withContext(Dispatchers.IO) {
-                        repo.getAllSmokersList()
-                    }
-                    
-                    val now = System.currentTimeMillis()
-                    val perSmokerList = mutableListOf<PerSmokerStats>()
-                    var totalCones = 0
-                    var totalJoints = 0
-                    var totalBowls = 0
-                    
-                    // Get ALL activities in session
-                    val allSessionActivitiesRaw = withContext(Dispatchers.IO) {
-                        repo.getLogsInTimeRange(sessionStart, now)
-                    }
-                    
-                    // Filter out blocked activities
-                    val blockedPrefs = getSharedPreferences("blocked_activities", Context.MODE_PRIVATE)
-                    val allSessionActivities = allSessionActivitiesRaw.filter { activity ->
-                        val smokerUid = if (activity.smokerId > 0) {
-                            val smoker = allSmokersFromDb.find { it.smokerId == activity.smokerId }
-                            smoker?.cloudUserId ?: smoker?.uid ?: "unknown"
-                        } else {
-                            "unknown"
-                        }
-                        val activityKey = "${smokerUid}_${activity.type}_${activity.timestamp}"
-                        val isBlocked = blockedPrefs.getBoolean(activityKey, false)
-                        if (isBlocked) {
-                            Log.d(TAG, "🚫 Filtering out blocked activity from GiantCounter stats: $activityKey")
-                        }
-                        !isBlocked
-                    }.sortedBy { it.timestamp }
-                    
-                    Log.d(TAG, "🎯 Found ${allSessionActivities.size} activities in session after GiantCounter")
-                    
-                    // Calculate stats for each smoker
-                    for (smoker in allSmokersFromDb) {
-                        val smokerActivities = allSessionActivities.filter { it.smokerId == smoker.smokerId }
-                        val cones = smokerActivities.count { it.type == ActivityType.CONE }
-                        val joints = smokerActivities.count { it.type == ActivityType.JOINT }
-                        val bowls = smokerActivities.count { it.type == ActivityType.BOWL }
-                        
-                        if (cones > 0 || joints > 0 || bowls > 0) {
-                            Log.d(TAG, "📊 STATS: Creating PerSmokerStats for ${smoker.name} - C:$cones, J:$joints, B:$bowls")
-                            perSmokerList.add(PerSmokerStats(
-                                smokerName = smoker.name,
-                                totalCones = cones,
-                                totalJoints = joints,
-                                totalBowls = bowls
-                            ))
-                            
-                            totalCones += cones
-                            totalJoints += joints
-                            totalBowls += bowls
-                            
-                            Log.d(TAG, "📊 STATS: Total so far - C:$totalCones, J:$totalJoints, B:$totalBowls")
-                        }
-                    }
-                    
-                    // Create group stats
-                    val groupStats = GroupStats(
-                        totalCones = totalCones,
-                        totalJoints = totalJoints,
-                        totalBowls = totalBowls
-                    )
-                    
-                    // Update the session stats view model
-                    withContext(Dispatchers.Main) {
-                        val smokerDisplayOrder = smokers.associate { it.name to it.displayOrder }
-                        sessionStatsVM.applyLocalStats(
-                            perSmoker = perSmokerList,
-                            groupStats = groupStats,
-                            sessionStart = sessionStart,
-                            lastConeSmokerName = null,
-                            conesSinceLastBowl = 0,
-                            smokerDisplayOrder = smokerDisplayOrder
-                        )
-                        
-                        // Also trigger additional refreshes
-                        sessionStatsVM.recalculateGaps()
-                        sessionStatsVM.forceLocalStatsRefresh()
-                        
-                        Log.d(TAG, "🎯 Stats force refreshed after GiantCounter: Total C=$totalCones, J=$totalJoints, B=$totalBowls")
-                    }
-                }
+                Log.d(TAG, "🎯 Triggering shared stats refresh after GiantCounter return")
+                refreshLocalSessionStatsIfNeeded(forceRefresh = true)
             }
         }
     }
@@ -12345,121 +12341,123 @@ class MainActivity : AppCompatActivity() {
         queueAction()
     }
     
-    private fun updateOptimisticUI(smokerName: String, type: ActivityType) {
-        // Update optimistic counts
+    private fun updateOptimisticUI(
+        smokerName: String,
+        type: ActivityType,
+        customActivity: CustomActivity? = null
+    ) {
         val smokerCounts = optimisticCounts.getOrPut(smokerName) { mutableMapOf() }
         smokerCounts[type] = (smokerCounts[type] ?: 0) + 1
-        
-        // Immediately update the UI with optimistic counts
+
         val currentStats = sessionStatsVM.perSmokerStats.value ?: emptyList()
+        var statsUpdated = false
+        val now = System.currentTimeMillis()
+
         val updatedStats = currentStats.map { stat ->
             if (stat.smokerName == smokerName) {
+                statsUpdated = true
                 when (type) {
                     ActivityType.CONE -> stat.copy(totalCones = stat.totalCones + 1)
                     ActivityType.JOINT -> stat.copy(totalJoints = stat.totalJoints + 1)
                     ActivityType.BOWL -> stat.copy(totalBowls = stat.totalBowls + 1)
                     ActivityType.CIGARETTE -> stat.copy(totalCigarettes = stat.totalCigarettes + 1)
+                    ActivityType.CUSTOM -> {
+                        val details = customActivity ?: run {
+                            Log.w(TAG, "📊 OPTIMISTIC UI: Missing custom activity details for $smokerName")
+                            return@map stat
+                        }
+                        val updatedCustomStats = stat.customActivityStats.toMutableMap()
+                        val existing = updatedCustomStats[details.id]
+                        val newEntry = existing?.copy(
+                            total = existing.total + 1,
+                            lastActivityTime = now,
+                            lastGapMs = 0L
+                        ) ?: CustomActivityStat(
+                            activityName = details.name,
+                            total = 1,
+                            lastActivityTime = now
+                        )
+                        updatedCustomStats[details.id] = newEntry
+                        stat.copy(customActivityStats = updatedCustomStats)
+                    }
                     else -> stat
                 }
             } else {
                 stat
             }
         }.toMutableList()
-        
-        // If smoker not in list yet, add them
-        if (updatedStats.none { it.smokerName == smokerName }) {
-            val newStat = PerSmokerStats(
-                smokerName = smokerName,
-                totalCones = if (type == ActivityType.CONE) 1 else 0,
-                totalJoints = if (type == ActivityType.JOINT) 1 else 0,
-                totalBowls = if (type == ActivityType.BOWL) 1 else 0,
-                totalCigarettes = if (type == ActivityType.CIGARETTE) 1 else 0
-            )
+
+        if (!statsUpdated) {
+            val newStat = when (type) {
+                ActivityType.CONE -> PerSmokerStats(smokerName = smokerName, totalCones = 1)
+                ActivityType.JOINT -> PerSmokerStats(smokerName = smokerName, totalJoints = 1)
+                ActivityType.BOWL -> PerSmokerStats(smokerName = smokerName, totalBowls = 1)
+                ActivityType.CIGARETTE -> PerSmokerStats(smokerName = smokerName, totalCigarettes = 1)
+                ActivityType.CUSTOM -> {
+                    val details = customActivity
+                    val customStats = if (details != null) {
+                        mapOf(details.id to CustomActivityStat(
+                            activityName = details.name,
+                            total = 1,
+                            lastActivityTime = now
+                        ))
+                    } else emptyMap()
+                    PerSmokerStats(smokerName = smokerName, customActivityStats = customStats)
+                }
+                else -> PerSmokerStats(smokerName = smokerName)
+            }
             updatedStats.add(newStat)
         }
-        
-        // Update group stats optimistically
+
         val currentGroup = sessionStatsVM.groupStats.value ?: GroupStats()
-        val updatedGroup = when (type) {
+        var updatedGroup = when (type) {
             ActivityType.CONE -> currentGroup.copy(totalCones = currentGroup.totalCones + 1)
             ActivityType.JOINT -> currentGroup.copy(totalJoints = currentGroup.totalJoints + 1)
             ActivityType.BOWL -> currentGroup.copy(totalBowls = currentGroup.totalBowls + 1)
             ActivityType.CIGARETTE -> currentGroup.copy(totalCigarettes = currentGroup.totalCigarettes + 1)
             else -> currentGroup
         }
-        
-        // Post updates to UI immediately using postValue for thread safety
+
+        if (type == ActivityType.CUSTOM) {
+            val details = customActivity
+            if (details != null) {
+                val newCustomMap = currentGroup.customActivityGroupStats.toMutableMap()
+                val existing = newCustomMap[details.id]
+                val newEntry = existing?.copy(
+                    total = existing.total + 1,
+                    lastSmokerName = smokerName,
+                    sinceLastMs = 0L
+                ) ?: CustomActivityGroupStat(
+                    activityName = details.name,
+                    total = 1,
+                    lastSmokerName = smokerName,
+                    sinceLastMs = 0L
+                )
+                newCustomMap[details.id] = newEntry
+                updatedGroup = updatedGroup.copy(customActivityGroupStats = newCustomMap)
+            } else {
+                Log.w(TAG, "📊 OPTIMISTIC UI: Skipping group custom update due to missing details")
+            }
+        }
+
         Log.d(TAG, "📊 OPTIMISTIC UI: Updating stats for $smokerName - $type")
         sessionStatsVM._perSmokerStats.postValue(updatedStats)
         sessionStatsVM._groupStats.postValue(updatedGroup)
-        
-        // Force immediate UI refresh on main thread
+
         runOnUiThread {
             sessionStatsVM._perSmokerStats.value = updatedStats
             sessionStatsVM._groupStats.value = updatedGroup
         }
     }
-    
-    // Batch update for multiple activities at once
+
     private fun updateOptimisticUIBatch(activities: List<QueuedActivity>) {
         if (activities.isEmpty()) return
-        
-        // Group activities by smoker and type for efficient counting
-        val countsBySmoker = activities.groupBy { it.smoker.name }
-            .mapValues { entry ->
-                entry.value.groupBy { it.type }
-                    .mapValues { it.value.size }
-            }
-        
-        // Update all stats at once
-        val currentStats = sessionStatsVM.perSmokerStats.value ?: emptyList()
-        val updatedStats = currentStats.map { stat ->
-            val counts = countsBySmoker[stat.smokerName]
-            if (counts != null) {
-                stat.copy(
-                    totalCones = stat.totalCones + (counts[ActivityType.CONE] ?: 0),
-                    totalJoints = stat.totalJoints + (counts[ActivityType.JOINT] ?: 0),
-                    totalBowls = stat.totalBowls + (counts[ActivityType.BOWL] ?: 0),
-                    totalCigarettes = stat.totalCigarettes + (counts[ActivityType.CIGARETTE] ?: 0)
-                )
-            } else {
-                stat
-            }
-        }.toMutableList()
-        
-        // Add new smokers if needed
-        countsBySmoker.forEach { (smokerName, counts) ->
-            if (updatedStats.none { it.smokerName == smokerName }) {
-                val newStat = PerSmokerStats(
-                    smokerName = smokerName,
-                    totalCones = counts[ActivityType.CONE] ?: 0,
-                    totalJoints = counts[ActivityType.JOINT] ?: 0,
-                    totalBowls = counts[ActivityType.BOWL] ?: 0,
-                    totalCigarettes = counts[ActivityType.CIGARETTE] ?: 0
-                )
-                updatedStats.add(newStat)
-            }
-        }
-        
-        // Update group stats
-        val totalCones = activities.count { it.type == ActivityType.CONE }
-        val totalJoints = activities.count { it.type == ActivityType.JOINT }
-        val totalBowls = activities.count { it.type == ActivityType.BOWL }
-        val totalCigarettes = activities.count { it.type == ActivityType.CIGARETTE }
-        
-        val currentGroup = sessionStatsVM.groupStats.value ?: GroupStats()
-        val updatedGroup = currentGroup.copy(
-            totalCones = currentGroup.totalCones + totalCones,
-            totalJoints = currentGroup.totalJoints + totalJoints,
-            totalBowls = currentGroup.totalBowls + totalBowls,
-            totalCigarettes = currentGroup.totalCigarettes + totalCigarettes
-        )
-        
-        // Update UI all at once
-        Log.d(TAG, "📊 OPTIMISTIC UI BATCH: Updated ${activities.size} activities")
-        runOnUiThread {
-            sessionStatsVM._perSmokerStats.value = updatedStats
-            sessionStatsVM._groupStats.value = updatedGroup
+        activities.forEach { queued ->
+            updateOptimisticUI(
+                smokerName = queued.smoker.name,
+                type = queued.type,
+                customActivity = queued.customActivity
+            )
         }
     }
     
