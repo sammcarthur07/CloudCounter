@@ -2305,10 +2305,13 @@ class ChatFragment : Fragment() {
             // Fade in video chat
             performManualFadeIn(binding.layoutVideoChat, 500L)
 
-            // Check camera permission first
+            // Check camera permission - only request if not already granted
             if (!hasCameraPermission()) {
+                Log.d(TAG, "Camera/audio permissions not granted, requesting now")
                 requestCameraPermission()
                 return@performManualFadeOut
+            } else {
+                Log.d(TAG, "Camera/audio permissions already granted, starting video call")
             }
 
             // Start video call

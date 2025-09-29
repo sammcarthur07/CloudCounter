@@ -140,6 +140,7 @@ class GoalAdapter(
                 oldItem is String && newItem is String -> oldItem == newItem
                 oldItem is Goal && newItem is Goal -> {
                     // Check ALL fields including all notification fields
+                    // IMPORTANT: Include isActive to force full rebind when goals are completed/resumed
                     oldItem.goalName == newItem.goalName &&
                             oldItem.targetJoints == newItem.targetJoints &&
                             oldItem.targetCones == newItem.targetCones &&
@@ -151,7 +152,7 @@ class GoalAdapter(
                             oldItem.targetValue == newItem.targetValue &&
                             oldItem.currentValue == newItem.currentValue &&
                             oldItem.isPaused == newItem.isPaused &&
-                            oldItem.isActive == newItem.isActive &&
+                            oldItem.isActive == newItem.isActive &&  // This will force full rebind when status changes
                             oldItem.notificationsEnabled == newItem.notificationsEnabled &&  // Main field
                             oldItem.progressNotificationsEnabled == newItem.progressNotificationsEnabled &&  // Check this too
                             oldItem.completionNotificationsEnabled == newItem.completionNotificationsEnabled &&  // And this
@@ -166,6 +167,11 @@ class GoalAdapter(
             val newItem = newList[newItemPosition]
 
             if (oldItem is Goal && newItem is Goal) {
+                // If active status changed, do a full rebind (no payload)
+                if (oldItem.isActive != newItem.isActive || oldItem.isPaused != newItem.isPaused) {
+                    return null  // Force full rebind for status changes
+                }
+                
                 // Check if only progress changed
                 if (oldItem.currentJoints != newItem.currentJoints ||
                     oldItem.currentCones != newItem.currentCones ||
@@ -346,10 +352,13 @@ class GoalAdapter(
             }
 
             // Setup complete/resume button
+            Log.d(TAG, "🔄 Setting button icon for goal ${goal.goalId}: isActive=${goal.isActive}")
             if (!goal.isActive) {
+                Log.d(TAG, "🔄 Goal ${goal.goalId} is NOT active - showing REFRESH icon")
                 binding.buttonComplete.setImageResource(R.drawable.ic_refresh)
                 binding.buttonComplete.contentDescription = "Resume Goal"
             } else {
+                Log.d(TAG, "🔄 Goal ${goal.goalId} is ACTIVE - showing CHECK icon")
                 binding.buttonComplete.setImageResource(R.drawable.ic_check)
                 binding.buttonComplete.contentDescription = "Complete Goal"
             }

@@ -5992,17 +5992,7 @@ class MainActivity : AppCompatActivity() {
                         // Small delay to ensure UI is updated
                         lifecycleScope.launch {
                             delay(100)
-                            if (type == ActivityType.CUSTOM && pendingCustomActivity != null) {
-                                // Handle custom activity
-                                Log.d(TAG, "🏠 Logging pending custom activity: ${pendingCustomActivity?.name}")
-                                pendingCustomActivity?.let { customActivity ->
-                                    logCustomActivitySafe(customActivity)
-                                }
-                                pendingCustomActivity = null
-                            } else {
-                                // Handle regular activity
-                                logHitSafe(type)
-                            }
+                            logHitSafe(type)
                         }
                         pendingActivityType = null
                     }
@@ -6035,17 +6025,7 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🏠 Logging pending activity: $type")
             lifecycleScope.launch {
                 delay(100) // Small delay to ensure session is fully started
-                if (type == ActivityType.CUSTOM && pendingCustomActivity != null) {
-                    // Handle custom activity
-                    Log.d(TAG, "🏠 Logging pending custom activity: ${pendingCustomActivity?.name}")
-                    pendingCustomActivity?.let { customActivity ->
-                        logCustomActivitySafe(customActivity)
-                    }
-                    pendingCustomActivity = null
-                } else {
-                    // Handle regular activity
-                    logHitSafe(type)
-                }
+                logHitSafe(type)
             }
             pendingActivityType = null
         }
@@ -6072,9 +6052,13 @@ class MainActivity : AppCompatActivity() {
         val currentUserId = authManager.getCurrentUserId()
         Log.d(TAG, "🏠 Current user ID: $currentUserId")
 
-        // REMOVED CHECK: Always show full cloud options menu regardless of sign-in status
-        // The individual options will check for sign-in and show appropriate popup
-        Log.d(TAG, "🏠 Showing cloud options menu (signed in: ${currentUserId != null})")
+        if (currentUserId == null) {
+            // Show sign-in dialog if not signed in
+            showCloudSignInDialog()
+            return
+        }
+
+        Log.d(TAG, "🏠 User is signed in, showing cloud options")
 
         val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
         currentDialog = dialog
@@ -6322,50 +6306,26 @@ class MainActivity : AppCompatActivity() {
         // Create option cards with image press effect
         // New Room button (primary - green)
         val newRoomCard = createCloudOptionCard("🚀", "New Room", "Create a fresh session", true) {
-            animateCardSelection(dialog) {
-                if (authManager.getCurrentUserId() == null) {
-                    showNotSignedInPopup()
-                } else {
-                    promptNewRoom()
-                }
-            }
+            animateCardSelection(dialog) { promptNewRoom() }
         }
         contentLayout.addView(newRoomCard)
 
         // Sesh Roulette button (primary - styled like New Room)
         val rouletteCard = createCloudOptionCard("🎲", "Sesh Roulette", "Jump into a random social sesh", true) {
             Log.d("Roulette", "UI click: Sesh Roulette selected")
-            animateCardSelection(dialog) {
-                if (authManager.getCurrentUserId() == null) {
-                    showNotSignedInPopup()
-                } else {
-                    startSeshRoulette()
-                }
-            }
+            animateCardSelection(dialog) { startSeshRoulette() }
         }
         contentLayout.addView(rouletteCard)
 
         // Existing Room button (secondary)
         val existingRoomCard = createCloudOptionCard("🔥", "Existing Room", "Continue active sessions", false) {
-            animateCardSelection(dialog) {
-                if (authManager.getCurrentUserId() == null) {
-                    showNotSignedInPopup()
-                } else {
-                    showExistingRoomsDialog()
-                }
-            }
+            animateCardSelection(dialog) { showExistingRoomsDialog() }
         }
         contentLayout.addView(existingRoomCard)
 
         // Join by Code button (secondary)
         val joinByCodeCard = createCloudOptionCard("🔗", "Join by Code", "Enter a share code", false) {
-            animateCardSelection(dialog) {
-                if (authManager.getCurrentUserId() == null) {
-                    showNotSignedInPopup()
-                } else {
-                    showJoinByCodeDialog()
-                }
-            }
+            animateCardSelection(dialog) { showJoinByCodeDialog() }
         }
         contentLayout.addView(joinByCodeCard)
 
@@ -7647,17 +7607,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "🏠 Logging pending activity after room creation: $type")
                     lifecycleScope.launch {
                         delay(100) // Small delay to ensure room is fully set up
-                        if (type == ActivityType.CUSTOM && pendingCustomActivity != null) {
-                            // Handle custom activity
-                            Log.d(TAG, "🏠 Logging pending custom activity: ${pendingCustomActivity?.name}")
-                            pendingCustomActivity?.let { customActivity ->
-                                logCustomActivitySafe(customActivity)
-                            }
-                            pendingCustomActivity = null
-                        } else {
-                            // Handle regular activity
-                            logHitSafe(type)
-                        }
+                        logHitSafe(type)
                     }
                     pendingActivityType = null
                 }
@@ -7854,17 +7804,7 @@ class MainActivity : AppCompatActivity() {
                             Log.d(TAG, "🏠 Logging pending activity after joining room: $type")
                             lifecycleScope.launch {
                                 delay(100) // Small delay to ensure room is fully joined
-                                if (type == ActivityType.CUSTOM && pendingCustomActivity != null) {
-                                    // Handle custom activity
-                                    Log.d(TAG, "🏠 Logging pending custom activity: ${pendingCustomActivity?.name}")
-                                    pendingCustomActivity?.let { customActivity ->
-                                        logCustomActivitySafe(customActivity)
-                                    }
-                                    pendingCustomActivity = null
-                                } else {
-                                    // Handle regular activity
-                                    logHitSafe(type)
-                                }
+                                logHitSafe(type)
                             }
                             pendingActivityType = null
                         }
@@ -10070,26 +10010,17 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "🗑️ Has cloud participation: $hasCloudParticipation")
             
             // Use soft delete for local smokers with cloud participation OR when keeping data
-            // For cloud smokers with keepData, also use soft delete but sign out
-            if ((hasCloudParticipation && !smoker.isCloudSmoker) || keepData) {
-                // Soft delete the smoker
+            if ((hasCloudParticipation && !smoker.isCloudSmoker) || (keepData && !smoker.isCloudSmoker)) {
+                // Local smoker with cloud participation or keeping data - use soft delete
                 Log.d(TAG, "🗑️ Using SOFT DELETE for ${smoker.name}")
                 
                 smokerDao.softDeleteSmoker(smoker.smokerId)
                 
-                // Check if we need to sign out the user (for cloud smokers being soft deleted)
-                if (smoker.isCloudSmoker && smoker.cloudUserId == authManager.getCurrentUserId()) {
-                    Log.d(TAG, "🗑️ Signing out user as their cloud smoker was soft deleted")
-                    withContext(Dispatchers.Main) {
-                        authManager.signOut()
-                    }
-                }
-                
                 withContext(Dispatchers.Main) {
-                    val message = when {
-                        smoker.isCloudSmoker && keepData -> "${smoker.name} removed (data kept, signed out)"
-                        hasCloudParticipation -> "${smoker.name} removed (cloud data preserved)"
-                        else -> "${smoker.name} removed (historical data kept)"
+                    val message = if (hasCloudParticipation) {
+                        "${smoker.name} removed (cloud data preserved)"
+                    } else {
+                        "${smoker.name} removed (historical data kept)"
                     }
                     Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                 }
@@ -10153,14 +10084,6 @@ class MainActivity : AppCompatActivity() {
                 // Hard delete the smoker entity
                 repo.deleteSmoker(smoker)
                 Log.d(TAG, "🗑️ ✅ Smoker deleted from local database")
-                
-                // Check if we need to sign out the user
-                if (smoker.isCloudSmoker && smoker.cloudUserId == authManager.getCurrentUserId()) {
-                    Log.d(TAG, "🗑️ Signing out user as their cloud smoker was deleted")
-                    withContext(Dispatchers.Main) {
-                        authManager.signOut()
-                    }
-                }
 
                 withContext(Dispatchers.Main) {
                     val message = if (keepData) {
@@ -16012,7 +15935,6 @@ class MainActivity : AppCompatActivity() {
         dialog.setOnDismissListener {
             currentDialog = null
             pendingActivityType = null
-            pendingCustomActivity = null  // Clear pending custom activity
             Log.d(TAG, "🎯 No active session dialog dismissed for type: $type")
         }
 
@@ -16115,28 +16037,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         val cloudSessionButton = createImagePressButton("Cloud Session", true) {
-            // Store pending activity data before dialog dismissal clears it
-            val savedPendingType = pendingActivityType
-            val savedPendingCustom = pendingCustomActivity
-            
             animateCardSelection(dialog) {
-                // Restore pending activity data after dialog dismissal
-                pendingActivityType = savedPendingType
-                pendingCustomActivity = savedPendingCustom
                 showCloudSessionOptions()
             }
         }
         buttonContainer.addView(cloudSessionButton)
 
         val localSessionButton = createImagePressButton("Local Session", false) {
-            // Store pending activity data before dialog dismissal clears it
-            val savedPendingType = pendingActivityType
-            val savedPendingCustom = pendingCustomActivity
-            
             animateCardSelection(dialog) {
-                // Restore pending activity data after dialog dismissal
-                pendingActivityType = savedPendingType
-                pendingCustomActivity = savedPendingCustom
                 startLocalSession()
             }
         }
@@ -17781,132 +17689,6 @@ class MainActivity : AppCompatActivity() {
 
         return rootContainer
     }
-    
-    private fun showNotSignedInPopup() {
-        Log.d(TAG, "🏠 Showing not signed in popup for cloud features")
-        val dialog = Dialog(this, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
-        currentDialog = dialog
-        val dialogView = createNotSignedInDialog(dialog)
-        dialog.setContentView(dialogView)
-        
-        dialog.window?.apply {
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            setBackgroundDrawable(ColorDrawable(Color.parseColor("#80000000")))
-            setFlags(
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
-            )
-        }
-        
-        dialog.setOnDismissListener {
-            currentDialog = null
-            Log.d(TAG, "🏠 Not signed in dialog dismissed")
-        }
-        
-        dialogView.alpha = 0f
-        dialog.show()
-        performManualFadeIn(dialogView, 500L)
-    }
-    
-    private fun createNotSignedInDialog(dialog: Dialog): View {
-        val rootContainer = FrameLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            setBackgroundColor(Color.TRANSPARENT)
-        }
-        
-        val mainCard = androidx.cardview.widget.CardView(this).apply {
-            radius = 16.dpToPx(this@MainActivity).toFloat()
-            cardElevation = 8.dpToPx(this@MainActivity).toFloat()
-            setCardBackgroundColor(Color.parseColor("#E64A4A4A"))
-            
-            layoutParams = FrameLayout.LayoutParams(
-                320.dpToPx(this@MainActivity),
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = android.view.Gravity.CENTER
-            }
-        }
-        
-        val contentLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity),
-                24.dpToPx(this@MainActivity), 24.dpToPx(this@MainActivity))
-        }
-        
-        // Cloud icon
-        val cloudIcon = TextView(this).apply {
-            text = "☁️"
-            textSize = 36f
-            gravity = android.view.Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = 12.dpToPx(this@MainActivity)
-            }
-        }
-        contentLayout.addView(cloudIcon)
-        
-        // Title
-        val titleText = TextView(this).apply {
-            text = "NOT SIGNED IN"
-            textSize = 18f
-            setTextColor(Color.parseColor("#FFA366"))
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            gravity = android.view.Gravity.CENTER
-            letterSpacing = 0.1f
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = 16.dpToPx(this@MainActivity)
-            }
-        }
-        contentLayout.addView(titleText)
-        
-        // Message with exact text requested
-        val messageText = TextView(this).apply {
-            text = "You're not signed in via Google.\n\nClick the add smoker button and login as Cloud Smoker to access cloud features"
-            textSize = 14f
-            setTextColor(Color.WHITE)
-            gravity = android.view.Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                bottomMargin = 20.dpToPx(this@MainActivity)
-            }
-        }
-        contentLayout.addView(messageText)
-        
-        // OK button
-        val okButton = createThemedDialogButton("OK", false, Color.WHITE) {
-            dialog.dismiss()
-            // Return to cloud session options after dismiss
-            Handler(Looper.getMainLooper()).postDelayed({
-                showCloudSessionOptions()
-            }, 300)
-        }
-        okButton.layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            44.dpToPx(this@MainActivity)
-        )
-        contentLayout.addView(okButton)
-        
-        mainCard.addView(contentLayout)
-        rootContainer.addView(mainCard)
-        
-        rootContainer.setOnClickListener {
-            if (it == rootContainer) {
-                dialog.dismiss()
-            }
-        }
-        
-        return rootContainer
-    }
 
     private fun showNoCloudUserPopup() {
         Log.d(TAG, "🏠 Showing no cloud user popup")
@@ -17928,8 +17710,6 @@ class MainActivity : AppCompatActivity() {
 
         dialog.setOnDismissListener {
             currentDialog = null
-            pendingActivityType = null
-            pendingCustomActivity = null  // Clear pending custom activity
             Log.d(TAG, "🏠 No cloud user dialog dismissed")
         }
 
@@ -18052,14 +17832,7 @@ class MainActivity : AppCompatActivity() {
 
         // Start Local Sesh button (left) - USING createThemedDialogButton for consistency
         val localButton = createThemedDialogButton("Start Local Sesh", false, Color.WHITE) {
-            // Store pending activity data before dialog dismissal clears it
-            val savedPendingType = pendingActivityType
-            val savedPendingCustom = pendingCustomActivity
-            
             animateCardSelection(dialog) {
-                // Restore pending activity data after dialog dismissal
-                pendingActivityType = savedPendingType
-                pendingCustomActivity = savedPendingCustom
                 startLocalSession()
             }
         }

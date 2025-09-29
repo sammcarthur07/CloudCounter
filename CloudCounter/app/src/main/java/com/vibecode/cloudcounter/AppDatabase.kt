@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 28, // Changed from 27 to 28 for soft delete fields
+    version = 28,
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)

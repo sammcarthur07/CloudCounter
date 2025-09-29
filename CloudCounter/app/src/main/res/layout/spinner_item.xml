@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="48dp">
+    android:layout_height="48dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
 
     <TextView
         android:id="@+id/textName"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
         android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
         android:textColor="@android:color/white"
         android:ellipsize="end"
         android:singleLine="true"
@@ -21,4 +24,19 @@
         app:autoSizeMaxTextSize="32sp"
         app:autoSizeStepGranularity="1sp" />
 
-</FrameLayout>
+    <View
+        android:id="@+id/syncStatusDot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/circle_shape"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/queueStatusDot"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
+        android:background="@drawable/circle_shape"
+        android:visibility="gone" />
+
+</LinearLayout>

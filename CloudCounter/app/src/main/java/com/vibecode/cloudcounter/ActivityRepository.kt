@@ -438,6 +438,11 @@ class ActivityRepository(
     suspend fun countConesBetweenTimestamps(startTime: Long, endTime: Long): Int =
         activityLogDao.countConesBetweenTimestamps(startTime, endTime)
 
+    suspend fun getTotalBowlsInTimeRange(startTime: Long, endTime: Long): Int =
+        withContext(Dispatchers.IO) {
+            activityLogDao.getTotalBowlsInTimeRange(startTime, endTime)
+        }
+
     suspend fun countConesForSmokerBetween(
         smokerId: Long,
         startTime: Long,

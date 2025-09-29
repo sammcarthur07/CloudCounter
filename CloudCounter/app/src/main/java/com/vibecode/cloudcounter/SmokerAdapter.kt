@@ -61,12 +61,13 @@ class SmokerAdapter(
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val view = convertView ?: layoutInflater.inflate(R.layout.spinner_item, parent, false)
         val item = getItem(position)
-        val container = view as? FrameLayout
-        val textName = container?.findViewById<TextView>(R.id.textName)
+        val textName = view.findViewById<TextView>(R.id.textName)
 
-        // Hide the sync status dot in the spinner selected view (not dropdown)
-        val syncDot = container?.findViewById<View>(R.id.syncStatusDot)
+        // Hide the status dots in the spinner selected view (not dropdown)
+        val syncDot = view.findViewById<View>(R.id.syncStatusDot)
+        val queueDot = view.findViewById<View>(R.id.queueStatusDot)
         syncDot?.visibility = View.GONE
+        queueDot?.visibility = View.GONE
 
         if (item == null) {
             setupAddSmokerView(textName, view)
@@ -283,6 +284,7 @@ class SmokerAdapter(
         val smokerView = layoutInflater.inflate(R.layout.spinner_dropdown_item, container, false)
         val textName = smokerView.findViewById<TextView>(R.id.textName)
         val syncDot = smokerView.findViewById<View>(R.id.syncStatusDot)
+        val queueDot = smokerView.findViewById<View>(R.id.queueStatusDot)
         val btnDelete = smokerView.findViewById<ImageButton>(R.id.btnDelete)
         val btnSync = smokerView.findViewById<ImageButton>(R.id.btnSync)
         val btnEdit = smokerView.findViewById<ImageButton>(R.id.btnEdit)
@@ -291,7 +293,7 @@ class SmokerAdapter(
 
         textName.text = smokerManager.formatSmokerNameWithStatus(smoker)
 
-        setupDropdownItemButtons(smoker, btnDelete, btnSync, btnEdit, btnPassword, btnPausePlay, syncDot)
+        setupDropdownItemButtons(smoker, btnDelete, btnSync, btnEdit, btnPassword, btnPausePlay, syncDot, queueDot)
 
         return smokerView
     }
@@ -303,10 +305,11 @@ class SmokerAdapter(
         btnEdit: ImageButton,
         btnPassword: ImageButton,
         btnPausePlay: ImageButton,
-        syncDot: View
+        syncDot: View,
+        queueDot: View
     ) {
         smokerManager.setupSmokerDropdownButtons(
-            smoker, btnDelete, btnSync, btnEdit, btnPassword, btnPausePlay, syncDot
+            smoker, btnDelete, btnSync, btnEdit, btnPassword, btnPausePlay, syncDot, queueDot
         ) { dismissSpinnerDropDown() }
     }
 

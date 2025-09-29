@@ -139,6 +139,24 @@ class SystemPermissionsGuideDialog(
         )
         contentLayout.addView(locationCard)
 
+        // Camera permission card
+        val cameraCard = createPermissionCard(
+            "📷",
+            "Camera",
+            "For video calls and photos",
+            android.graphics.Color.parseColor("#33FF9966")
+        )
+        contentLayout.addView(cameraCard)
+
+        // Audio permission card
+        val audioCard = createPermissionCard(
+            "🎤",
+            "Audio Recording",
+            "For voice in video calls",
+            android.graphics.Color.parseColor("#33FF66FF")
+        )
+        contentLayout.addView(audioCard)
+
         // Note about permissions
         val noteText = android.widget.TextView(context).apply {
             text = "These permissions won't be asked again after initial setup."

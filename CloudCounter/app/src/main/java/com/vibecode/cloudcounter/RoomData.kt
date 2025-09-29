@@ -12,6 +12,8 @@ data class RoomData(
     val activities: List<SessionActivity> = emptyList(),
     val currentStats: SessionStats = SessionStats(),
     val autoAddState: AutoAddState = AutoAddState(),
+    val isAutoMode: Boolean = true,
+    val activeSmokerId: String? = null,
     val startTime: Long = System.currentTimeMillis(),
     val lastActivityTime: Long = System.currentTimeMillis(),
     val active: Boolean = true,
@@ -31,6 +33,7 @@ data class RoomData(
     fun safeAwayParticipants(): List<String> = awayParticipants
     fun safePausedSmokers(): List<String> = pausedSmokers
     fun safeSharedSmokers(): Map<String, Map<String, Any>> = sharedSmokers
+    fun safeActiveSmokerId(): String? = activeSmokerId
 
     // NEW: Check if user has already joined with password
     fun hasUserJoined(userId: String): Boolean = joinedUsers.contains(userId)

@@ -24,7 +24,7 @@ interface ActivityLogDao {
     @Query("SELECT SUM(CASE WHEN type = 'BOWL' THEN bowlQuantity ELSE 1 END) FROM activity_logs WHERE smokerId = :smokerId AND timestamp >= :startTime AND timestamp <= :endTime")
     suspend fun getTotalActivityCountForSmoker(smokerId: Long, startTime: Long, endTime: Long): Int
 
-    @Query("SELECT SUM(bowlQuantity) FROM activity_logs WHERE type = 'BOWL' AND timestamp >= :startTime AND timestamp <= :endTime")
+    @Query("SELECT COALESCE(SUM(bowlQuantity), 0) FROM activity_logs WHERE type = 'BOWL' AND timestamp >= :startTime AND timestamp <= :endTime")
     suspend fun getTotalBowlsInTimeRange(startTime: Long, endTime: Long): Int
 
     @Query("SELECT COALESCE(SUM(bowlQuantity), 0) FROM activity_logs WHERE smokerId = :smokerId AND type = 'BOWL'")

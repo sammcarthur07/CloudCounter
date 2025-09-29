@@ -174,22 +174,26 @@ class GoalFragment : Fragment() {
     }
 
     private fun toggleGoalComplete(goal: Goal) {
-        Log.d(TAG, "✅ Toggling complete for goal: ${goal.goalName}")
+        Log.d(TAG, "✅ Toggling complete for goal: ${goal.goalName} (ID: ${goal.goalId})")
+        Log.d(TAG, "✅ Current isActive: ${goal.isActive}")
         lifecycleScope.launch {
             val updatedGoal = if (goal.isActive) {
                 // Mark as completed
+                Log.d(TAG, "✅ Marking goal ${goal.goalId} as COMPLETED")
                 goal.copy(
                     isActive = false,
                     completedAt = System.currentTimeMillis()
                 )
             } else {
                 // Resume/reactivate
+                Log.d(TAG, "✅ Marking goal ${goal.goalId} as ACTIVE (resuming)")
                 goal.copy(
                     isActive = true,
                     completedAt = null
                 )
             }
 
+            Log.d(TAG, "✅ Updated goal isActive: ${updatedGoal.isActive}")
             goalViewModel.updateGoal(updatedGoal)
 
             // CORRECTED BLOCK

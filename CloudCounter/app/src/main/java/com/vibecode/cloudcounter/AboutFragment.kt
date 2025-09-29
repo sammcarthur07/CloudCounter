@@ -295,7 +295,8 @@ class AboutFragment : Fragment() {
         )
 
         private var lastRegionShown = ""
-        private var fadeAnimator: ValueAnimator? = null
+        private var isFading = false
+        private var pendingFadeAction: (() -> Unit)? = null
         private var currentDisplayCity: String? = null
         private var currentDisplayTargetTime: Long = 0L
         private var currentDisplayMode: String = "" // "sticky", "normal", "actual", "climax"
@@ -531,6 +532,8 @@ class AboutFragment : Fragment() {
 
         // Start timer updates
         start420Timers()
+
+        startLocationRotation()
 
         Log.d(TAG, "🎯 AboutFragment onViewCreated completed")
     }
@@ -1456,14 +1459,28 @@ This app is vibe coded without writing a single line of code with the help of Cl
         // Start the live countdown updater
         startLiveCountdown()
 
+        // Prevent stacking multiple rotation runnables when this is re-invoked
+        locationRunnable?.let { existing ->
+            handler.removeCallbacks(existing)
+        }
+
         locationRunnable = object : Runnable {
             override fun run() {
+                if (this !== locationRunnable) {
+                    Log.d(TAG, "⏹️ Skipping stale location rotation runnable")
+                    return
+                }
+
                 Log.d(TAG, "🏃 Location rotation runnable executing...")
 
                 // Don't rotate if we're in sticky mode or showing climax
                 if (isInStickyMode || isShowingClimax) {
                     Log.d(TAG, "⏸️ Skipping rotation - sticky mode: $isInStickyMode, climax: $isShowingClimax")
-                    handler.postDelayed(this, ROTATION_INTERVAL_MS)
+                    if (this === locationRunnable) {
+                        handler.postDelayed(this, ROTATION_INTERVAL_MS)
+                    } else {
+                        Log.d(TAG, "⏹️ Skipping reschedule for stale runnable")
+                    }
                     return
                 }
 
@@ -1527,8 +1544,12 @@ This app is vibe coded without writing a single line of code with the help of Cl
                     }
                 }
 
-                Log.d(TAG, "⏭️ Scheduling next rotation in ${ROTATION_INTERVAL_MS}ms")
-                handler.postDelayed(this, ROTATION_INTERVAL_MS)
+                if (this === locationRunnable) {
+                    Log.d(TAG, "⏭️ Scheduling next rotation in ${ROTATION_INTERVAL_MS}ms")
+                    handler.postDelayed(this, ROTATION_INTERVAL_MS)
+                } else {
+                    Log.d(TAG, "⏹️ Skipping reschedule for stale runnable")
+                }
             }
         }
 
@@ -1663,25 +1684,37 @@ This app is vibe coded without writing a single line of code with the help of Cl
     }
 
     private fun fadeToNewText(onFadeComplete: () -> Unit) {
-        Log.d(TAG, "🎬 fadeToNewText() called using AlphaAnimation")
+        Log.d(TAG, "🎬 fadeToNewText() called")
 
-        // Null check to prevent crashes
-        if (_binding == null) {
+        val currentBinding = _binding
+        if (currentBinding == null) {
             Log.w(TAG, "⚠️ fadeToNewText called but binding is null")
             return
         }
 
-        // Cancel any existing animations
-        binding.text420Location.clearAnimation()
+        val textView = currentBinding.text420Location
 
-        // Create fade out animation (same as your original)
-        val fadeOut = android.view.animation.AlphaAnimation(1.0f, 0.0f)
-        fadeOut.duration = FADE_DURATION_MS
-        fadeOut.fillAfter = true
+        if (isFading) {
+            Log.d(TAG, "🎬 Fade already running - queueing next update")
+            pendingFadeAction = onFadeComplete
+            return
+        }
 
-        val fadeIn = android.view.animation.AlphaAnimation(0.0f, 1.0f)
-        fadeIn.duration = FADE_DURATION_MS
-        fadeIn.fillAfter = true
+        pendingFadeAction = null
+        isFading = true
+
+        textView.clearAnimation()
+        textView.alpha = 1f
+
+        val fadeOut = android.view.animation.AlphaAnimation(1f, 0f).apply {
+            duration = FADE_DURATION_MS
+            fillAfter = true
+        }
+
+        val fadeIn = android.view.animation.AlphaAnimation(0f, 1f).apply {
+            duration = FADE_DURATION_MS
+            fillAfter = true
+        }
 
         fadeOut.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
             override fun onAnimationStart(animation: android.view.animation.Animation?) {
@@ -1689,13 +1722,20 @@ This app is vibe coded without writing a single line of code with the help of Cl
             }
 
             override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                if (_binding !== currentBinding) {
+                    Log.d(TAG, "🎬 Fade OUT ended but binding changed - aborting")
+                    textView.alpha = 1f
+                    textView.clearAnimation()
+                    isFading = false
+                    pendingFadeAction = null
+                    return
+                }
+
                 Log.d(TAG, "🎬 Fade OUT animation ended")
 
-                // Update the text
                 onFadeComplete()
 
-                // Start fade in
-                binding.text420Location.startAnimation(fadeIn)
+                textView.startAnimation(fadeIn)
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
@@ -1707,15 +1747,30 @@ This app is vibe coded without writing a single line of code with the help of Cl
             }
 
             override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+                if (_binding !== currentBinding) {
+                    Log.d(TAG, "🎬 Fade IN ended but binding changed - aborting queued fade")
+                    pendingFadeAction = null
+                    isFading = false
+                    return
+                }
+
+                textView.clearAnimation()
+                textView.alpha = 1f
                 Log.d(TAG, "🎬 Fade IN animation ended")
-                binding.text420Location.alpha = 1.0f
+
+                isFading = false
+
+                pendingFadeAction?.let { nextAction ->
+                    Log.d(TAG, "🎬 Running queued fade action")
+                    pendingFadeAction = null
+                    fadeToNewText(nextAction)
+                }
             }
 
             override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
         })
 
-        // Start the fade out
-        binding.text420Location.startAnimation(fadeOut)
+        textView.startAnimation(fadeOut)
     }
 
     private fun startLiveCountdown() {
@@ -1778,6 +1833,15 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
         Log.d(TAG, "🔄 Starting countdown runnable")
         liveCountdownRunnable?.run()
+    }
+
+    private fun cancelFadeAnimations() {
+        pendingFadeAction = null
+        isFading = false
+        _binding?.text420Location?.let { textView ->
+            textView.clearAnimation()
+            textView.alpha = 1f
+        }
     }
 
     // Add these new DIRECT update functions that don't fade (for per-second updates)
@@ -1867,9 +1931,18 @@ This app is vibe coded without writing a single line of code with the help of Cl
 
         // Split cities into A-list (currently 420) and B-list (approaching)
         val aList = allCities.filter { it.third <= 120 } // Within 2 minutes = currently 420
-        
+
         // Only show cities that are actually approaching (within 60 minutes max to catch more cities)
         val bList = allCities.filter { it.third in (STICKY_THRESHOLD_SECONDS + 1)..3600 } // Between 2 min and 60 minutes
+
+        // If one list is empty, force the rotation to the populated list instead of falling back repeatedly
+        if (showingAList && aList.isEmpty() && bList.isNotEmpty()) {
+            Log.d(TAG, "ℹ️ No A-list cities available, switching to B-list for this rotation")
+            showingAList = false
+        } else if (!showingAList && bList.isEmpty() && aList.isNotEmpty()) {
+            Log.d(TAG, "ℹ️ No B-list cities available, switching to A-list for this rotation")
+            showingAList = true
+        }
 
         Log.d(TAG, "📊 A-list (actual 420): ${aList.size} cities, B-list (within 60m): ${bList.size} cities")
         
@@ -2197,6 +2270,8 @@ This app is vibe coded without writing a single line of code with the help of Cl
             }
         }
         keyboardListener = null
+
+        cancelFadeAnimations()
 
         // Clean up stats manager and listeners
         statsManager.cleanup()

@@ -22,6 +22,7 @@ class TurnNotificationManager(
         private const val KEY_LAST_NOTIFIED_ACTIVITY_COUNT = "last_notified_activity_count"
         private const val KEY_LAST_ACTIVITY_TYPE = "last_activity_type"
         private const val KEY_CURRENT_USER_SMOKER_ID = "current_user_smoker_id"
+        private const val KEY_LAST_TURN_SMOKER_ID = "last_turn_smoker_id"
     }
     
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -38,11 +39,40 @@ class TurnNotificationManager(
     }
     
     /**
-     * Check if app is in foreground
+     * Check if this specific profile instance should skip notifications due to being foreground
+     * for the specific turn user. This ensures that when a secure folder instance is foreground,
+     * it can still show notifications for the main profile user's turns.
      */
-    fun isAppInForeground(): Boolean {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    fun shouldSkipNotificationForUser(currentTurnUserId: String): Boolean {
+        // Get the current Firebase user for this profile instance
+        val thisInstanceUserId = FirebaseAuth.getInstance().currentUser?.uid ?: getAndroidDeviceId()
         
+        // Check if this profile instance is in foreground
+        val isThisInstanceForeground = isThisInstanceInForeground()
+        
+        Log.d(TAG, "shouldSkipNotificationForUser - Turn user: $currentTurnUserId, This instance user: $thisInstanceUserId, This instance foreground: $isThisInstanceForeground")
+        
+        // Only skip notifications if:
+        // 1. This profile instance is in foreground AND
+        // 2. The turn belongs to the same user as this profile instance
+        val shouldSkip = isThisInstanceForeground && (currentTurnUserId == thisInstanceUserId)
+        
+        Log.d(TAG, "shouldSkipNotificationForUser result: $shouldSkip")
+        return shouldSkip
+    }
+    
+    /**
+     * Check if this specific profile instance is in foreground
+     */
+    private fun isThisInstanceInForeground(): Boolean {
+        (context.applicationContext as? CloudCounterApplication)?.let { app ->
+            val appForeground = app.isInForeground()
+            Log.d(TAG, "App lifecycle callback check: foreground=$appForeground")
+            return appForeground
+        }
+
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+
         // Get running app processes
         val appProcesses = activityManager.runningAppProcesses
         if (appProcesses.isNullOrEmpty()) {
@@ -51,16 +81,21 @@ class TurnNotificationManager(
         }
         
         val packageName = context.packageName
-        
-        // Find our app's process
+        val targetUid = context.applicationInfo?.uid ?: -1
+
+        // Find the process that belongs to this user profile + package
         for (process in appProcesses) {
             if (process.processName == packageName) {
+                if (process.uid != targetUid) {
+                    Log.d(TAG, "Skipping process for different UID: ${process.uid}")
+                    continue
+                }
                 // Check if the app is truly in foreground (visible to user)
                 // IMPORTANCE_FOREGROUND = 100 (has visible activity)
                 // IMPORTANCE_FOREGROUND_SERVICE = 125 (has foreground service but no visible activity)
                 // IMPORTANCE_VISIBLE = 200 (visible but not in foreground)
-                
-                Log.d(TAG, "Foreground check - Package: $packageName, Importance: ${process.importance}")
+
+                Log.d(TAG, "Foreground check - Package: $packageName, UID: ${process.uid}, Importance: ${process.importance}")
                 
                 // Only return true if importance is exactly FOREGROUND (100) 
                 // This means the app has a visible activity in the foreground
@@ -80,6 +115,13 @@ class TurnNotificationManager(
         
         Log.d(TAG, "App process not found")
         return false
+    }
+    
+    /**
+     * Check if app is in foreground (legacy method for backward compatibility)
+     */
+    fun isAppInForeground(): Boolean {
+        return isThisInstanceInForeground()
     }
     
     /**
@@ -107,12 +149,6 @@ class TurnNotificationManager(
                 // Check if we should force notifications (for testing)
                 val forceNotifications = prefs.getBoolean("force_turn_notifications", false)
                 
-                // Don't show notifications if app is in foreground (unless forced)
-                if (!forceNotifications && isAppInForeground()) {
-                    Log.d(TAG, "App in foreground, skipping turn notification")
-                    return@launch
-                }
-                
                 if (forceNotifications) {
                     Log.d(TAG, "Force notifications enabled, bypassing foreground check")
                 }
@@ -130,6 +166,7 @@ class TurnNotificationManager(
                 Log.d(TAG, "Current user Firebase UID: $currentUserId")
                 Log.d(TAG, "Current user smoker ID: $currentUserSmokerId")
                 Log.d(TAG, "Active participants: $activeParticipants")
+                Log.d(TAG, "SharedSmokers map size: ${roomData.sharedSmokers?.size ?: 0}")
                 
                 roomData.sharedSmokers?.forEach { (smokerId, smokerData) ->
                     val data = smokerData as? Map<*, *>
@@ -139,63 +176,84 @@ class TurnNotificationManager(
                     Log.d(TAG, "Smoker in room: ID=$smokerId, name=$name, cloudUserId=$cloudUserId, isCloud=$isCloudSmoker")
                 }
                 
-                // Calculate current turn
+                // Use the actual active smoker from room data (includes manual changes)
                 val totalHits = roomData.activities.size
-                val currentTurnIndex = if (activeParticipants.size > 0) {
-                    totalHits % activeParticipants.size
-                } else {
-                    0
-                }
-                
-                Log.d(TAG, "Turn calculation: totalHits=$totalHits, participantCount=${activeParticipants.size}, turnIndex=$currentTurnIndex")
-                
-                // Get the smoker whose turn it is
-                val currentTurnSmokerId = activeParticipants.getOrNull(currentTurnIndex)
+                val currentTurnSmokerId = roomData.safeActiveSmokerId()
                 if (currentTurnSmokerId == null) {
-                    Log.d(TAG, "Could not determine current turn smoker")
+                    Log.d(TAG, "Could not determine current turn smoker - activeSmokerId is null")
                     return@launch
                 }
                 
-                Log.d(TAG, "Current turn belongs to: $currentTurnSmokerId")
+                Log.d(TAG, "Current turn belongs to: $currentTurnSmokerId (from activeSmokerId)")
+                
+                // CRITICAL: Never show notifications for local smokers
+                // Local smokers have IDs that start with "local_"
+                val isLocalSmokerTurn = currentTurnSmokerId.startsWith("local_")
+                if (isLocalSmokerTurn) {
+                    Log.d(TAG, "Skipping notification - turn belongs to local smoker: $currentTurnSmokerId")
+                    return@launch
+                }
+                
+                // For cloud users, the smoker ID is the Firebase UID
+                val turnUserId = getTurnUserId(roomData, currentTurnSmokerId)
+                
+                // Track the last user we notified about to avoid duplicate notifications
+                val lastNotifiedTurnUserKey = "last_notified_turn_user_${currentShareCode}_${currentUserId}"
+                val lastNotifiedTurnUser = prefs.getString(lastNotifiedTurnUserKey, "")
+                
+                // Check if we should skip notification based on foreground state and user
+                val shouldSkipForForeground = !forceNotifications && shouldSkipNotificationForUser(turnUserId)
                 
                 // Check if it's the current user's turn
-                // Compare the turn smoker ID with both Firebase UID and current user smoker ID
-                val isUserTurn = currentTurnSmokerId == currentUserId || currentTurnSmokerId == currentUserSmokerId
+                // For cloud users, compare with Firebase UID
+                val isUserTurn = turnUserId == currentUserId
                 
                 // Debug logging for turn detection
                 Log.d(TAG, "Turn check - Current Firebase user: $currentUserId, Current user smoker ID: $currentUserSmokerId")
-                Log.d(TAG, "Turn smoker ID: $currentTurnSmokerId, Is user turn: $isUserTurn")
+                Log.d(TAG, "Turn smoker ID: $currentTurnSmokerId, Turn user ID: $turnUserId, Is user turn: $isUserTurn")
                 Log.d(TAG, "Active participants: $activeParticipants")
-                Log.d(TAG, "Total activities: $totalHits, Current turn index: $currentTurnIndex")
-                Log.d(TAG, "App in foreground: ${isAppInForeground()}")
+                Log.d(TAG, "Total activities: $totalHits")
+                Log.d(TAG, "Should skip for foreground: $shouldSkipForForeground")
                 
-                // Get a unique key for this user in this room
-                val userRoomKey = "${KEY_LAST_NOTIFIED_ACTIVITY_COUNT}_${currentShareCode}_${currentUserId}"
-                val lastNotifiedCount = prefs.getInt(userRoomKey, -1)
-                
-                if (isUserTurn && totalHits > lastNotifiedCount) {
-                    // It's the user's turn and there are new activities
-                    Log.d(TAG, "It's user's turn! Activity count: $totalHits (last notified: $lastNotifiedCount)")
-                    Log.d(TAG, "Showing notification for user: $currentUserId / $currentUserSmokerId")
-                    Log.d(TAG, "Room: $currentShareCode, User room key: $userRoomKey")
-                    
-                    // Update last notified count for this specific user and room
+                if (shouldSkipForForeground) {
+                    Log.d(TAG, "Skipping notification - this profile instance is foreground for turn user: $turnUserId")
+                    // Clear the last notified user when it's our turn so we can notify again when turn changes
                     prefs.edit()
-                        .putInt(userRoomKey, totalHits)
+                        .putString(lastNotifiedTurnUserKey, "")
+                        .apply()
+                    return@launch
+                }
+                
+                // Check if this is a different user's turn than we last notified about
+                val isDifferentUserTurn = turnUserId != lastNotifiedTurnUser
+                
+                Log.d(TAG, "Notification turn check - Current turn user: $turnUserId")
+                Log.d(TAG, "Last notified turn user: $lastNotifiedTurnUser, Is different user: $isDifferentUserTurn")
+                
+                // Show notification if the turn has changed to a different user
+                if (isDifferentUserTurn) {
+                    // Someone's turn with new activities - show notification
+                    Log.d(TAG, "Turn notification triggered! Turn belongs to: $turnUserId")
+                    Log.d(TAG, "Activity count: $totalHits, Current instance user: $currentUserId")
+                    
+                    // Update last notified turn user
+                    prefs.edit()
+                        .putString(lastNotifiedTurnUserKey, turnUserId)
                         .apply()
                     
                     // Get user's smoker name - look up by the turn smoker ID
-                    val userSmokerName = roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
-                        (smokerData as? Map<*, *>)?.get("name") as? String
-                    } ?: run {
-                        // Fallback: try to find by cloudUserId if direct lookup fails
-                        roomData.sharedSmokers?.entries?.firstOrNull { entry ->
-                            val smokerData = entry.value as? Map<*, *>
-                            val cloudUserId = smokerData?.get("cloudUserId") as? String
-                            cloudUserId == currentTurnSmokerId
-                        }?.let { entry ->
-                            val smokerData = entry.value as? Map<*, *>
-                            smokerData?.get("name") as? String
+                    // For cloud smokers, the currentTurnSmokerId IS their Firebase UID, which is the key
+                    // For local smokers (already filtered out), the key would be "local_" + uid
+                    val userSmokerName = if (roomData.sharedSmokers.isNullOrEmpty()) {
+                        Log.d(TAG, "Warning: sharedSmokers map is empty, cannot look up smoker name")
+                        "User"
+                    } else {
+                        roomData.sharedSmokers?.get(currentTurnSmokerId)?.let { smokerData ->
+                            (smokerData as? Map<*, *>)?.get("name") as? String
+                        } ?: run {
+                            Log.d(TAG, "Warning: Could not find smoker in sharedSmokers with ID: $currentTurnSmokerId")
+                            Log.d(TAG, "Available smoker IDs in room: ${roomData.sharedSmokers?.keys}")
+                            "User"
                         }
                     }
                     
@@ -220,16 +278,35 @@ class TurnNotificationManager(
                         smokerName = userSmokerName,
                         turnUserSmokerId = currentTurnSmokerId
                     )
-                } else if (isUserTurn) {
-                    Log.d(TAG, "It's user's turn but no new activities ($totalHits <= $lastNotifiedCount)")
                 } else {
-                    Log.d(TAG, "Not user's turn (turn belongs to: $currentTurnSmokerId)")
+                    Log.d(TAG, "No notification needed - same user's turn continues: $turnUserId")
+                    // Still update the turn smoker tracker even if we don't notify
+                    prefs.edit()
+                        .putString("turn_user_smoker_id", currentTurnSmokerId)
+                        .apply()
                 }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing room update for turn notification", e)
             }
         }
+    }
+    
+    /**
+     * Get the user ID that corresponds to the current turn smoker ID
+     */
+     private fun getTurnUserId(roomData: RoomData, turnSmokerId: String): String {
+        // For cloud users, the turnSmokerId IS the Firebase UID (user ID)
+        // Local smokers start with "local_" and should have been filtered out already
+        
+        // If it doesn't start with "local_", it's a Firebase UID
+        if (!turnSmokerId.startsWith("local_")) {
+            return turnSmokerId
+        }
+        
+        // This shouldn't happen as local smokers are filtered earlier,
+        // but return the ID anyway as a fallback
+        return turnSmokerId
     }
     
     /**
@@ -261,13 +338,6 @@ class TurnNotificationManager(
         return activeParticipants
     }
     
-    /**
-     * Get the name of the user's smoker
-     */
-    private fun getUserSmokerName(roomData: RoomData, userSmokerId: String): String? {
-        val smokerData = roomData.sharedSmokers?.get(userSmokerId) as? Map<*, *>
-        return smokerData?.get("name") as? String
-    }
     
     /**
      * Get the last activity type from room activities

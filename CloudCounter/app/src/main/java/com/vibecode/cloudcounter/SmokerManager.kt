@@ -79,6 +79,7 @@ class SmokerManager(
     var onTogglePause: ((Smoker) -> Unit)? = null
     var onDeleteSmoker: ((Smoker) -> Unit)? = null
     var onUpdateSyncStatusDot: ((View?, Smoker) -> Unit)? = null
+    var onUpdateQueueStatusDot: ((View?, Smoker) -> Unit)? = null
 
     private var spinnerHoldStartTime = 0L
     private var spinnerLongPressHandler: Handler? = null
@@ -467,6 +468,7 @@ class SmokerManager(
         btnPassword: ImageButton,
         btnPausePlay: ImageButton,
         syncDot: View,
+        queueDot: View,
         dismissDropdown: () -> Unit
     ) {
         val currentUserId = authManager.getCurrentUserId()
@@ -536,6 +538,7 @@ class SmokerManager(
         }
 
         onUpdateSyncStatusDot?.invoke(syncDot, smoker)
+        onUpdateQueueStatusDot?.invoke(queueDot, smoker)
     }
 
     fun dismissSpinnerDropDown() {

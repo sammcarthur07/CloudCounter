@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.UUID // FIX: Added missing import for UUID
@@ -220,7 +221,9 @@ class SessionSyncService(
                 activities = emptyList(),
                 currentStats = SessionStats(),
                 roundsCounter = 0,
-                autoAddState = AutoAddState()
+                autoAddState = AutoAddState(),
+                isAutoMode = true,
+                activeSmokerId = null
             )
             Log.d(TAG, "🏠 createRoom() Writing room: $room")
             roomsCollection.document(shareCode).set(room).await()
@@ -261,6 +264,44 @@ class SessionSyncService(
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateAutoModeInRoom(shareCode: String, isAutoMode: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "🔘 updateAutoModeInRoom() - shareCode=$shareCode, isAutoMode=$isAutoMode")
+        return@withContext try {
+            val roomRef = roomsCollection.document(shareCode)
+            val updates = mapOf(
+                "isAutoMode" to isAutoMode,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            roomRef.update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "🔘 updateAutoModeInRoom() FAILED", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateActiveSmokerInRoom(shareCode: String, smokerRoomId: String?): Result<Unit> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "🔄 updateActiveSmokerInRoom() - shareCode=$shareCode, smokerId=$smokerRoomId")
+        return@withContext try {
+            val roomRef = roomsCollection.document(shareCode)
+            val updates = mutableMapOf<String, Any>(
+                "updatedAt" to System.currentTimeMillis()
+            )
+
+            if (smokerRoomId != null) {
+                updates["activeSmokerId"] = smokerRoomId
+            } else {
+                updates["activeSmokerId"] = FieldValue.delete()
+            }
+
+            roomRef.update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "🔄 updateActiveSmokerInRoom() FAILED", e)
             Result.failure(e)
         }
     }
@@ -490,6 +531,21 @@ class SessionSyncService(
                 val room = roomSnapshot.toObject(RoomData::class.java)
                     ?: throw Exception("Room not found")
                 
+                // Ensure cloud user is in sharedSmokers for name lookups
+                val currentSharedSmokers = room.safeSharedSmokers().toMutableMap()
+                
+                // Check if this is a cloud user not already in sharedSmokers
+                if (!smokerUid.startsWith("local_") && !currentSharedSmokers.containsKey(smokerUid)) {
+                    Log.d(TAG, "🔄 Adding cloud user to sharedSmokers: $smokerUid ($smokerName)")
+                    val smokerData = mapOf(
+                        "name" to smokerName,
+                        "cloudUserId" to smokerUid,
+                        "isCloudSmoker" to true,
+                        "addedAt" to System.currentTimeMillis()
+                    )
+                    currentSharedSmokers[smokerUid] = smokerData
+                }
+                
                 // Store custom activity info in room if not already there
                 val currentCustomActivities = room.customActivities?.toMutableMap() ?: mutableMapOf()
                 if (!currentCustomActivities.containsKey(customActivity.id)) {
@@ -537,6 +593,7 @@ class SessionSyncService(
                     currentStats = updatedStats,
                     customActivities = currentCustomActivities,
                     autoAddState = updatedAutoAddState,
+                    sharedSmokers = currentSharedSmokers,  // Include updated sharedSmokers
                     updatedAt = timestamp
                 )
                 
@@ -569,63 +626,98 @@ class SessionSyncService(
             return@withContext Result.success(Unit) // Return success but don't actually add
         }
         
-        return@withContext try {
-            val roomRef = roomsCollection.document(shareCode)
-            // val now = System.currentTimeMillis() // <<< REMOVE THIS LINE
+        val roomRef = roomsCollection.document(shareCode)
+        val maxAttempts = 3
+        var attempt = 0
+        var backoffMs = 250L
 
-            firestore.runTransaction { transaction ->
-                val roomSnapshot = transaction.get(roomRef)
-                val room = roomSnapshot.toObject(RoomData::class.java)
-                    ?: throw Exception("Room not found")
+        while (attempt < maxAttempts) {
+            try {
+                firestore.runTransaction { transaction ->
+                    val roomSnapshot = transaction.get(roomRef)
+                    val room = roomSnapshot.toObject(RoomData::class.java)
+                        ?: throw Exception("Room not found")
 
-                val newActivity = SessionActivity(
-                    smokerId = smokerUid,
-                    smokerName = smokerName,
-                    type = activityType.name,
-                    timestamp = timestamp, // <<< USE THE PARAMETER HERE
-                    deviceId = deviceId
-                )
+                    // Ensure cloud user is in sharedSmokers for name lookups
+                    val currentSharedSmokers = room.safeSharedSmokers().toMutableMap()
+                    
+                    // Check if this is a cloud user not already in sharedSmokers
+                    if (!smokerUid.startsWith("local_") && !currentSharedSmokers.containsKey(smokerUid)) {
+                        Log.d(TAG, "🔄 Adding cloud user to sharedSmokers: $smokerUid ($smokerName)")
+                        val smokerData = mapOf(
+                            "name" to smokerName,
+                            "cloudUserId" to smokerUid,
+                            "isCloudSmoker" to true,
+                            "addedAt" to System.currentTimeMillis()
+                        )
+                        currentSharedSmokers[smokerUid] = smokerData
+                    }
 
-                val currentActivities = room.safeActivities()
-                val updatedActivities = currentActivities + newActivity
+                    val newActivity = SessionActivity(
+                        smokerId = smokerUid,
+                        smokerName = smokerName,
+                        type = activityType.name,
+                        timestamp = timestamp,
+                        deviceId = deviceId
+                    )
 
-                // ... (rest of the function is the same)
-                val activeParticipantCount = updatedActivities
-                    .map { it.smokerId }
-                    .distinct()
-                    .count()
+                    val currentActivities = room.safeActivities()
+                    val updatedActivities = currentActivities + newActivity
 
-                val updatedStats = calculateSessionStatsWithActiveCount(
-                    updatedActivities,
-                    room.startTime,
-                    activeParticipantCount
-                )
+                    val activeParticipantCount = updatedActivities
+                        .map { it.smokerId }
+                        .distinct()
+                        .count()
 
-                val updatedAutoAddState = updateAutoAddTimers(
-                    room.safeAutoAddState(),
-                    updatedActivities,
-                    activityType,
-                    timestamp // <<< USE THE PARAMETER HERE
-                )
+                    val updatedStats = calculateSessionStatsWithActiveCount(
+                        updatedActivities,
+                        room.startTime,
+                        activeParticipantCount
+                    )
 
-                val updatedRoom = room.copy(
-                    activities = updatedActivities,
-                    currentStats = updatedStats,
-                    lastActivityTime = timestamp, // <<< USE THE PARAMETER HERE
-                    updatedAt = System.currentTimeMillis(), // Keep this as real time for sync purposes
-                    autoAddState = updatedAutoAddState
-                )
+                    val updatedAutoAddState = updateAutoAddTimers(
+                        room.safeAutoAddState(),
+                        updatedActivities,
+                        activityType,
+                        timestamp
+                    )
 
-                transaction.set(roomRef, updatedRoom)
+                    val updatedRoom = room.copy(
+                        activities = updatedActivities,
+                        currentStats = updatedStats,
+                        lastActivityTime = timestamp,
+                        updatedAt = System.currentTimeMillis(),
+                        autoAddState = updatedAutoAddState,
+                        sharedSmokers = currentSharedSmokers  // Include updated sharedSmokers
+                    )
 
-                Log.d(TAG, "🎯 Added activity: $activityType for $smokerName. Total activities: ${updatedActivities.size}")
-            }.await()
+                    transaction.set(roomRef, updatedRoom)
 
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "🎯 addActivityToRoom() FAILED", e)
-            Result.failure(e)
+                    Log.d(TAG, "🎯 Added activity: $activityType for $smokerName. Total activities: ${updatedActivities.size}")
+                }.await()
+
+                return@withContext Result.success(Unit)
+            } catch (e: com.google.firebase.firestore.FirebaseFirestoreException) {
+                if (e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.RESOURCE_EXHAUSTED) {
+                    Log.w(TAG, "🎯 addActivityToRoom() quota hit; deferring to offline queue", e)
+                    return@withContext Result.failure(e)
+                }
+
+                attempt += 1
+                Log.w(TAG, "🎯 addActivityToRoom() retryable failure (attempt $attempt/$maxAttempts)", e)
+                if (attempt >= maxAttempts) {
+                    Log.e(TAG, "🎯 addActivityToRoom() FAILED after $maxAttempts attempts", e)
+                    return@withContext Result.failure(e)
+                }
+                delay(backoffMs)
+                backoffMs = (backoffMs * 2).coerceAtMost(2000L)
+            } catch (e: Exception) {
+                Log.e(TAG, "🎯 addActivityToRoom() FAILED", e)
+                return@withContext Result.failure(e)
+            }
         }
+
+        Result.failure(Exception("Unable to add activity after retries"))
     }
 
     private fun calculateSessionStatsWithActiveCount(
@@ -1561,6 +1653,59 @@ class SessionSyncService(
         )
     }
 
+    /**
+     * Syncs a cloud user to the room's sharedSmokers when they join
+     */
+    suspend fun syncCloudUserToRoom(
+        userId: String,
+        userName: String,
+        shareCode: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "🔄 syncCloudUserToRoom() - userId=$userId, userName=$userName, shareCode=$shareCode")
+        return@withContext try {
+            val roomRef = roomsCollection.document(shareCode)
+            
+            firestore.runTransaction { transaction ->
+                val roomSnapshot = transaction.get(roomRef)
+                val room = roomSnapshot.toObject(RoomData::class.java)
+                    ?: throw Exception("Room not found")
+                    
+                val currentSharedSmokers = room.safeSharedSmokers().toMutableMap()
+                
+                // Check if cloud user is already in sharedSmokers
+                if (!currentSharedSmokers.containsKey(userId)) {
+                    Log.d(TAG, "🔄 Adding cloud user to sharedSmokers on room join: $userId ($userName)")
+                    val smokerData = mapOf(
+                        "name" to userName,
+                        "cloudUserId" to userId,
+                        "isCloudSmoker" to true,
+                        "addedAt" to System.currentTimeMillis()
+                    )
+                    currentSharedSmokers[userId] = smokerData
+                    
+                    // Update the room with the new sharedSmokers
+                    val updates = mapOf(
+                        "sharedSmokers" to currentSharedSmokers,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                    
+                    updates.forEach { (key, value) ->
+                        transaction.update(roomRef, key, value)
+                    }
+                    
+                    Log.d(TAG, "🔄 Cloud user synced to room successfully")
+                } else {
+                    Log.d(TAG, "🔄 Cloud user already in sharedSmokers, skipping")
+                }
+            }.await()
+            
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "🔄 syncCloudUserToRoom() FAILED", e)
+            Result.failure(e)
+        }
+    }
+    
     /**
      * Enhanced: Syncs all local smokers from a user to the room with ordering
      */

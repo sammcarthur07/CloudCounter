@@ -5,7 +5,7 @@
 # Android Gradle Plugin (AGP) and Kotlin - These are typically set by Android Studio when creating a new project.
 # IMPORTANT: Use the versions that were generated for your "CloudCounter" project if they are already present and different.
 # If not, these are examples of recent stable versions.
-agp = "8.12.3"  # Example: or "8.3.2", "8.4.0", etc. Verify your project's default.
+agp = "8.13.0"  # Example: or "8.3.2", "8.4.0", etc. Verify your project's default.
 kotlin = "1.9.23" # Example: or "2.0.0" if your AGP is very new. Verify your project's default.
 recyclerview = "1.3.2"
 mpAndroidChart = "v3.1.0"

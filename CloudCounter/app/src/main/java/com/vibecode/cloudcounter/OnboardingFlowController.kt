@@ -25,6 +25,8 @@ class OnboardingFlowController(
     private var flowActive = false
     private var awaitingNotificationResult = false
     private var awaitingLocationResult = false
+    private var awaitingCameraResult = false
+    private var awaitingAudioResult = false
 
     fun shouldRunOnboarding(): Boolean =
         !onboardingPrefs.getBoolean(PREF_ONBOARDING_COMPLETE, false)
@@ -56,6 +58,24 @@ class OnboardingFlowController(
 
         awaitingLocationResult = false
         Log.d(TAG, "📍 Location permission result handled in onboarding: $granted")
+
+        handler.postDelayed({ requestCameraPermission() }, PERMISSION_CHAIN_DELAY_MS)
+    }
+
+    fun onCameraPermissionResult(granted: Boolean) {
+        if (!flowActive || !awaitingCameraResult) return
+
+        awaitingCameraResult = false
+        Log.d(TAG, "📷 Camera permission result handled in onboarding: $granted")
+
+        handler.postDelayed({ requestAudioPermission() }, PERMISSION_CHAIN_DELAY_MS)
+    }
+
+    fun onAudioPermissionResult(granted: Boolean) {
+        if (!flowActive || !awaitingAudioResult) return
+
+        awaitingAudioResult = false
+        Log.d(TAG, "🎤 Audio permission result handled in onboarding: $granted")
 
         handler.postDelayed({ proceedToAddSmoker() }, POST_PERMISSIONS_DELAY_MS)
     }
@@ -143,6 +163,32 @@ class OnboardingFlowController(
         } else {
             Log.d(TAG, "📍 Location permission already granted")
             onLocationPermissionResult(true)
+        }
+    }
+
+    private fun requestCameraPermission() {
+        if (!flowActive) return
+
+        if (activity.shouldRequestCameraPermission()) {
+            Log.d(TAG, "📷 Requesting camera permission (onboarding)")
+            awaitingCameraResult = true
+            activity.launchCameraPermissionRequest()
+        } else {
+            Log.d(TAG, "📷 Camera permission already granted")
+            onCameraPermissionResult(true)
+        }
+    }
+
+    private fun requestAudioPermission() {
+        if (!flowActive) return
+
+        if (activity.shouldRequestAudioPermission()) {
+            Log.d(TAG, "🎤 Requesting audio permission (onboarding)")
+            awaitingAudioResult = true
+            activity.launchAudioPermissionRequest()
+        } else {
+            Log.d(TAG, "🎤 Audio permission already granted")
+            onAudioPermissionResult(true)
         }
     }
 

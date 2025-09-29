@@ -1,6 +1,9 @@
 package com.vibecode.cloudcounter
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 
 class CloudCounterApplication : Application() {
@@ -35,8 +38,30 @@ class CloudCounterApplication : Application() {
     // Default smoker ID property
     var defaultSmokerId: Long = 0L
 
+    private var resumedActivityCount = 0
+
+    companion object {
+        private const val TAG = "CloudCounterApp"
+    }
+
+    fun isInForeground(): Boolean = resumedActivityCount > 0
+
     override fun onCreate() {
         super.onCreate()
-        // Any additional initialization can go here if needed
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {
+                resumedActivityCount++
+                Log.d(TAG, "onActivityResumed: ${activity.javaClass.simpleName}, resumedCount=$resumedActivityCount")
+            }
+            override fun onActivityPaused(activity: Activity) {
+                resumedActivityCount = (resumedActivityCount - 1).coerceAtLeast(0)
+                Log.d(TAG, "onActivityPaused: ${activity.javaClass.simpleName}, resumedCount=$resumedActivityCount")
+            }
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
     }
 }
