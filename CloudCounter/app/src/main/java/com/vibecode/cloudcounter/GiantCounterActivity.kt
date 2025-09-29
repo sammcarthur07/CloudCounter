@@ -27,6 +27,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.vibecode.cloudcounter.StashSource
+import com.vibecode.cloudcounter.CustomActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1384,13 +1385,44 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                                     
                                     // Launch coroutine to call suspend function
                                     lifecycleScope.launch {
-                                        val result = sessionSyncService.addActivityToRoom(
-                                            shareCode = currentShareCode,
-                                            smokerUid = cloudSmokerUid ?: currentUser.uid,
-                                            smokerName = smoker.name,
-                                            activityType = activityType,
-                                            timestamp = activity.timestamp
-                                        )
+                                        // Check if this is a custom activity and use the appropriate sync method
+                                        val result = if (activityType == com.vibecode.cloudcounter.ActivityType.CUSTOM && 
+                                                        !currentActivityId.isNullOrEmpty() && 
+                                                        !currentActivityName.isNullOrEmpty()) {
+                                            // Create CustomActivity object for syncing
+                                            val customActivity = CustomActivity(
+                                                id = currentActivityId!!,
+                                                name = currentActivityName!!,
+                                                displayName = "ADD\n${currentActivityName!!.uppercase()}"
+                                            )
+                                            
+                                            Log.d(TAG, "$LOG_PREFIX 🎯 Syncing CUSTOM activity: ${customActivity.name} (ID: ${customActivity.id})")
+                                            
+                                            // Get device ID for tracking
+                                            val deviceId = prefs.getString("device_id", null) ?: run {
+                                                val newDeviceId = java.util.UUID.randomUUID().toString()
+                                                prefs.edit().putString("device_id", newDeviceId).apply()
+                                                newDeviceId
+                                            }
+                                            
+                                            sessionSyncService.addCustomActivityToRoom(
+                                                shareCode = currentShareCode,
+                                                smokerUid = cloudSmokerUid ?: currentUser.uid,
+                                                smokerName = smoker.name,
+                                                customActivity = customActivity,
+                                                timestamp = activity.timestamp,
+                                                deviceId = deviceId
+                                            )
+                                        } else {
+                                            // Regular activity sync
+                                            sessionSyncService.addActivityToRoom(
+                                                shareCode = currentShareCode,
+                                                smokerUid = cloudSmokerUid ?: currentUser.uid,
+                                                smokerName = smoker.name,
+                                                activityType = activityType,
+                                                timestamp = activity.timestamp
+                                            )
+                                        }
                                         
                                         if (result.isSuccess) {
                                             Log.d(TAG, "$LOG_PREFIX ✅ Activity synced to cloud successfully")
