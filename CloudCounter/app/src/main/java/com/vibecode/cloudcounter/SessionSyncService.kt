@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
@@ -272,11 +273,22 @@ class SessionSyncService(
         Log.d(TAG, "🔘 updateAutoModeInRoom() - shareCode=$shareCode, isAutoMode=$isAutoMode")
         return@withContext try {
             val roomRef = roomsCollection.document(shareCode)
-            val updates = mapOf(
-                "isAutoMode" to isAutoMode,
-                "updatedAt" to System.currentTimeMillis()
-            )
-            roomRef.update(updates).await()
+            
+            // Use a transaction to ensure the update is atomic and persistent
+            firestore.runTransaction { transaction ->
+                val roomSnapshot = transaction.get(roomRef)
+                if (!roomSnapshot.exists()) {
+                    throw Exception("Room not found")
+                }
+                
+                // Update only the specific fields we need
+                transaction.update(roomRef, 
+                    "isAutoMode", isAutoMode,
+                    "updatedAt", System.currentTimeMillis()
+                )
+            }.await()
+            
+            Log.d(TAG, "🔘 updateAutoModeInRoom() SUCCESS - isAutoMode=$isAutoMode")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "🔘 updateAutoModeInRoom() FAILED", e)
@@ -588,13 +600,15 @@ class SessionSyncService(
                     timestamp
                 )
                 
+                // Create updated room preserving the current isAutoMode value
                 val updatedRoom = room.copy(
                     activities = updatedActivities,
                     currentStats = updatedStats,
                     customActivities = currentCustomActivities,
                     autoAddState = updatedAutoAddState,
-                    sharedSmokers = currentSharedSmokers,  // Include updated sharedSmokers
+                    sharedSmokers = currentSharedSmokers,
                     updatedAt = timestamp
+                    // Note: isAutoMode is preserved from the room object read at the start of the transaction
                 )
                 
                 transaction.set(roomRef, updatedRoom)
@@ -613,8 +627,12 @@ class SessionSyncService(
         smokerUid: String,
         smokerName: String,
         activityType: ActivityType,
-        timestamp: Long, // <<< ADD THIS PARAMETER
-        deviceId: String = ""
+        timestamp: Long,
+        deviceId: String = "",
+        cigaretteFractionContribution: Double = 0.0,
+        cigaretteFractionBefore: Double = 0.0,
+        customRatioId: String? = null,
+        customRatioName: String? = null
     ): Result<Unit> = withContext(Dispatchers.IO) {
         Log.d(TAG, "🎯 addActivityToRoom() - $activityType for $smokerName (UID: $smokerUid) in room $shareCode")
         
@@ -658,7 +676,11 @@ class SessionSyncService(
                         smokerName = smokerName,
                         type = activityType.name,
                         timestamp = timestamp,
-                        deviceId = deviceId
+                        deviceId = deviceId,
+                        customRatioId = customRatioId,
+                        customRatioName = customRatioName,
+                        cigaretteFractionContribution = cigaretteFractionContribution,
+                        cigaretteFractionBefore = cigaretteFractionBefore
                     )
 
                     val currentActivities = room.safeActivities()
@@ -682,13 +704,15 @@ class SessionSyncService(
                         timestamp
                     )
 
+                    // Create updated room preserving the current isAutoMode value
                     val updatedRoom = room.copy(
                         activities = updatedActivities,
                         currentStats = updatedStats,
                         lastActivityTime = timestamp,
                         updatedAt = System.currentTimeMillis(),
                         autoAddState = updatedAutoAddState,
-                        sharedSmokers = currentSharedSmokers  // Include updated sharedSmokers
+                        sharedSmokers = currentSharedSmokers
+                        // Note: isAutoMode is preserved from the room object read at the start of the transaction
                     )
 
                     transaction.set(roomRef, updatedRoom)

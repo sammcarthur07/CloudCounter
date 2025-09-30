@@ -236,6 +236,9 @@ class MainActivity : AppCompatActivity() {
     private var sharedActiveSmokerId: String? = null
     private var isApplyingRemoteSpinnerUpdate = false
     private var isApplyingRemoteAutoMode = false
+    private var isUpdatingAutoModeToFirestore = false
+    private var lastModeToggleTime = 0L
+    private var lastLocalAutoModeValue: Boolean? = null  // Track what we last set locally
 
     private var processedActivityIds = mutableSetOf<String>()
 
@@ -9628,16 +9631,36 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "     Is performing undo: $isPerformingUndo")
 
         val remoteAutoMode = room.isAutoMode
-        if (remoteAutoMode != isAutoMode) {
-            Log.d(TAG, "🔘📡 Applying remote auto mode: $remoteAutoMode")
-            isApplyingRemoteAutoMode = true
-            try {
-                isAutoMode = remoteAutoMode
-                sessionStatsVM.setAutoMode(isAutoMode)
-                updateModeButtonText()
-            } finally {
-                isApplyingRemoteAutoMode = false
+        // Only apply remote auto mode if we're not currently updating it locally
+        if (remoteAutoMode != isAutoMode && !isUpdatingAutoModeToFirestore) {
+            val timeSinceLastToggle = System.currentTimeMillis() - lastModeToggleTime
+            
+            // Smart conflict detection:
+            // 1. If we just toggled locally and the remote value matches our local value, it's our own update coming back
+            if (remoteAutoMode == lastLocalAutoModeValue && timeSinceLastToggle < 5000) {
+                Log.d(TAG, "🔘📡 Ignoring echo of our own update: remote=$remoteAutoMode matches our last local change")
             }
+            // 2. If remote is different from what we set, and we have a recent local change,
+            //    compare against what we expect and ignore if it doesn't match for up to 15 seconds
+            else if (lastLocalAutoModeValue != null && remoteAutoMode != lastLocalAutoModeValue && timeSinceLastToggle < 15000) {
+                Log.d(TAG, "🔘📡 Ignoring stale remote value: $remoteAutoMode (expecting $lastLocalAutoModeValue, toggled ${timeSinceLastToggle}ms ago)")
+            }
+            // 3. Otherwise, it's a legitimate remote update from another user
+            else {
+                Log.d(TAG, "🔘📡 Applying remote auto mode: $remoteAutoMode (from another user)")
+                isApplyingRemoteAutoMode = true
+                try {
+                    isAutoMode = remoteAutoMode
+                    sessionStatsVM.setAutoMode(isAutoMode)
+                    updateModeButtonText()
+                    // Clear our local tracking since we're accepting a remote change
+                    lastLocalAutoModeValue = null
+                } finally {
+                    isApplyingRemoteAutoMode = false
+                }
+            }
+        } else if (isUpdatingAutoModeToFirestore) {
+            Log.d(TAG, "🔘📡 Skipping remote auto mode update - local update in progress")
         }
 
         applyActiveSmokerFromRoomIfNeeded(room.safeActiveSmokerId())
@@ -17501,6 +17524,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnModeToggle.setOnClickListener { button ->
             // Toggle the mode
             isAutoMode = !isAutoMode
+            val newAutoMode = isAutoMode  // Capture the value for the async operation
+            lastModeToggleTime = System.currentTimeMillis()  // Track when we toggled
+            lastLocalAutoModeValue = newAutoMode  // Remember what we set locally
             
             // Update button text
             updateModeButtonText()
@@ -17511,15 +17537,22 @@ class MainActivity : AppCompatActivity() {
             if (!isApplyingRemoteAutoMode) {
                 val shareCode = currentShareCode
                 if (!shareCode.isNullOrEmpty()) {
+                    // Set flag to prevent room listener from overriding during update
+                    isUpdatingAutoModeToFirestore = true
                     lifecycleScope.launch {
-                        sessionSyncService.updateAutoModeInRoom(shareCode, isAutoMode).fold(
-                            onSuccess = {
-                                Log.d(TAG, "🔘📡 Synced auto mode=$isAutoMode to room $shareCode")
-                            },
-                            onFailure = { error ->
-                                Log.e(TAG, "🔘📡 Failed to sync auto mode: ${error.message}")
-                            }
-                        )
+                        try {
+                            sessionSyncService.updateAutoModeInRoom(shareCode, newAutoMode).fold(
+                                onSuccess = {
+                                    Log.d(TAG, "🔘📡 Synced auto mode=$newAutoMode to room $shareCode")
+                                },
+                                onFailure = { error ->
+                                    Log.e(TAG, "🔘📡 Failed to sync auto mode: ${error.message}")
+                                }
+                            )
+                        } finally {
+                            // Clear flag after update completes
+                            isUpdatingAutoModeToFirestore = false
+                        }
                     }
                 }
             }
