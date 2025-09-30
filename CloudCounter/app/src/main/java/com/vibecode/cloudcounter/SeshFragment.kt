@@ -438,10 +438,18 @@ class SeshFragment : Fragment() {
         }
 
         if (stat.totalCigarettes > 0) {
+            // Debug logging for cigarette stats
+            Log.d("SeshFragment", "🚬📊 CIGARETTE UI: totalCigarettes=${stat.totalCigarettes}, lastCigaretteTime=${stat.lastCigaretteTime}")
+            Log.d("SeshFragment", "🚬📊 CIGARETTE UI: Gaps - last=${stat.lastCigaretteGapMs}, avg=${stat.avgCigaretteGapMs}, shortest=${stat.shortestCigaretteGapMs}, longest=${stat.longestCigaretteGapMs}")
+            
             val timeSinceLastCigarette = if (stat.lastCigaretteTime > 0) {
                 val elapsed = currentTime - stat.lastCigaretteTime
+                Log.d("SeshFragment", "🚬📊 CIGARETTE UI: Time since last = ${elapsed}ms = ${elapsed/1000}s")
                 formatTime(elapsed)
-            } else "-"
+            } else {
+                Log.d("SeshFragment", "🚬📊 CIGARETTE UI: No lastCigaretteTime, showing '-'")
+                "-"
+            }
             
             activities.add(Triple(
                 if (!nameAdded) stat.smokerName else "",  // Add name if not added yet
