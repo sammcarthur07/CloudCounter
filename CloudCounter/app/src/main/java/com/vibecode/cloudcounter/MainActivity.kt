@@ -299,6 +299,7 @@ class MainActivity : AppCompatActivity() {
     private var lastJointTimestamp = 0L  // Track last joint timestamp for live timer
     private var lastBowlTimestamp = 0L  // Track last bowl timestamp for live timer
     private var lastCigaretteTimestamp = 0L  // Track last cigarette timestamp for stats
+    private val lastCustomActivityTimestamps = mutableMapOf<String, Long>()  // Track last timestamp for each custom activity by ID
 
     // Remember the room we're in
     private var currentShareCode: String? = null
@@ -524,11 +525,41 @@ class MainActivity : AppCompatActivity() {
             // Update the "since last" stats for all activity types
             val current = sessionStatsVM.groupStats.value
             if (current != null) {
-                val updatedStats = current.copy(
+                // Update standard activity timers
+                var updatedStats = current.copy(
                     sinceLastGapMs = if (lastConeTimestamp > 0) (rewindedNow - lastConeTimestamp).coerceAtLeast(0) else 0L,
                     sinceLastJointMs = if (lastJointTimestamp > 0) (rewindedNow - lastJointTimestamp).coerceAtLeast(0) else 0L,
                     sinceLastBowlMs = if (lastBowlTimestamp > 0) (rewindedNow - lastBowlTimestamp).coerceAtLeast(0) else 0L
                 )
+                
+                // Update custom activity timers using actual timestamps
+                val updatedCustomStats = current.customActivityGroupStats.mapValues { (customId, stat) ->
+                    if (stat.lastSmokerName != null && stat.total > 0) {
+                        // Use the actual timestamp we're tracking
+                        val lastTimestamp = lastCustomActivityTimestamps[customId]
+                        if (lastTimestamp != null && lastTimestamp > 0) {
+                            val newSinceLastMs = (rewindedNow - lastTimestamp).coerceAtLeast(0)
+                            
+                            if (stat.sinceLastMs != newSinceLastMs) {
+                                Log.d(TAG, "⏰ CUSTOM_TIMER: ${stat.activityName} (ID: $customId) timer update")
+                                Log.d(TAG, "⏰ CUSTOM_TIMER:   Timestamp: $lastTimestamp")
+                                Log.d(TAG, "⏰ CUSTOM_TIMER:   Old sinceLastMs: ${stat.sinceLastMs}ms (${stat.sinceLastMs/1000}s)")
+                                Log.d(TAG, "⏰ CUSTOM_TIMER:   New sinceLastMs: ${newSinceLastMs}ms (${newSinceLastMs/1000}s)")
+                            }
+                            
+                            stat.copy(sinceLastMs = newSinceLastMs)
+                        } else {
+                            // No timestamp tracked yet, keep original
+                            Log.d(TAG, "⏰ CUSTOM_TIMER: No timestamp for ${stat.activityName} (ID: $customId), keeping original")
+                            stat
+                        }
+                    } else {
+                        stat
+                    }
+                }
+                
+                // Apply the updated custom activity stats
+                updatedStats = updatedStats.copy(customActivityGroupStats = updatedCustomStats)
                 sessionStatsVM.updateGroupStats(updatedStats)
             }
 
@@ -8253,6 +8284,7 @@ class MainActivity : AppCompatActivity() {
         lastConeTimestamp = 0L
         lastJointTimestamp = 0L
         lastBowlTimestamp = 0L
+        lastCustomActivityTimestamps.clear()
         lastIntervalMillis = 0L
         intervalsList.clear()
         
@@ -8382,6 +8414,7 @@ class MainActivity : AppCompatActivity() {
         lastConeTimestamp = 0L
         lastJointTimestamp = 0L
         lastBowlTimestamp = 0L
+        lastCustomActivityTimestamps.clear()
         activitiesTimestamps.clear()
         lastLogTimeBeforeRewind = 0L
         handler.removeCallbacks(timerRunnable)
@@ -8771,6 +8804,7 @@ class MainActivity : AppCompatActivity() {
         lastConeTimestamp = 0L
         lastJointTimestamp = 0L
         lastBowlTimestamp = 0L
+        lastCustomActivityTimestamps.clear()
         lastIntervalMillis = 0L
         intervalsList.clear()
         activitiesTimestamps.clear()
@@ -9700,6 +9734,17 @@ class MainActivity : AppCompatActivity() {
         lastConeTimestamp = coneLogs.maxOfOrNull { it.timestamp } ?: 0L
         lastJointTimestamp = jointLogs.maxOfOrNull { it.timestamp } ?: 0L
         lastBowlTimestamp = bowlLogs.maxOfOrNull { it.timestamp } ?: 0L
+        
+        // Track custom activity timestamps
+        val customActivities = roomActivities.filter { it.type.startsWith("CUSTOM_") }
+        val customByType = customActivities.groupBy { it.type.removePrefix("CUSTOM_") }
+        customByType.forEach { (customId, activities) ->
+            val lastTimestamp = activities.maxOfOrNull { it.timestamp } ?: 0L
+            if (lastTimestamp > 0) {
+                lastCustomActivityTimestamps[customId] = lastTimestamp
+                Log.d(TAG, "⏰ CUSTOM_TIMER: Loaded timestamp for custom activity ID $customId: $lastTimestamp")
+            }
+        }
 
         // UNDO FIX: Don't rebuild activity history if we're performing an undo
         // The local activityHistory is the source of truth during undo operations
@@ -11313,7 +11358,13 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
-                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CUSTOM -> {
+                    // Track custom activity timestamps using the last selected custom activity ID
+                    lastSelectedCustomActivityId?.let { customId ->
+                        lastCustomActivityTimestamps[customId] = now
+                        Log.d(TAG, "⏰ CUSTOM_TIMER: Updated timestamp for custom activity (ID: $customId) to $now")
+                    }
+                }
                 ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
@@ -12038,6 +12089,9 @@ class MainActivity : AppCompatActivity() {
                                 lastSmokerName = smoker.name,
                                 sinceLastMs = now - lastTime
                             )
+                            // Track the timestamp for timer updates
+                            lastCustomActivityTimestamps[customId] = lastTime
+                            Log.d(TAG, "⏰ CUSTOM_TIMER: Tracked timestamp for $activityName (ID: $customId): $lastTime")
                         } else {
                             customActivityGroupStats[customId] = currentGroupStat.copy(
                                 total = newTotal
@@ -12404,7 +12458,13 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
-                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CUSTOM -> {
+                    // Track custom activity timestamps using the last selected custom activity ID
+                    lastSelectedCustomActivityId?.let { customId ->
+                        lastCustomActivityTimestamps[customId] = now
+                        Log.d(TAG, "⏰ CUSTOM_TIMER: Updated timestamp for custom activity (ID: $customId) to $now")
+                    }
+                }
                 ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
@@ -13298,7 +13358,13 @@ class MainActivity : AppCompatActivity() {
                 ActivityType.CONE -> lastConeTimestamp = now
                 ActivityType.JOINT -> lastJointTimestamp = now
                 ActivityType.BOWL -> lastBowlTimestamp = now
-                ActivityType.CUSTOM -> { /* Custom activities don't update core timestamps */ }
+                ActivityType.CUSTOM -> {
+                    // Track custom activity timestamps using the last selected custom activity ID
+                    lastSelectedCustomActivityId?.let { customId ->
+                        lastCustomActivityTimestamps[customId] = now
+                        Log.d(TAG, "⏰ CUSTOM_TIMER: Updated timestamp for custom activity (ID: $customId) to $now")
+                    }
+                }
                 ActivityType.CIGARETTE -> { /* Cigarettes don't update core timestamps */ }
                 ActivityType.SESSION_SUMMARY -> { /* Session summaries don't update timestamps */ }
             }
@@ -14393,6 +14459,9 @@ class MainActivity : AppCompatActivity() {
                     lastSmokerName = lastActivity.smokerName,
                     sinceLastMs = currentTime - lastActivity.timestamp
                 )
+                // Track the timestamp for timer updates
+                lastCustomActivityTimestamps[customId] = lastActivity.timestamp
+                Log.d(TAG, "⏰ CUSTOM_TIMER: Tracked room timestamp for $activityName (ID: $customId): ${lastActivity.timestamp}")
             }
         }
 
