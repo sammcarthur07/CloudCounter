@@ -79,6 +79,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     private lateinit var btnUndo: TextView
     private lateinit var btnRewind: TextView
     private lateinit var btnSkip: TextView
+    private lateinit var btnAutoSticky: TextView  // New Auto/Sticky button
     private lateinit var topButtonsContainer: LinearLayout
     
     // Data
@@ -427,6 +428,31 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         }
         topButtonsContainer.addView(btnUndo)
         
+        // Auto/Sticky mode button
+        btnAutoSticky = TextView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                32.dpToPx()  // Same height as undo button
+            ).apply {
+                marginStart = 8.dpToPx()
+            }
+            text = if (isAutoMode) "AUTO" else "STICKY"
+            textSize = 12f  // Same size as undo button
+            setTextColor(Color.parseColor("#BB86FC"))  // Light neon purple text
+            gravity = Gravity.CENTER
+            setPadding(16.dpToPx(), 0, 16.dpToPx(), 0)  // Same padding as undo
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 4.dpToPx().toFloat()  // Same corner radius as undo
+                setStroke(1.dpToPx(), Color.parseColor("#BB86FC"))  // Purple border
+                setColor(Color.TRANSPARENT)  // Transparent fill like undo button
+            }
+            isClickable = true
+            isFocusable = true
+            visibility = View.VISIBLE
+        }
+        topButtonsContainer.addView(btnAutoSticky)
+        
         rootLayout.addView(topButtonsContainer)
         
         // Timer controls container (initially hidden) - positioned below buttons
@@ -734,10 +760,62 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         // Load preferences and session data
         val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
         vibrationEnabled = prefs.getBoolean("vibration_enabled", true)
-        currentSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
+        
+        // FIX: Load last activity smoker AND count instead of selected smoker
+        val lastActivitySmokerId = prefs.getInt("lastJointSmokerId", -1)
+        val lastActivityCount = prefs.getInt("lastJointCount", 0)
+        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Loading last activity smoker ID: $lastActivitySmokerId, count: $lastActivityCount")
+        
+        // Load the selected smoker from SharedPreferences (synced with MainActivity)
+        val selectedSmoker = prefs.getString("selected_smoker", "Sam") ?: "Sam"
+        Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: Loading selected_smoker from prefs: '$selectedSmoker'")
+        
+        // First try to use last activity smoker, fallback to selected smoker
+        currentSmoker = if (lastActivitySmokerId != -1) {
+            // Get smoker name from ID
+            lifecycleScope.launch(Dispatchers.IO) {
+                val smokerDao = com.vibecode.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+                val lastSmoker = smokerDao.getSmokerById(lastActivitySmokerId.toLong())
+                if (lastSmoker != null) {
+                    Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Found last activity smoker: ${lastSmoker.name}")
+                    withContext(Dispatchers.Main) {
+                        currentSmoker = lastSmoker.name
+                        smokerNameText.text = currentSmoker
+                        // Also set the count for the last activity smoker
+                        currentCount = lastActivityCount
+                        counterText.text = currentCount.toString()
+                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Set display to last activity: ${lastSmoker.name} with count: $lastActivityCount")
+                    }
+                } else {
+                    Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Last activity smoker not found, using selected_smoker: '$selectedSmoker'")
+                    withContext(Dispatchers.Main) {
+                        currentSmoker = selectedSmoker
+                        smokerNameText.text = currentSmoker
+                        Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: Using selected_smoker: '$selectedSmoker'")
+                    }
+                }
+            }
+            prefs.getString("lastJointSmokerName", selectedSmoker) ?: selectedSmoker
+        } else {
+            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: No last activity smoker, using selected_smoker: '$selectedSmoker'")
+            Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: Using selected_smoker from MainActivity: '$selectedSmoker'")
+            selectedSmoker
+        }
+        
+        // Initialize count with last activity count if available
+        currentCount = if (lastActivitySmokerId != -1) lastActivityCount else 0
+        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Initial currentCount set to: $currentCount")
+        
         val savedSessionStart = prefs.getLong("sessionStart", 0L)
         val sessionActive = prefs.getBoolean("sessionActive", false)
+        
+        // Load Auto/Sticky mode from SharedPreferences (same as MainActivity)
         isAutoMode = prefs.getBoolean("is_auto_mode", true)
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Loading mode from prefs: ${if (isAutoMode) "AUTO" else "STICKY"}")
+        
+        // Update button text to match loaded mode (fixes UI sync issue)
+        btnAutoSticky.text = if (isAutoMode) "AUTO" else "STICKY"
+        
         timerEnabled = prefs.getBoolean("timer_enabled", false)
         currentActivityType = prefs.getString("current_activity_type", "cones") ?: "cones"
         
@@ -952,11 +1030,15 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         // Increment counter and save activity
                         incrementCounter()
                         // After saving, rotate to next smoker if in auto mode
+                        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Checking mode after activity - isAutoMode=$isAutoMode")
                         if (isAutoMode) {
+                            Log.d(TAG, "$LOG_PREFIX 🔄 AUTO MODE: Will rotate smoker")
                             // Add a small delay to ensure save completes
                             Handler(Looper.getMainLooper()).postDelayed({
                                 rotateSmoker()
                             }, 100)
+                        } else {
+                            Log.d(TAG, "$LOG_PREFIX 🔄 STICKY MODE: Staying on same smoker")
                         }
                     }
                     true
@@ -995,6 +1077,11 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
             Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker before skip: $currentSmoker")
             vibrateFeedback(30)
             skipToNextSmoker()
+        }
+        
+        // Auto/Sticky mode button
+        btnAutoSticky.setOnClickListener {
+            toggleAutoStickyMode()
         }
         
         // Round buttons
@@ -1037,13 +1124,14 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 currentSmokerIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
                 if (currentSmokerIndex == -1) currentSmokerIndex = 0
                 
-                // Get current smoker
-                val currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
+                // Get current smoker - make it mutable so we can update it to last activity smoker
+                var currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
                 
                 if (currentSmokerObj != null) {
                     // Get most recent activity for this smoker (excluding stash operations)
+                    val smokerIdForActivity = currentSmokerObj.smokerId
                     val recentActivity = withContext(Dispatchers.IO) {
-                        repository.getLastRealActivityForSmoker(currentSmokerObj.smokerId)
+                        repository.getLastRealActivityForSmoker(smokerIdForActivity)
                     }
                     
                     if (recentActivity != null) {
@@ -1070,6 +1158,17 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                             smokerDao.getSmokerById(recentActivity.smokerId)
                         }
                         recentSmoker = recentSmokerObj?.name ?: ""
+                        
+                        // FIX: Update currentSmoker to be the last activity smoker for DISPLAY
+                        if (recentSmokerObj != null) {
+                            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Updating currentSmoker from '$currentSmoker' to '${recentSmokerObj.name}' (last activity smoker)")
+                            currentSmoker = recentSmokerObj.name
+                            currentSmokerIndex = allSmokers.indexOfFirst { it.smokerId == recentSmokerObj.smokerId }
+                            if (currentSmokerIndex == -1) currentSmokerIndex = 0
+                            // FIX: Update currentSmokerObj to the last activity smoker
+                            currentSmokerObj = recentSmokerObj
+                            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Updated currentSmokerObj to last activity smoker")
+                        }
                     } else {
                         // No real activities yet (excluding stash operations)
                         val validTypes = setOf("cones", "joints", "bowls", "custom", "cigarettes")
@@ -1124,8 +1223,11 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         Log.d(TAG, "$LOG_PREFIX   ${smoker.name}: C=$smokerCones, J=$smokerJoints, B=$smokerBowls")
                     }
                     
-                    // Get recent smoker's count if different
-                    if (recentSmoker.isNotEmpty() && recentSmoker != currentSmoker) {
+                    // FIX: Always calculate recent smoker's count properly
+                    // The recentSmoker is the last person who did ANY activity
+                    // We need to show their count for the current activity type
+                    if (recentSmoker.isNotEmpty()) {
+                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Calculating recentSmokerCount for '$recentSmoker'")
                         val recentSmokerObj = withContext(Dispatchers.IO) {
                             smokerDao.getSmokerByName(recentSmoker)
                         }
@@ -1140,9 +1242,11 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                                     else -> activity.type == activityType
                                 }
                             }
+                            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: recentSmokerCount for '$recentSmoker' = $recentSmokerCount")
                         }
                     } else {
-                        recentSmokerCount = currentCount
+                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: No recent smoker, setting recentSmokerCount to 0")
+                        recentSmokerCount = 0
                     }
                 } else {
                     // Default values
@@ -1191,6 +1295,8 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     }
     
     private fun updateUI() {
+        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: updateUI() - currentSmoker='$currentSmoker', currentCount=$currentCount")
+        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: updateUI() - recentSmoker='$recentSmoker', recentSmokerCount=$recentSmokerCount")
         smokerNameText.text = currentSmoker
         counterText.text = currentCount.toString()
         
@@ -1235,9 +1341,11 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         
         // Always show the last smoker + stat if available, even if it's the current smoker
         if (recentSmoker.isNotEmpty()) {
+            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Setting recentStatsText to: '$recentSmoker: $recentSmokerCount $displayActivityName'")
             recentStatsText.text = "$recentSmoker: $recentSmokerCount $displayActivityName"
         } else {
             // Show placeholder text when no activities have been added yet
+            Log.d(TAG, "$LOG_PREFIX 🔧 FIX: No recent smoker, showing placeholder")
             recentStatsText.text = "Add an activity to start"
         }
     }
@@ -1389,14 +1497,19 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                                 val currentUser = auth.currentUser
                                 
                                 if (currentUser != null) {
-                                    // Get the cloud smoker UID for this local smoker
+                                    // FIX: For local smokers, use their actual local UID, not the current user's cloud UID
                                     val cloudSmokerUid = if (smoker.isCloudSmoker && !smoker.cloudUserId.isNullOrEmpty()) {
+                                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Cloud smoker detected, using cloudUserId: ${smoker.cloudUserId}")
                                         smoker.cloudUserId
                                     } else {
-                                        currentUser.uid  // Use current user's UID for local smokers
+                                        // For local smokers, use their actual uid (which starts with "local_")
+                                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Local smoker detected, using LOCAL uid: ${smoker.uid}")
+                                        Log.d(TAG, "$LOG_PREFIX 🔧 FIX: NOT using currentUser.uid (${currentUser.uid}) to avoid duplication")
+                                        smoker.uid  // FIX: Changed from currentUser.uid to smoker.uid
                                     }
                                     
                                     Log.d(TAG, "$LOG_PREFIX 🌩️ Adding activity for ${smoker.name} (UID: $cloudSmokerUid) to room $currentShareCode")
+                                    Log.d(TAG, "$LOG_PREFIX 🔧 FIX: Activity will be synced with correct UID to prevent duplication")
                                     
                                     // Launch coroutine to call suspend function
                                     lifecycleScope.launch {
@@ -1548,7 +1661,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     }
     
     private fun rotateSmoker() {
-        Log.d(TAG, "$LOG_PREFIX 🔄 rotateSmoker() called")
+        Log.d(TAG, "$LOG_PREFIX 🔄 AUTO MODE: rotateSmoker() called - rotating to next smoker")
         if (allSmokers.size <= 1) {
             Log.d(TAG, "$LOG_PREFIX 🔄 Only one smoker, no rotation needed")
             return
@@ -2021,6 +2134,31 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         prefs.edit().putLong("rewindOffset", rewindOffset).apply()
     }
     
+    private fun toggleAutoStickyMode() {
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Toggle Auto/Sticky button clicked")
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Current mode: ${if (isAutoMode) "AUTO" else "STICKY"}")
+        
+        // Toggle the mode
+        isAutoMode = !isAutoMode
+        
+        // Save to SharedPreferences
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().putBoolean("is_auto_mode", isAutoMode).apply()
+        
+        // Update button text
+        btnAutoSticky.text = if (isAutoMode) "AUTO" else "STICKY"
+        
+        // Vibrate for feedback
+        vibrateFeedback(30)
+        
+        // Show toast
+        val modeText = if (isAutoMode) "AUTO MODE: Will rotate after activity" else "STICKY MODE: Will stay on same smoker"
+        android.widget.Toast.makeText(this, modeText, android.widget.Toast.LENGTH_SHORT).show()
+        
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Mode changed to: ${if (isAutoMode) "AUTO" else "STICKY"}")
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Saved to SharedPreferences")
+    }
+    
     private fun skipToNextSmoker() {
         Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: skipToNextSmoker() called")
         Log.d(TAG, "$LOG_PREFIX 🎯 SKIP DEBUG: Current smoker in skipToNextSmoker: $currentSmoker")
@@ -2081,10 +2219,23 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     
     override fun onPause() {
         super.onPause()
+        Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: onPause() - saving current state")
+        Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: Current smoker: $currentSmoker")
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Current mode: ${if (isAutoMode) "AUTO" else "STICKY"}")
+        
+        // Save current smoker to be used by MainActivity
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            putString("selected_smoker", currentSmoker)
+            putBoolean("is_auto_mode", isAutoMode)  // Ensure mode is saved
+            apply()
+        }
+        Log.d(TAG, "$LOG_PREFIX 🔄 SMOKER SYNC: Saved selected_smoker='$currentSmoker' to prefs")
+        Log.d(TAG, "$LOG_PREFIX 🔄 MODE SYNC: Saved is_auto_mode=$isAutoMode to prefs")
+        
         // Save current display state for MainActivity to pick up
         saveDisplayState()
         // Unregister SharedPreferences listener
-        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
         prefs.unregisterOnSharedPreferenceChangeListener(this)
     }
     
@@ -2595,7 +2746,7 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
     }
     
     private fun showSmokerSelection() {
-        Log.d(TAG, "$LOG_PREFIX 👥 Showing smoker selection dialog")
+        Log.d(TAG, "$LOG_PREFIX 👥 Showing smoker selection dialog with activity counts")
         
         val currentIndex = allSmokers.indexOfFirst { it.name == currentSmoker }
         
@@ -2621,83 +2772,169 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         }
         dialogView.addView(titleView)
         
-        // Add smoker items
-        allSmokers.forEachIndexed { index, smoker ->
-            val itemView = TextView(this).apply {
-                text = smoker.name
-                textSize = 18f
-                // Use the current font and color from smokerNameText
-                setTextColor(smokerNameText.currentTextColor)
-                typeface = smokerNameText.typeface
-                setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
-                gravity = Gravity.CENTER
+        // Calculate activity counts for each smoker
+        lifecycleScope.launch {
+            try {
+                // Get session activities
+                val sessionActivities = withContext(Dispatchers.IO) {
+                    repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+                }
                 
-                // Highlight selected smoker with neon green border
-                if (index == currentIndex) {
-                    background = android.graphics.drawable.GradientDrawable().apply {
-                        setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border like main view
-                        cornerRadius = 8.dpToPx().toFloat()
+                // Map activity type to enum
+                val activityType = when (currentActivityType) {
+                    "cones" -> com.vibecode.cloudcounter.ActivityType.CONE
+                    "joints" -> com.vibecode.cloudcounter.ActivityType.JOINT
+                    "bowls" -> com.vibecode.cloudcounter.ActivityType.BOWL
+                    "custom" -> com.vibecode.cloudcounter.ActivityType.CUSTOM
+                    "cigarettes" -> com.vibecode.cloudcounter.ActivityType.CIGARETTE
+                    else -> com.vibecode.cloudcounter.ActivityType.CONE
+                }
+                
+                // Get display name for the activity
+                val displayActivityName = when (currentActivityType) {
+                    "cones" -> "cones"
+                    "joints" -> "joints"
+                    "bowls" -> "bowls"
+                    "cigarettes" -> "cigarettes"
+                    "custom" -> currentActivityName?.lowercase() ?: "custom"
+                    else -> currentActivityType
+                }
+                
+                Log.d(TAG, "$LOG_PREFIX 📊 Calculating counts for activity type: $currentActivityType ($displayActivityName)")
+                
+                // Add smoker items with counts
+                allSmokers.forEachIndexed { index, smoker ->
+                    // Calculate count for this smoker
+                    val smokerCount = sessionActivities.count { activity ->
+                        if (activity.smokerId != smoker.smokerId) return@count false
+                        
+                        when (activityType) {
+                            com.vibecode.cloudcounter.ActivityType.CUSTOM -> matchesActiveCustomActivity(activity)
+                            com.vibecode.cloudcounter.ActivityType.CIGARETTE ->
+                                activity.type == com.vibecode.cloudcounter.ActivityType.CIGARETTE
+                            else -> activity.type == activityType
+                        }
+                    }
+                    
+                    Log.d(TAG, "$LOG_PREFIX 📊 ${smoker.name}: $smokerCount $displayActivityName")
+                    
+                    val itemView = TextView(this@GiantCounterActivity).apply {
+                        // Show name with count
+                        text = "${smoker.name}: $smokerCount $displayActivityName"
+                        textSize = 18f
+                        // Use the current font and color from smokerNameText
+                        setTextColor(smokerNameText.currentTextColor)
+                        typeface = smokerNameText.typeface
+                        setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+                        gravity = Gravity.CENTER
+                        
+                        // Highlight selected smoker with neon green border
+                        if (index == currentIndex) {
+                            background = android.graphics.drawable.GradientDrawable().apply {
+                                setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border like main view
+                                cornerRadius = 8.dpToPx().toFloat()
+                            }
+                        }
+                        
+                        setOnClickListener {
+                            currentSmoker = smoker.name
+                            currentSmokerIndex = index
+                            
+                            Log.d(TAG, "$LOG_PREFIX 🔄 Switched to smoker: $currentSmoker")
+                            
+                            // Reload count for new smoker
+                            lifecycleScope.launch {
+                                loadCurrentData()
+                            }
+                            
+                            dialog.dismiss()
+                        }
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        dialogView.addView(itemView)
+                        
+                        // Add small spacing between items
+                        if (index < allSmokers.size - 1) {
+                            val spacer = View(this@GiantCounterActivity).apply {
+                                layoutParams = LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT,
+                                    4.dpToPx()
+                                )
+                            }
+                            dialogView.addView(spacer)
+                        }
                     }
                 }
                 
-                setOnClickListener {
-                    currentSmoker = smoker.name
-                    currentSmokerIndex = index
+                // Add cancel button
+                withContext(Dispatchers.Main) {
+                    val cancelButton = TextView(this@GiantCounterActivity).apply {
+                        text = "CANCEL"
+                        textSize = 14f  // Smaller font size
+                        setTextColor(Color.parseColor("#98FB98")) // Light neon green
+                        gravity = Gravity.CENTER
+                        setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 4.dpToPx())  // Smaller padding
+                        setOnClickListener {
+                            dialog.dismiss()
+                        }
+                    }
+                    dialogView.addView(cancelButton)
                     
-                    Log.d(TAG, "$LOG_PREFIX 🔄 Switched to smoker: $currentSmoker")
-                    
-                    // Reload count for new smoker
-                    lifecycleScope.launch {
-                        loadCurrentData()
+                    // Apply neon green border to the entire dialog
+                    dialogView.background = android.graphics.drawable.GradientDrawable().apply {
+                        setColor(Color.parseColor("#CC000000")) // Black semi-transparent
+                        setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border
+                        cornerRadius = 12.dpToPx().toFloat()
                     }
                     
-                    dialog.dismiss()
+                    dialog.setView(dialogView)
+                    dialog.window?.apply {
+                        setBackgroundDrawableResource(android.R.color.transparent)
+                        // Move dialog 2cm higher
+                        setGravity(Gravity.CENTER)
+                        attributes = attributes?.apply {
+                            y = -80.dpToPx()  // Move up by ~2cm (80dp)
+                        }
+                    }
+                    dialog.show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error showing smoker selection with counts", e)
+                // Fallback to showing without counts
+                withContext(Dispatchers.Main) {
+                    allSmokers.forEachIndexed { index, smoker ->
+                        val itemView = TextView(this@GiantCounterActivity).apply {
+                            text = smoker.name // Just show name without count
+                            textSize = 18f
+                            setTextColor(smokerNameText.currentTextColor)
+                            typeface = smokerNameText.typeface
+                            setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+                            gravity = Gravity.CENTER
+                            
+                            if (index == currentIndex) {
+                                background = android.graphics.drawable.GradientDrawable().apply {
+                                    setStroke(2.dpToPx(), Color.parseColor("#98FB98"))
+                                    cornerRadius = 8.dpToPx().toFloat()
+                                }
+                            }
+                            
+                            setOnClickListener {
+                                currentSmoker = smoker.name
+                                currentSmokerIndex = index
+                                lifecycleScope.launch {
+                                    loadCurrentData()
+                                }
+                                dialog.dismiss()
+                            }
+                        }
+                        dialogView.addView(itemView)
+                    }
+                    dialog.setView(dialogView)
+                    dialog.show()
                 }
             }
-            dialogView.addView(itemView)
-            
-            // Add small spacing between items
-            if (index < allSmokers.size - 1) {
-                val spacer = View(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        4.dpToPx()
-                    )
-                }
-                dialogView.addView(spacer)
-            }
         }
-        
-        // Add cancel button
-        val cancelButton = TextView(this).apply {
-            text = "CANCEL"
-            textSize = 14f  // Smaller font size
-            setTextColor(Color.parseColor("#98FB98")) // Light neon green
-            gravity = Gravity.CENTER
-            setPadding(12.dpToPx(), 12.dpToPx(), 12.dpToPx(), 4.dpToPx())  // Smaller padding
-            setOnClickListener {
-                dialog.dismiss()
-            }
-        }
-        dialogView.addView(cancelButton)
-        
-        // Apply neon green border to the entire dialog
-        dialogView.background = android.graphics.drawable.GradientDrawable().apply {
-            setColor(Color.parseColor("#CC000000")) // Black semi-transparent
-            setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border
-            cornerRadius = 12.dpToPx().toFloat()
-        }
-        
-        dialog.setView(dialogView)
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            // Move dialog 2cm higher
-            setGravity(Gravity.CENTER)
-            attributes = attributes?.apply {
-                y = -80.dpToPx()  // Move up by ~2cm (80dp)
-            }
-        }
-        dialog.show()
     }
     
     private fun cycleToNextFont(): android.graphics.Typeface {

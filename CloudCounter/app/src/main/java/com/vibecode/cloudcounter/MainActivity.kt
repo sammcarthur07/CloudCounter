@@ -239,6 +239,7 @@ class MainActivity : AppCompatActivity() {
     private var isUpdatingAutoModeToFirestore = false
     private var lastModeToggleTime = 0L
     private var lastLocalAutoModeValue: Boolean? = null  // Track what we last set locally
+    private var isGiantCounterActive = false  // Track when GiantCounter is active
 
     private var processedActivityIds = mutableSetOf<String>()
 
@@ -1454,6 +1455,9 @@ class MainActivity : AppCompatActivity() {
             // Restore auto mode
             isAutoMode = originalAutoMode
             Log.d(TAG, "🎯 ↻ Restored auto mode to: $originalAutoMode")
+            
+            // Also ensure SharedPreferences has the correct value
+            prefs.edit().putBoolean("is_auto_mode", originalAutoMode).apply()
 
             withContext(Dispatchers.Main) {
                 if (currentShareCode == null) {
@@ -2022,6 +2026,8 @@ class MainActivity : AppCompatActivity() {
             // Restore auto mode after a delay
             handler.postDelayed({
                 isAutoMode = originalAutoMode
+                // Ensure SharedPreferences is also correct
+                prefs.edit().putBoolean("is_auto_mode", originalAutoMode).apply()
             }, 100)
         } else {
             // Multiple bowls - bypass the synchronization in logHitSafe
@@ -2787,6 +2793,10 @@ class MainActivity : AppCompatActivity() {
         confettiHelper.setupKonfettiOverlay(this)
         customActivityManager = CustomActivityManager(this)
         ratioManager = SmokeRatioManager(this)
+        
+        // Load mode from SharedPreferences
+        isAutoMode = prefs.getBoolean("is_auto_mode", true)
+        Log.d(TAG, "🔄 MODE SYNC: Loaded initial mode from prefs: ${if (isAutoMode) "AUTO" else "STICKY"}")
 
         // Initialize cloud services and restore session
         initializeCloudServices()
@@ -3571,7 +3581,7 @@ class MainActivity : AppCompatActivity() {
             .putInt("initialRoundsLeft", initialRoundsSet)
             .putString("currentShareCode", currentShareCode)
             .putString("currentRoomName", currentRoomName)
-            .putBoolean("isAutoMode", isAutoMode)
+            .putBoolean("is_auto_mode", isAutoMode)  // Fixed key to match other usages
             .putLong("defaultSmokerId", (application as CloudCounterApplication).defaultSmokerId)
         
         // Only save sessionStart if it's valid (not 0)
@@ -3823,10 +3833,15 @@ class MainActivity : AppCompatActivity() {
                     .apply()
             }
             
+            // The mode is already saved correctly by saveSessionToPrefs() above
+            // Don't overwrite it here - just log what's saved
+            val savedMode = prefs.getBoolean("is_auto_mode", isAutoMode)
+            Log.d(TAG, "🚀 GIANT LAUNCH: Mode in prefs: ${if (savedMode) "AUTO" else "STICKY"}, isAutoMode=$isAutoMode")
+            
             val launchEditor = prefs.edit()
                 .putString("selected_smoker", selectedSmoker)
                 .putString("current_activity_type", activityTypeToPrefValue(lastSelectedActivityType))
-                .putBoolean("is_auto_mode", isAutoMode)
+                // Don't overwrite is_auto_mode - it's already saved above with the correct value
                 .putBoolean("timer_enabled", false) // Default to false for now
                 .putString("stash_source", stashSourceString) // Pass stash source
 
@@ -3834,6 +3849,8 @@ class MainActivity : AppCompatActivity() {
             launchEditor.applyCustomActivityPrefs().commit()
 
             // Launch Giant Counter Activity and expect result
+            isGiantCounterActive = true
+            Log.d(TAG, "🚀 GIANT LAUNCH: Setting isGiantCounterActive=true")
             val intent = Intent(this, GiantCounterActivity::class.java)
             startActivityForResult(intent, GIANT_COUNTER_REQUEST_CODE)
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
@@ -9344,10 +9361,13 @@ class MainActivity : AppCompatActivity() {
                             val isRemoteSource = act.deviceId.isNotEmpty() && act.deviceId != getAndroidDeviceId()
                             val isRecent = timeSinceActivity < 5000
 
-                            Log.d(TAG, "🎧 Checking auto-advance: activitySmoker=${act.smokerId}, currentSmoker=$currentSmokerUid, autoMode=$isAutoMode, isFromUI=$isFromUI, fromRemote=$isRemoteSource, timeSince=${timeSinceActivity}ms")
+                            // Always check the mode from SharedPreferences to ensure consistency
+                            val currentAutoMode = prefs.getBoolean("is_auto_mode", isAutoMode)
+                            
+                            Log.d(TAG, "🎧 Checking auto-advance: activitySmoker=${act.smokerId}, currentSmoker=$currentSmokerUid, autoMode=$currentAutoMode, isFromUI=$isFromUI, fromRemote=$isRemoteSource, timeSince=${timeSinceActivity}ms")
 
                             // Check if we should advance the spinner
-                            val shouldAdvance = isAutoMode && smokers.isNotEmpty() && (
+                            val shouldAdvance = currentAutoMode && smokers.isNotEmpty() && (
                                 (isFromUI && isSameSmoker) ||
                                 (isRecent && (isSameSmoker || isRemoteSource))
                             )
@@ -9678,8 +9698,8 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "     Is performing undo: $isPerformingUndo")
 
         val remoteAutoMode = room.isAutoMode
-        // Only apply remote auto mode if we're not currently updating it locally
-        if (remoteAutoMode != isAutoMode && !isUpdatingAutoModeToFirestore) {
+        // Only apply remote auto mode if we're not currently updating it locally AND GiantCounter is not active
+        if (remoteAutoMode != isAutoMode && !isUpdatingAutoModeToFirestore && !isGiantCounterActive) {
             val timeSinceLastToggle = System.currentTimeMillis() - lastModeToggleTime
             
             // Smart conflict detection:
@@ -9688,8 +9708,8 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "🔘📡 Ignoring echo of our own update: remote=$remoteAutoMode matches our last local change")
             }
             // 2. If remote is different from what we set, and we have a recent local change,
-            //    compare against what we expect and ignore if it doesn't match for up to 15 seconds
-            else if (lastLocalAutoModeValue != null && remoteAutoMode != lastLocalAutoModeValue && timeSinceLastToggle < 15000) {
+            //    compare against what we expect and ignore if it doesn't match for up to 30 seconds (increased from 15)
+            else if (lastLocalAutoModeValue != null && remoteAutoMode != lastLocalAutoModeValue && timeSinceLastToggle < 30000) {
                 Log.d(TAG, "🔘📡 Ignoring stale remote value: $remoteAutoMode (expecting $lastLocalAutoModeValue, toggled ${timeSinceLastToggle}ms ago)")
             }
             // 3. Otherwise, it's a legitimate remote update from another user
@@ -9698,6 +9718,9 @@ class MainActivity : AppCompatActivity() {
                 isApplyingRemoteAutoMode = true
                 try {
                     isAutoMode = remoteAutoMode
+                    // Save to SharedPreferences for consistency with GiantCounter
+                    prefs.edit().putBoolean("is_auto_mode", isAutoMode).apply()
+                    Log.d(TAG, "🔄 MODE SYNC: Saved remote mode to prefs: ${if (isAutoMode) "AUTO" else "STICKY"}")
                     sessionStatsVM.setAutoMode(isAutoMode)
                     updateModeButtonText()
                     // Clear our local tracking since we're accepting a remote change
@@ -9708,6 +9731,8 @@ class MainActivity : AppCompatActivity() {
             }
         } else if (isUpdatingAutoModeToFirestore) {
             Log.d(TAG, "🔘📡 Skipping remote auto mode update - local update in progress")
+        } else if (isGiantCounterActive) {
+            Log.d(TAG, "🔘📡 Skipping remote auto mode update - GiantCounter is active")
         }
 
         applyActiveSmokerFromRoomIfNeeded(room.safeActiveSmokerId())
@@ -9998,6 +10023,68 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        
+        // Clear GiantCounter active flag in case we're returning from it
+        if (isGiantCounterActive) {
+            isGiantCounterActive = false
+            Log.d(TAG, "🔄 Clearing isGiantCounterActive flag in onResume")
+        }
+        
+        // Reload mode and smoker from SharedPreferences (synced with GiantCounter)
+        val savedMode = prefs.getBoolean("is_auto_mode", true)
+        val savedSmoker = prefs.getString("selected_smoker", null)
+        
+        // Update mode if it changed in GiantCounter
+        if (savedMode != isAutoMode) {
+            Log.d(TAG, "🔄 MODE SYNC: Mode changed in GiantCounter from ${if (isAutoMode) "AUTO" else "STICKY"} to ${if (savedMode) "AUTO" else "STICKY"}")
+            isAutoMode = savedMode
+            // Set tracking variables to prevent remote override
+            lastModeToggleTime = System.currentTimeMillis()
+            lastLocalAutoModeValue = savedMode
+            updateModeButtonText()
+            
+            // Also update the room if we're in one
+            val shareCode = currentShareCode
+            if (!shareCode.isNullOrEmpty()) {
+                isUpdatingAutoModeToFirestore = true
+                lifecycleScope.launch {
+                    try {
+                        sessionSyncService.updateAutoModeInRoom(shareCode, savedMode).fold(
+                            onSuccess = {
+                                Log.d(TAG, "🔄 MODE SYNC: Updated room with mode from GiantCounter: ${if (savedMode) "AUTO" else "STICKY"}")
+                            },
+                            onFailure = { error ->
+                                Log.e(TAG, "🔄 MODE SYNC: Failed to update room mode: ${error.message}")
+                            }
+                        )
+                    } finally {
+                        // Reset flag after a delay to allow the update to propagate
+                        handler.postDelayed({
+                            isUpdatingAutoModeToFirestore = false
+                        }, 2000)
+                    }
+                }
+            }
+        }
+        
+        // Update selected smoker if it changed in GiantCounter
+        if (savedSmoker != null) {
+            val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+            val currentPosition = binding.spinnerSmoker.selectedItemPosition
+            val currentSmokerName = organizedSmokers.getOrNull(currentPosition)?.name
+            
+            if (savedSmoker != currentSmokerName) {
+                Log.d(TAG, "🔄 SMOKER SYNC: Smoker changed in GiantCounter from '$currentSmokerName' to '$savedSmoker'")
+                
+                // Find the position of the saved smoker
+                val newPosition = organizedSmokers.indexOfFirst { it.name == savedSmoker }
+                if (newPosition >= 0) {
+                    binding.spinnerSmoker.setSelection(newPosition)
+                    Log.d(TAG, "🔄 SMOKER SYNC: Updated spinner to position $newPosition for smoker '$savedSmoker'")
+                }
+            }
+        }
+        
         // Refresh stats when returning from GiantCounterActivity or other activities
         val statsNeedRefresh = prefs.getBoolean("stats_need_refresh", false)
         if (statsNeedRefresh) {
@@ -10042,7 +10129,8 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         
         if (requestCode == GIANT_COUNTER_REQUEST_CODE) {
-            Log.d(TAG, "🎯 Returned from GiantCounterActivity, forcing stats refresh...")
+            isGiantCounterActive = false
+            Log.d(TAG, "🎯 Returned from GiantCounterActivity, isGiantCounterActive=false, forcing stats refresh...")
             
             // Reload lock states from GiantCounter
             val updatedRandomFontsEnabled = prefs.getBoolean("random_fonts_enabled", true)
@@ -13012,6 +13100,15 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 Log.d(TAG, "📱 Auto-advancing to next smoker after activity")
                 moveToNextActiveSmoker()
+                
+                // Save the current selected smoker to SharedPreferences after rotation
+                val organizedSmokers = organizeSmokers().flatMap { it.smokers }
+                val currentPosition = binding.spinnerSmoker.selectedItemPosition
+                val currentSmoker = organizedSmokers.getOrNull(currentPosition)
+                currentSmoker?.let {
+                    prefs.edit().putString("selected_smoker", it.name).apply()
+                    Log.d(TAG, "🔄 SMOKER SYNC: Saved selected_smoker after auto-advance: ${it.name}")
+                }
             }
         }
     }
@@ -17609,6 +17706,10 @@ class MainActivity : AppCompatActivity() {
             val newAutoMode = isAutoMode  // Capture the value for the async operation
             lastModeToggleTime = System.currentTimeMillis()  // Track when we toggled
             lastLocalAutoModeValue = newAutoMode  // Remember what we set locally
+            
+            // Save to SharedPreferences for synchronization with GiantCounter
+            prefs.edit().putBoolean("is_auto_mode", isAutoMode).apply()
+            Log.d(TAG, "🔄 MODE SYNC: Saved is_auto_mode=${isAutoMode} to prefs")
             
             // Update button text
             updateModeButtonText()
