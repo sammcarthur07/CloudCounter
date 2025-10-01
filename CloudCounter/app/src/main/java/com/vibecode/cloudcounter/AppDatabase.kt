@@ -26,7 +26,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UserDeletedMessage::class,
         Goal::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = false
 )
 @TypeConverters(Converters::class, GoalConverters::class)
@@ -487,6 +487,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.d("Migration", "Starting migration from 28 to 29 - Adding cigarette fraction tracking fields")
+                
+                // Add cigarette fraction tracking fields to activity_logs table
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN cigaretteFractionContribution REAL NOT NULL DEFAULT 0.0")
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN cigaretteFractionBefore REAL NOT NULL DEFAULT 0.0")
+                
+                Log.d("Migration", "Migration 28 to 29 completed successfully")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -514,7 +526,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_24_25,  // Added session activity breakdown
                         MIGRATION_25_26,  // Added session isActive field
                         MIGRATION_26_27,  // Added custom ratio fields
-                        MIGRATION_27_28   // Added soft delete fields
+                        MIGRATION_27_28,  // Added soft delete fields
+                        MIGRATION_28_29   // Added cigarette fraction tracking
                     )
                     .fallbackToDestructiveMigration()
                     .build()

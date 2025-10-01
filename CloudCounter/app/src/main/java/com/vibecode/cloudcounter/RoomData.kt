@@ -58,7 +58,11 @@ data class SessionActivity(
     val type: String = "",         // "CONE", "JOINT", "BOWL", or "CUSTOM_[id]"
     val customActivityName: String? = null, // Name of custom activity if type starts with CUSTOM_
     val timestamp: Long = 0L,
-    val deviceId: String = ""      // Which device added it (for debugging)
+    val deviceId: String = "",      // Which device added it (for debugging)
+    val customRatioId: String? = null,
+    val customRatioName: String? = null,
+    val cigaretteFractionContribution: Double = 0.0,
+    val cigaretteFractionBefore: Double = 0.0
 )
 
 // Auto-add state that syncs across all devices

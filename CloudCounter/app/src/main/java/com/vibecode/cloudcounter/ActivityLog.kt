@@ -54,7 +54,11 @@ data class ActivityLog(
 
     // Snapshot values at the time of logging
     val gramsAtLog: Double = 0.0,
-    val pricePerGramAtLog: Double = 0.0
+    val pricePerGramAtLog: Double = 0.0,
+    
+    // Cigarette fraction tracking for undo support
+    val cigaretteFractionContribution: Double = 0.0,  // How much this activity added to fraction
+    val cigaretteFractionBefore: Double = 0.0  // Fraction value before this activity
 ) {
     // Helper property to get the effective consumer ID
     val effectiveConsumerId: Long
