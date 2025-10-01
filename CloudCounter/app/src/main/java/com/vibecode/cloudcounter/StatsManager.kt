@@ -20,7 +20,10 @@ class StatsManager(
         private const val TAG = "StatsManager"
         private const val PREFS_NAME = "sam_stats_cache"
         private const val CACHE_KEY = "stats_cache"
-        private const val SAM_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
+        private val SAM_UIDS = setOf(
+            "diY4ATkGQYhYndv2lQY4rZAUKGl2", // vibecode.sam@gmail.com
+            "8A2iwsPDzEO57jWXXWeB9foSpca2"  // mcarthur.sp@gmail.com
+        )
         private const val STATS_ADJUSTMENTS_PATH = "stats_adjustments/sam_stats"
     }
 
@@ -115,7 +118,7 @@ class StatsManager(
             try {
                 // Get Sam's local smoker IDs
                 val samSmokers = repository.getAllSmokersList().filter { smoker ->
-                    smoker.cloudUserId == SAM_UID ||
+                    SAM_UIDS.contains(smoker.cloudUserId) ||
                             (smoker.isOwner && smoker.name.contains("Sam", ignoreCase = true))
                 }
 
@@ -135,18 +138,21 @@ class StatsManager(
 
             // 2. Fetch from Firebase rooms where Sam participated
             try {
-                val roomsSnapshot = firestore.collection("rooms")
-                    .whereArrayContains("participants", SAM_UID)
-                    .get()
-                    .await()
+                // Query for all admin UIDs
+                for (uid in SAM_UIDS) {
+                    val roomsSnapshot = firestore.collection("rooms")
+                        .whereArrayContains("participants", uid)
+                        .get()
+                        .await()
 
-                for (doc in roomsSnapshot.documents) {
-                    val room = doc.toObject(RoomData::class.java) ?: continue
-                    val activities = room.safeActivities().filter { activity ->
-                        activity.timestamp > sinceTimestamp &&
-                                (activity.smokerId == SAM_UID || activity.smokerId.startsWith("local_"))
+                    for (doc in roomsSnapshot.documents) {
+                        val room = doc.toObject(RoomData::class.java) ?: continue
+                        val activities = room.safeActivities().filter { activity ->
+                            activity.timestamp > sinceTimestamp &&
+                                    (SAM_UIDS.contains(activity.smokerId) || activity.smokerId.startsWith("local_"))
+                        }
+                        cloudActivities.addAll(activities)
                     }
-                    cloudActivities.addAll(activities)
                 }
                 Log.d(TAG, "Found ${cloudActivities.size} cloud activities since $sinceTimestamp")
             } catch (e: Exception) {
@@ -330,7 +336,7 @@ class StatsManager(
         return withContext(Dispatchers.IO) {
             try {
                 val currentUser = FirebaseAuth.getInstance().currentUser
-                if (currentUser?.uid != SAM_UID) {
+                if (!SAM_UIDS.contains(currentUser?.uid)) {
                     return@withContext Result.failure(Exception("Unauthorized"))
                 }
 

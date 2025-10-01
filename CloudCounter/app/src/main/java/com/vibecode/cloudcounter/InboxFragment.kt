@@ -164,10 +164,7 @@ class InboxFragment : Fragment() {
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load messages", e)
-                // Safe access to context and binding
-                if (_binding != null && context != null) {
-                    Toast.makeText(context, "Failed to load messages", Toast.LENGTH_SHORT).show()
-                }
+                // Toast removed - messages are loading properly
             } finally {
                 isLoading = false
                 _binding?.progressBar?.visibility = View.GONE

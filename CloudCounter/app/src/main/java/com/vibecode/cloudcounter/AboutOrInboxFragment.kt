@@ -19,7 +19,10 @@ class AboutOrInboxFragment : Fragment() {
 
     companion object {
         private const val TAG = "AboutOrInboxFragment"
-        private const val ADMIN_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
+        private val ADMIN_UIDS = setOf(
+            "diY4ATkGQYhYndv2lQY4rZAUKGl2", // vibecode.sam@gmail.com
+            "8A2iwsPDzEO57jWXXWeB9foSpca2"  // mcarthur.sp@gmail.com
+        )
         private const val PREF_LAST_VIEW_STATE = "last_about_inbox_view_state"
         private const val VIEW_STATE_ABOUT = "about"
         private const val VIEW_STATE_INBOX = "inbox"
@@ -48,6 +51,7 @@ class AboutOrInboxFragment : Fragment() {
 
         setupToggleButton()
         setupStatsControlButton()
+        setupUserStatsButton()
         showAppropriateFragment()
     }
     
@@ -81,6 +85,7 @@ class AboutOrInboxFragment : Fragment() {
                 if (_binding != null) {
                     setupToggleButton()
                     setupStatsControlButton()
+                    setupUserStatsButton()
                     showAppropriateFragment()
                 }
             }
@@ -90,6 +95,7 @@ class AboutOrInboxFragment : Fragment() {
             if (_binding != null) {
                 setupToggleButton()
                 setupStatsControlButton()
+                setupUserStatsButton()
                 showAppropriateFragment()
             }
         }
@@ -101,7 +107,7 @@ class AboutOrInboxFragment : Fragment() {
 
         // For non-admins, always show About
         val currentUser = auth.currentUser
-        if (currentUser?.uid != ADMIN_UID) {
+        if (!ADMIN_UIDS.contains(currentUser?.uid)) {
             currentViewState = VIEW_STATE_ABOUT
         }
     }
@@ -114,11 +120,12 @@ class AboutOrInboxFragment : Fragment() {
     private fun setupToggleButton() {
         // Only show toggle button for admin
         val currentUser = auth.currentUser
-        Log.d(TAG, "setupToggleButton - Current user UID: ${currentUser?.uid}, Admin UID: $ADMIN_UID")
+        val isAdmin = ADMIN_UIDS.contains(currentUser?.uid)
+        Log.d(TAG, "setupToggleButton - Current user UID: ${currentUser?.uid}, Admin UIDs: $ADMIN_UIDS")
         Log.d(TAG, "setupToggleButton - User email: ${currentUser?.email}")
-        Log.d(TAG, "setupToggleButton - Is admin: ${currentUser?.uid == ADMIN_UID}")
+        Log.d(TAG, "setupToggleButton - Is admin: $isAdmin")
         
-        if (currentUser?.uid == ADMIN_UID) {
+        if (isAdmin) {
             Log.d(TAG, "Admin detected - showing inbox button")
             binding.btnToggleView.visibility = View.VISIBLE
             binding.btnToggleView.setOnClickListener {
@@ -133,7 +140,7 @@ class AboutOrInboxFragment : Fragment() {
     private fun setupStatsControlButton() {
         // Only show stats control button for admin when in admin view
         val currentUser = auth.currentUser
-        if (currentUser?.uid == ADMIN_UID) {
+        if (ADMIN_UIDS.contains(currentUser?.uid)) {
             binding.btnStatsControls.setOnClickListener {
                 showStatsControlsDialog()
             }
@@ -143,9 +150,22 @@ class AboutOrInboxFragment : Fragment() {
         }
     }
 
+    private fun setupUserStatsButton() {
+        // Only show user stats button for admin when in admin view
+        val currentUser = auth.currentUser
+        if (ADMIN_UIDS.contains(currentUser?.uid)) {
+            binding.btnUserStats.setOnClickListener {
+                showUserStatsDialog()
+            }
+            // Visibility will be controlled by showAppropriateFragment()
+        } else {
+            binding.btnUserStats.visibility = View.GONE
+        }
+    }
+
     private fun showAppropriateFragment() {
         val currentUser = auth.currentUser
-        val isAdmin = currentUser?.uid == ADMIN_UID
+        val isAdmin = ADMIN_UIDS.contains(currentUser?.uid)
         
         Log.d(TAG, "showAppropriateFragment - Current user: ${currentUser?.uid}")
         Log.d(TAG, "showAppropriateFragment - Is admin: $isAdmin")
@@ -157,6 +177,7 @@ class AboutOrInboxFragment : Fragment() {
                 Log.d(TAG, "Showing About fragment for non-admin user")
                 binding.btnToggleView.visibility = View.GONE
                 binding.btnStatsControls.visibility = View.GONE
+                binding.btnUserStats.visibility = View.GONE
                 AboutFragment()
             }
             currentViewState == VIEW_STATE_INBOX -> {
@@ -164,6 +185,7 @@ class AboutOrInboxFragment : Fragment() {
                 Log.d(TAG, "Showing Inbox fragment for admin user")
                 binding.btnToggleView.text = "View About"
                 binding.btnStatsControls.visibility = View.VISIBLE
+                binding.btnUserStats.visibility = View.VISIBLE
                 InboxFragment()
             }
             else -> {
@@ -171,6 +193,7 @@ class AboutOrInboxFragment : Fragment() {
                 Log.d(TAG, "Showing About fragment for admin user")
                 binding.btnToggleView.text = "View Inbox"
                 binding.btnStatsControls.visibility = View.GONE
+                binding.btnUserStats.visibility = View.GONE
                 AboutFragment()
             }
         }
@@ -221,6 +244,11 @@ class AboutOrInboxFragment : Fragment() {
                 Toast.makeText(context, "Failed to load stats", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showUserStatsDialog() {
+        val dialog = UserStatsDialog()
+        dialog.show(childFragmentManager, "user_stats")
     }
 
     override fun onDestroyView() {

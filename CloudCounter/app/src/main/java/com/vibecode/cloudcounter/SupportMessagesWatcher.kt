@@ -16,7 +16,10 @@ class SupportMessagesWatcher(
 
     companion object {
         private const val TAG = "SupportMessagesWatcher"
-        private const val ADMIN_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
+        private val ADMIN_UIDS = setOf(
+            "diY4ATkGQYhYndv2lQY4rZAUKGl2", // vibecode.sam@gmail.com
+            "8A2iwsPDzEO57jWXXWeB9foSpca2"  // mcarthur.sp@gmail.com
+        )
         private const val PREFS_NAME = "support_messages_prefs"
         private const val PREF_LAST_NOTIFIED_ID = "last_notified_id"
     }
@@ -52,7 +55,7 @@ class SupportMessagesWatcher(
     fun startListening() {
         // Only start if current user is admin
         val currentUser = auth.currentUser
-        if (currentUser?.uid != ADMIN_UID) {
+        if (!ADMIN_UIDS.contains(currentUser?.uid)) {
             Log.d(TAG, "Not admin user, skipping message monitoring")
             return
         }

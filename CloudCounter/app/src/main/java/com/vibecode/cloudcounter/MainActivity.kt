@@ -96,7 +96,10 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val GIANT_COUNTER_REQUEST_CODE = 1001
         const val ACTION_CUSTOM_ACTIVITIES_CHANGED = "com.vibecode.cloudcounter.CUSTOM_ACTIVITIES_CHANGED"
-        private const val ADMIN_UID = "diY4ATkGQYhYndv2lQY4rZAUKGl2"
+        private val ADMIN_UIDS = setOf(
+            "diY4ATkGQYhYndv2lQY4rZAUKGl2", // vibecode.sam@gmail.com
+            "8A2iwsPDzEO57jWXXWeB9foSpca2"  // mcarthur.sp@gmail.com
+        )
 
         // Add neon colors for font coloring
         private val NEON_COLORS = listOf(
