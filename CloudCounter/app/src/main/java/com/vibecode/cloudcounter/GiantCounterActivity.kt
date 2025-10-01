@@ -641,6 +641,10 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
             setTextColor(smokerFontColor)
             typeface = smokerFontTypeface ?: android.graphics.Typeface.DEFAULT_BOLD
             setShadowLayer(2f, 1f, 1f, Color.BLACK)
+            setOnClickListener {
+                // Always show activity selection dialog when text is clicked
+                showActivitySelectionDialog()
+            }
         }
         buttonContainer.addView(recentStatsText)
         
@@ -1037,9 +1041,9 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 val currentSmokerObj = allSmokers.getOrNull(currentSmokerIndex)
                 
                 if (currentSmokerObj != null) {
-                    // Get most recent activity for this smoker
+                    // Get most recent activity for this smoker (excluding stash operations)
                     val recentActivity = withContext(Dispatchers.IO) {
-                        repository.getLastActivityForSmoker(currentSmokerObj.smokerId)
+                        repository.getLastRealActivityForSmoker(currentSmokerObj.smokerId)
                     }
                     
                     if (recentActivity != null) {
@@ -1067,10 +1071,14 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         }
                         recentSmoker = recentSmokerObj?.name ?: ""
                     } else {
+                        // No real activities yet (excluding stash operations)
                         val validTypes = setOf("cones", "joints", "bowls", "custom", "cigarettes")
                         if (currentActivityType !in validTypes) {
                             currentActivityType = "cones"
                         }
+                        // Clear recent stats since there are no activities
+                        recentSmoker = ""
+                        recentSmokerCount = 0
                     }
                     
                     // Get session activities (from session start time)
@@ -1229,11 +1237,18 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
         if (recentSmoker.isNotEmpty()) {
             recentStatsText.text = "$recentSmoker: $recentSmokerCount $displayActivityName"
         } else {
-            recentStatsText.text = displayActivityName
+            // Show placeholder text when no activities have been added yet
+            recentStatsText.text = "Add an activity to start"
         }
     }
     
     private fun incrementCounter() {
+        // Don't add activities if no activity has been selected yet (check if we're showing the placeholder)
+        if (recentStatsText.text == "Add an activity to start") {
+            Log.d(TAG, "$LOG_PREFIX 🎯 No activity selected yet, ignoring button press")
+            return
+        }
+        
         Log.d(TAG, "$LOG_PREFIX 🎯 incrementCounter() called")
         Log.d(TAG, "$LOG_PREFIX 🎯 Current smoker: $currentSmoker")
         Log.d(TAG, "$LOG_PREFIX 🎯 Activity type: $currentActivityType")
@@ -1960,7 +1975,12 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 } else 0
 
                 // Update the "last smoker" label to reflect the new last activity after undo
-                val newLast = sessionActivities.maxByOrNull { it.timestamp }
+                // Filter out stash ledger entries
+                val realActivities = sessionActivities.filter { 
+                    it.customActivityId == null || 
+                    (it.customActivityId != "MY_STASH_LEDGER" && it.customActivityId != "THEIR_STASH_LEDGER")
+                }
+                val newLast = realActivities.maxByOrNull { it.timestamp }
                 if (newLast != null) {
                     val lastSmoker = withContext(Dispatchers.IO) { smokerDao.getSmokerById(newLast.smokerId) }
                     recentSmoker = lastSmoker?.name ?: ""
@@ -2136,7 +2156,12 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                         } else 0
 
                         // Keep recentSmoker as the last activity's smoker so the bottom label is correct
-                        val last = sessionActivities.maxByOrNull { it.timestamp }
+                        // Filter out stash ledger entries
+                        val realActivities = sessionActivities.filter { 
+                            it.customActivityId == null || 
+                            (it.customActivityId != "MY_STASH_LEDGER" && it.customActivityId != "THEIR_STASH_LEDGER")
+                        }
+                        val last = realActivities.maxByOrNull { it.timestamp }
                         if (last != null) {
                             val smokerDao = com.vibecode.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
                             val lastSmoker = withContext(Dispatchers.IO) { smokerDao.getSmokerById(last.smokerId) }
@@ -2311,6 +2336,262 @@ class GiantCounterActivity : AppCompatActivity(), SharedPreferences.OnSharedPref
                 else -> false
             }
         }
+    }
+    
+    private suspend fun updateActivityDisplay(activityType: String, customId: String?, customName: String?) {
+        try {
+            val smokerDao = com.vibecode.cloudcounter.AppDatabase.getDatabase(this@GiantCounterActivity).smokerDao()
+            
+            // Map activity type to enum
+            val activityEnum = when (activityType) {
+                "cones" -> com.vibecode.cloudcounter.ActivityType.CONE
+                "joints" -> com.vibecode.cloudcounter.ActivityType.JOINT
+                "bowls" -> com.vibecode.cloudcounter.ActivityType.BOWL
+                "cigarettes" -> com.vibecode.cloudcounter.ActivityType.CIGARETTE
+                "custom" -> com.vibecode.cloudcounter.ActivityType.CUSTOM
+                else -> com.vibecode.cloudcounter.ActivityType.CONE
+            }
+            
+            // Get all activities for this session
+            val sessionActivities = withContext(Dispatchers.IO) {
+                repository.getLogsInTimeRange(sessionStart, System.currentTimeMillis())
+            }
+            
+            // Filter out stash ledger entries
+            val realActivities = sessionActivities.filter { 
+                it.customActivityId == null || 
+                (it.customActivityId != "MY_STASH_LEDGER" && it.customActivityId != "THEIR_STASH_LEDGER")
+            }
+            
+            // Find activities of the selected type
+            val matchingActivities = realActivities.filter { activity ->
+                when {
+                    activityEnum == com.vibecode.cloudcounter.ActivityType.CUSTOM && customId != null -> 
+                        activity.type == activityEnum && activity.customActivityId == customId
+                    activityEnum != com.vibecode.cloudcounter.ActivityType.CUSTOM -> 
+                        activity.type == activityEnum
+                    else -> false
+                }
+            }
+            
+            // Get the last activity of this type
+            val lastActivity = matchingActivities.maxByOrNull { it.timestamp }
+            
+            if (lastActivity != null) {
+                // Someone has done this activity before
+                val lastSmoker = withContext(Dispatchers.IO) { 
+                    smokerDao.getSmokerById(lastActivity.smokerId) 
+                }
+                
+                if (lastSmoker != null) {
+                    // Count how many of this activity the last smoker has done
+                    val count = matchingActivities.count { it.smokerId == lastSmoker.smokerId }
+                    
+                    // Update display with last smoker who did this activity
+                    recentSmoker = lastSmoker.name
+                    recentSmokerCount = count
+                    
+                    // Update current count for current smoker
+                    val currentSmokerObj = allSmokers.find { it.name == currentSmoker }
+                    currentCount = if (currentSmokerObj != null) {
+                        matchingActivities.count { it.smokerId == currentSmokerObj.smokerId }
+                    } else {
+                        0
+                    }
+                } else {
+                    // Couldn't find the smoker, use current smoker with 0 count
+                    recentSmoker = currentSmoker
+                    recentSmokerCount = 0
+                    currentCount = 0
+                }
+            } else {
+                // No one has done this activity yet
+                recentSmoker = currentSmoker
+                recentSmokerCount = 0
+                currentCount = 0
+            }
+            
+            // Update UI
+            withContext(Dispatchers.Main) {
+                updateUI()
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "$LOG_PREFIX Error updating activity display", e)
+            // Fallback to showing current smoker with 0 count
+            recentSmoker = currentSmoker
+            recentSmokerCount = 0
+            currentCount = 0
+            updateUI()
+        }
+    }
+    
+    private fun showActivitySelectionDialog() {
+        Log.d(TAG, "$LOG_PREFIX 🎯 Showing activity selection dialog")
+        
+        lifecycleScope.launch {
+            try {
+                // Get custom activities from CustomActivityManager
+                val customActivityManager = CustomActivityManager(this@GiantCounterActivity)
+                val customActivities = customActivityManager.getCustomActivities()
+                
+                // Create dialog with translucent fullscreen theme
+                val dialog = Dialog(this@GiantCounterActivity, android.R.style.Theme_Translucent_NoTitleBar_Fullscreen)
+                
+                // Create root container
+                val rootContainer = FrameLayout(this@GiantCounterActivity).apply {
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    setBackgroundColor(Color.parseColor("#CC000000")) // Semi-transparent black
+                    setOnClickListener { dialog.dismiss() } // Dismiss on outside click
+                }
+                
+                // Create card container
+                val mainCard = androidx.cardview.widget.CardView(this@GiantCounterActivity).apply {
+                    radius = 16.dpToPx().toFloat()
+                    cardElevation = 8.dpToPx().toFloat()
+                    setCardBackgroundColor(Color.parseColor("#E64A4A4A")) // Dark semi-transparent
+                    layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                        gravity = Gravity.CENTER
+                        setMargins(32.dpToPx(), 0, 32.dpToPx(), 0)
+                    }
+                }
+                
+                // Create content layout
+                val contentLayout = LinearLayout(this@GiantCounterActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(24.dpToPx(), 24.dpToPx(), 24.dpToPx(), 24.dpToPx())
+                    layoutParams = ViewGroup.LayoutParams(320.dpToPx(), ViewGroup.LayoutParams.WRAP_CONTENT)
+                }
+                
+                // Add title
+                val titleView = TextView(this@GiantCounterActivity).apply {
+                    text = "SELECT ACTIVITY"
+                    textSize = 22f
+                    setTextColor(Color.parseColor("#98FB98")) // Neon green
+                    typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.CENTER
+                    letterSpacing = 0.1f
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                        bottomMargin = 20.dpToPx()
+                    }
+                }
+                contentLayout.addView(titleView)
+                
+                // Core activities
+                val coreActivities = listOf("cones", "joints", "bowls", "cigarettes")
+                
+                // Add core activities
+                coreActivities.forEach { activityType ->
+                    val activityItem = createActivityItemView(activityType, null, null) {
+                        // Handle selection
+                        currentActivityType = activityType
+                        currentActivityId = null
+                        currentActivityName = null
+                        
+                        // Update display to show last smoker who did this activity
+                        lifecycleScope.launch {
+                            updateActivityDisplay(activityType, null, null)
+                        }
+                        
+                        saveDisplayState()
+                        dialog.dismiss()
+                        
+                        Log.d(TAG, "$LOG_PREFIX Selected activity: $activityType")
+                    }
+                    contentLayout.addView(activityItem)
+                }
+                
+                // Add custom activities
+                customActivities.forEach { customActivity: CustomActivity ->
+                    val activityItem = createActivityItemView("custom", customActivity.id, customActivity.name) {
+                        // Handle selection
+                        currentActivityType = "custom"
+                        currentActivityId = customActivity.id
+                        currentActivityName = customActivity.name
+                        
+                        // Update display to show last smoker who did this custom activity
+                        lifecycleScope.launch {
+                            updateActivityDisplay("custom", customActivity.id, customActivity.name)
+                        }
+                        
+                        saveDisplayState()
+                        dialog.dismiss()
+                        
+                        Log.d(TAG, "$LOG_PREFIX Selected custom activity: ${customActivity.name}")
+                    }
+                    contentLayout.addView(activityItem)
+                }
+                
+                // Add content to card
+                mainCard.addView(contentLayout)
+                
+                // Add card to root
+                rootContainer.addView(mainCard)
+                
+                // Set dialog content and show
+                dialog.setContentView(rootContainer)
+                dialog.show()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error showing activity selection dialog", e)
+            }
+        }
+    }
+    
+    private fun createActivityItemView(
+        activityType: String,
+        customActivityId: String?,
+        customActivityName: String?,
+        onClick: () -> Unit
+    ): View {
+        // Create container with green border
+        val itemContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 8.dpToPx()
+            }
+            
+            // Create background with green border
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke(2.dpToPx(), Color.parseColor("#98FB98")) // Thin neon green border
+                cornerRadius = 8.dpToPx().toFloat()
+            }
+            
+            setOnClickListener { onClick() }
+        }
+        
+        // Create text view for activity name
+        val textView = TextView(this).apply {
+            // Display text
+            text = when {
+                activityType == "custom" && !customActivityName.isNullOrEmpty() -> customActivityName
+                else -> activityType.capitalize()
+            }
+            
+            textSize = 20f
+            
+            // Apply random font from the font list
+            val randomFontIndex = (0 until fontList.size).random()
+            try {
+                val randomFont = ResourcesCompat.getFont(this@GiantCounterActivity, fontList[randomFontIndex])
+                typeface = randomFont
+            } catch (e: Exception) {
+                Log.e(TAG, "$LOG_PREFIX Error loading font for activity item", e)
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            
+            // Apply random neon color
+            val randomColor = NEON_COLORS.random()
+            setTextColor(randomColor)
+            
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        
+        itemContainer.addView(textView)
+        return itemContainer
     }
     
     private fun showSmokerSelection() {

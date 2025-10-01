@@ -390,6 +390,9 @@ class ActivityRepository(
 
     suspend fun getLastActivityForSmoker(smokerId: Long): ActivityLog? =
         activityLogDao.getLastActivityForSmoker(smokerId)
+    
+    suspend fun getLastRealActivityForSmoker(smokerId: Long): ActivityLog? =
+        activityLogDao.getLastRealActivityForSmoker(smokerId)
 
     suspend fun getActivitiesBySessionId(sessionId: Long): List<ActivityLog> {
         return activityLogDao.getActivitiesBySessionId(sessionId)

@@ -53,6 +53,15 @@ interface ActivityLogDao {
 
     @Query("SELECT * FROM activity_logs WHERE smokerId = :smokerId ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLastActivityForSmoker(smokerId: Long): ActivityLog?
+    
+    @Query("""
+        SELECT * FROM activity_logs 
+        WHERE smokerId = :smokerId 
+        AND (customActivityId IS NULL OR customActivityId NOT IN ('MY_STASH_LEDGER', 'THEIR_STASH_LEDGER'))
+        ORDER BY timestamp DESC 
+        LIMIT 1
+    """)
+    suspend fun getLastRealActivityForSmoker(smokerId: Long): ActivityLog?
 
     @Query("SELECT * FROM activity_logs WHERE type = :type ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLastLogByType(type: ActivityType): ActivityLog?
