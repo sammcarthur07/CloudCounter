@@ -3440,12 +3440,12 @@ class MainActivity : AppCompatActivity() {
                         Log.d("WELCOME_DEBUG", "📊 Total smokers: ${allSmokers.size}, Cloud smokers: $cloudSmokerCount")
                         Log.d("WELCOME_DEBUG", "📋 All smokers: ${allSmokers.map { "${it.name}(cloud:${it.isCloudSmoker})" }}")
                         
-                        // Show welcome screen only for the first cloud smoker
+                        // DEPRECATED: This check is now handled by OnboardingFlowController
+                        // The old direct call to showWelcomeScreenForFirstCloudSmoker is causing duplicates
                         if (cloudSmokerCount == 1) {
-                            Log.d("WELCOME_DEBUG", "🎉 First cloud smoker detected! Showing welcome screen...")
-                            withContext(Dispatchers.Main) {
-                                showWelcomeScreenForFirstCloudSmoker()
-                            }
+                            Log.e("WELCOME_DEBUG", "🚨 OLD FLOW: First cloud smoker detected in SmokerManager - SHOULD NOT CALL WELCOME HERE!")
+                            Log.d("WELCOME_DEBUG", "📌 This should be handled by OnboardingFlowController.onAddSmokerStepCompleted")
+                            // COMMENTED OUT TO PREVENT DUPLICATE: showWelcomeScreenForFirstCloudSmoker()
                         } else {
                             Log.d("WELCOME_DEBUG", "❌ Not first cloud smoker (count: $cloudSmokerCount), skipping welcome")
                         }
@@ -9049,14 +9049,15 @@ class MainActivity : AppCompatActivity() {
             val existingCloudSmokers = allSmokers.filter { smoker: Smoker -> smoker.isCloudSmoker }
             Log.d("WELCOME_DEBUG", "☁️ Found ${existingCloudSmokers.size} existing cloud smokers")
             
-            // Only show welcome if this is the FIRST cloud smoker (none existed before)
-            // We check for size == 1 because the new one was just added
+            // REMOVED: This duplicate call was causing issues
+            // The onboarding flow already handles this properly in showAddSmokerDialogForOnboarding
             if (existingCloudSmokers.size == 1) {
                 Log.d("WELCOME_DEBUG", "🎉 This is the first cloud smoker!")
-                withContext(Dispatchers.Main) {
-                    // The onboarding controller will handle showing the welcome screen
-                    onboardingController.onAddSmokerStepCompleted(isFirstCloudSmoker = true)
-                }
+                Log.d("WELCOME_DEBUG", "⚠️ NOT calling onboardingController here - handled by onboarding flow")
+                
+                // COMPLETELY DISABLED: The onboarding flow handles this
+                // This was causing duplicate dialogs to appear
+                Log.e("WELCOME_DEBUG", "🚫 OLD FLOW DISABLED - Welcome screen should be shown by OnboardingFlowController only")
             } else {
                 Log.d("WELCOME_DEBUG", "⏭️ Not the first cloud smoker (found ${existingCloudSmokers.size}), skipping welcome")
             }
@@ -9120,8 +9121,20 @@ class MainActivity : AppCompatActivity() {
         
         addSmokerDialog.setOnSuccessCallback { smoker ->
             Log.d("FIRST_LAUNCH_FLOW", "✅ Smoker added: ${smoker.name}")
-            val isFirstCloud = smokers.count { it.isCloudSmoker } == 1
-            onboardingController.onAddSmokerStepCompleted(isFirstCloud)
+            
+            // Check if this is the first cloud smoker by checking the database
+            lifecycleScope.launch(Dispatchers.IO) {
+                val allSmokers = repo.getAllSmokersList()
+                val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
+                val isFirstCloud = smoker.isCloudSmoker && cloudSmokerCount == 1
+                
+                Log.d("FIRST_LAUNCH_FLOW", "📊 Total cloud smokers after add: $cloudSmokerCount")
+                Log.d("FIRST_LAUNCH_FLOW", "🎯 Is first cloud smoker: $isFirstCloud")
+                
+                withContext(Dispatchers.Main) {
+                    onboardingController.onAddSmokerStepCompleted(isFirstCloud)
+                }
+            }
         }
         addSmokerDialog.setOnCancelCallback {
             Log.d("FIRST_LAUNCH_FLOW", "❌ Add smoker dialog cancelled")

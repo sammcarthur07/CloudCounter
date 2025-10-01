@@ -956,12 +956,11 @@ class AddSmokerDialog(
         val cloudSmokerCount = allSmokers.count { it.isCloudSmoker }
         android.util.Log.d("WELCOME_DEBUG", "📊 Cloud smoker count after adding: $cloudSmokerCount")
         
-        // Show welcome screen if this is the first cloud smoker
+        // DISABLED: The OnboardingFlowController handles showing the welcome screen
+        // This was causing duplicate dialogs to appear
         if (cloudSmokerCount == 1) {
-            android.util.Log.d("WELCOME_DEBUG", "🎊 This is the first cloud smoker! Triggering welcome screen...")
-            withContext(Dispatchers.Main) {
-                (context as? MainActivity)?.showWelcomeScreenForFirstCloudSmoker()
-            }
+            android.util.Log.e("WELCOME_DEBUG", "🚫 OLD FLOW DISABLED IN AddSmokerDialog - Welcome screen is handled by OnboardingFlowController")
+            android.util.Log.d("WELCOME_DEBUG", "📌 The onboarding flow will show the welcome screen properly")
         } else {
             android.util.Log.d("WELCOME_DEBUG", "🔢 Not the first cloud smoker (count: $cloudSmokerCount)")
         }

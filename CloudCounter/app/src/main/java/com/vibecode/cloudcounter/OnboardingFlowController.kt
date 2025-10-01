@@ -99,19 +99,35 @@ class OnboardingFlowController(
     }
 
     fun onWelcomeSelections(selections: WelcomeSelections) {
-        if (!flowActive) return
+        if (!flowActive) {
+            Log.e(TAG, "⚠️ onWelcomeSelections called but flow not active!")
+            return
+        }
 
         Log.d(TAG, "🎯 Welcome selections received: $selections")
+        Log.d(TAG, "📋 Clearing pending dialogs queue")
         pendingDialogs.clear()
 
-        if (selections.setupStash) pendingDialogs.addLast(SetupDialog.STASH)
-        if (selections.setupRatios) pendingDialogs.addLast(SetupDialog.RATIOS)
-        if (selections.setupGoals) pendingDialogs.addLast(SetupDialog.GOALS)
+        if (selections.setupStash) {
+            Log.d(TAG, "✅ Adding STASH dialog to queue")
+            pendingDialogs.addLast(SetupDialog.STASH)
+        }
+        if (selections.setupRatios) {
+            Log.d(TAG, "✅ Adding RATIOS dialog to queue")
+            pendingDialogs.addLast(SetupDialog.RATIOS)
+        }
+        if (selections.setupGoals) {
+            Log.d(TAG, "✅ Adding GOALS dialog to queue")
+            pendingDialogs.addLast(SetupDialog.GOALS)
+        }
 
+        Log.d(TAG, "📊 Queue size after adding: ${pendingDialogs.size}")
+        
         if (pendingDialogs.isEmpty()) {
             Log.d(TAG, "✅ No setup dialogs selected, completing onboarding")
             completeOnboarding()
         } else {
+            Log.d(TAG, "🚀 Running first dialog from queue")
             runNextQueuedDialog()
         }
     }
@@ -205,31 +221,69 @@ class OnboardingFlowController(
     }
 
     private fun showWelcomeScreen() {
-        if (!flowActive) return
-        if (welcomeDialog?.isShowing == true) return
+        if (!flowActive) {
+            Log.e(TAG, "⚠️ showWelcomeScreen called but flow not active!")
+            return
+        }
+        if (welcomeDialog?.isShowing == true) {
+            Log.e(TAG, "⚠️ Welcome dialog is already showing! Preventing duplicate.")
+            return
+        }
+        if (welcomeDialog != null) {
+            Log.e(TAG, "⚠️ Welcome dialog instance exists but not showing. Cleaning up.")
+            welcomeDialog = null
+        }
 
         Log.d(TAG, "🌟 Showing welcome screen dialog")
+        Log.d(TAG, "📊 Creating new WelcomeScreenDialog instance")
         welcomeDialog = WelcomeScreenDialog(activity) { selections ->
+            Log.d(TAG, "📩 Welcome dialog callback triggered with selections: $selections")
             welcomeDialog = null
             onWelcomeSelections(selections)
         }
+        Log.d(TAG, "🎭 Calling show() on welcome dialog")
         welcomeDialog?.show()
+        Log.d(TAG, "✅ Welcome dialog show() completed")
     }
 
     private fun runNextQueuedDialog() {
-        if (!flowActive) return
+        if (!flowActive) {
+            Log.e(TAG, "⚠️ runNextQueuedDialog called but flow not active!")
+            return
+        }
 
         val next = pendingDialogs.removeFirstOrNull()
         if (next == null) {
+            Log.d(TAG, "📭 No more dialogs in queue, completing onboarding")
             completeOnboarding()
             return
         }
 
         Log.d(TAG, "⏭️ Launching next setup dialog: $next (remaining=${pendingDialogs.size})")
+        Log.d(TAG, "🎯 About to show dialog: $next")
+        
         when (next) {
-            SetupDialog.STASH -> activity.showAddStashDialog { onSetupDialogDismissed() }
-            SetupDialog.RATIOS -> activity.showSetRatioDialog { onSetupDialogDismissed() }
-            SetupDialog.GOALS -> activity.showAddGoalDialog { onSetupDialogDismissed() }
+            SetupDialog.STASH -> {
+                Log.d(TAG, "🗃️ Showing Add Stash Dialog")
+                activity.showAddStashDialog { 
+                    Log.d(TAG, "✅ Add Stash Dialog dismissed")
+                    onSetupDialogDismissed() 
+                }
+            }
+            SetupDialog.RATIOS -> {
+                Log.d(TAG, "⚖️ Showing Set Ratio Dialog")
+                activity.showSetRatioDialog { 
+                    Log.d(TAG, "✅ Set Ratio Dialog dismissed")
+                    onSetupDialogDismissed() 
+                }
+            }
+            SetupDialog.GOALS -> {
+                Log.d(TAG, "🎯 Showing Add Goal Dialog")
+                activity.showAddGoalDialog { 
+                    Log.d(TAG, "✅ Add Goal Dialog dismissed")
+                    onSetupDialogDismissed() 
+                }
+            }
         }
     }
 

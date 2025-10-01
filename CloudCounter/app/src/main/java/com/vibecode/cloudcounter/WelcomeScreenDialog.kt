@@ -43,6 +43,8 @@ class WelcomeScreenDialog(
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         android.util.Log.d("WELCOME_DEBUG", "🎨 WelcomeScreenDialog.onCreate() called")
+        android.util.Log.d("WELCOME_DEBUG", "📍 Instance ID: ${System.identityHashCode(this)}")
+        android.util.Log.e("WELCOME_DEBUG", "Stack trace:", Exception())
         
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setContentView(R.layout.dialog_welcome_screen)
@@ -61,6 +63,13 @@ class WelcomeScreenDialog(
         setupAnimations()
         android.util.Log.d("WELCOME_DEBUG", "👆 Setting up click listeners...")
         setupClickListeners()
+        
+        // Log checkbox states after init
+        android.util.Log.d("WELCOME_DEBUG", "📊 Initial checkbox states:")
+        android.util.Log.d("WELCOME_DEBUG", "  - Stash: ${checkboxSetupStash.isChecked}")
+        android.util.Log.d("WELCOME_DEBUG", "  - Ratios: ${checkboxSetupRatios.isChecked}")
+        android.util.Log.d("WELCOME_DEBUG", "  - Goal: ${checkboxCreateGoal.isChecked}")
+        
         android.util.Log.d("WELCOME_DEBUG", "✅ WelcomeScreenDialog setup complete")
     }
     
