@@ -66,6 +66,7 @@ class SessionStatsViewModel : ViewModel() {
     private var carriedOverBowls: Int = 0
     private var isInContinueBowlMode: Boolean = false
     private var continueBowlSmokerId: Long? = null
+    private var continueBowlSmokerName: String? = null
 
     // ADD: Track the current mode
     private var isAutoMode: Boolean = true
@@ -311,10 +312,11 @@ class SessionStatsViewModel : ViewModel() {
         isInContinueBowlMode = true
     }
     
-    fun setContinueBowlSmoker(smokerId: Long) {
-        Log.d(TAG, "📦 Setting continue bowl smoker ID: $smokerId")
+    fun setContinueBowlSmoker(smokerId: Long, smokerName: String) {
+        Log.d(TAG, "📦 Setting continue bowl smoker: ID=$smokerId, Name=$smokerName")
         continueBowlSmokerId = smokerId
-        Log.d(TAG, "📦 Continue mode is now: $isInContinueBowlMode with smoker ID: $continueBowlSmokerId")
+        continueBowlSmokerName = smokerName
+        Log.d(TAG, "📦 Continue mode is now: $isInContinueBowlMode with smoker ID: $continueBowlSmokerId, Name: $continueBowlSmokerName")
     }
     
     fun getContinueBowlSmokerId(): Long? {
@@ -337,6 +339,7 @@ class SessionStatsViewModel : ViewModel() {
         carriedOverBowls = 0
         isInContinueBowlMode = false
         continueBowlSmokerId = null
+        continueBowlSmokerName = null
     }
 
     fun refreshTimer() {
@@ -534,16 +537,13 @@ class SessionStatsViewModel : ViewModel() {
             Log.d(TAG, "📦 CONTINUE MODE: Adjusting per-smoker stats for smoker ID $continueBowlSmokerId")
             // First check if the continue smoker is already in the list
             val hasContinueSmoker = perSmoker.any { stat ->
-                // Match by name since we're storing the smoker ID but displaying by name
-                (continueBowlSmokerId == 3L && stat.smokerName == "test") ||
-                (continueBowlSmokerId == 1L && stat.smokerName == "Sam")
+                stat.smokerName == continueBowlSmokerName
             }
             
             if (hasContinueSmoker) {
                 // Update existing smoker's bowls
                 val updatedList = perSmoker.map { stat ->
-                    if ((continueBowlSmokerId == 3L && stat.smokerName == "test") ||
-                        (continueBowlSmokerId == 1L && stat.smokerName == "Sam")) {
+                    if (stat.smokerName == continueBowlSmokerName) {
                         Log.d(TAG, "📦 CONTINUE MODE: Adding $carriedOverBowls bowls to ${stat.smokerName}")
                         stat.copy(totalBowls = stat.totalBowls + carriedOverBowls)
                     } else {
@@ -553,11 +553,7 @@ class SessionStatsViewModel : ViewModel() {
                 updatedList
             } else if (carriedOverBowls > 0) {
                 // Add the continue smoker if not in list but has carried-over bowls
-                val smokerName = when(continueBowlSmokerId) {
-                    1L -> "Sam"
-                    3L -> "test"
-                    else -> "Unknown"
-                }
+                val smokerName = continueBowlSmokerName ?: "Unknown"
                 Log.d(TAG, "📦 CONTINUE MODE: Adding new per-smoker entry for $smokerName with $carriedOverBowls bowls")
                 perSmoker + PerSmokerStats(
                     smokerName = smokerName,
@@ -661,6 +657,7 @@ class SessionStatsViewModel : ViewModel() {
         carriedOverBowls = 0
         isInContinueBowlMode = false
         continueBowlSmokerId = null
+        continueBowlSmokerName = null
         
         Log.d(TAG, "🔚 Session ended - all data cleared")
         Log.d(TAG, "🔚 New state: isActive=${_isSessionActive.value}, sessionStart=$sessionStartTime")

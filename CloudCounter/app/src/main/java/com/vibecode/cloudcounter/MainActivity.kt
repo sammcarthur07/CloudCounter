@@ -11741,6 +11741,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun refreshLocalSessionStatsIfNeeded(forceRefresh: Boolean = false) {
+        // Protect the refresh function from running during queue processing
+        if (isProcessingQueue && !forceRefresh) {
+            Log.d(TAG, "📊 Skipping stats refresh - in optimistic mode")
+            return
+        }
+        
         val timestamp = System.currentTimeMillis()
         Log.d(TAG, "📊 === STATS REFRESH CALLED ===")
         Log.d(TAG, "📊 refreshLocalSessionStatsIfNeeded at timestamp: $timestamp")
@@ -12951,8 +12957,6 @@ class MainActivity : AppCompatActivity() {
             isOptimisticMode = true // Prevent DB overwrites while processing
             
             try {
-                val activeJobs = mutableListOf<Deferred<*>>()
-                
                 // Process activities continuously as they come in
                 while (true) {
                     // Get next activity from queue (or multiple if available)
@@ -12968,51 +12972,30 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     if (activitiesToProcess.isNullOrEmpty()) {
-                        // No more activities, but wait for any still processing
-                        if (activeJobs.isNotEmpty()) {
-                            Log.d(TAG, "📱 Waiting for ${activeJobs.size} activities to finish processing")
-                            activeJobs.awaitAll()
-                            activeJobs.clear()
-                        }
                         break
                     }
                     
-                    Log.d(TAG, "📱 Processing ${activitiesToProcess.size} activities")
+                    Log.d(TAG, "📱 Processing ${activitiesToProcess.size} activities serially")
                     
-                    // Launch processing for these activities
-                    val newJobs = activitiesToProcess.map { activity ->
-                        async {
-                            Log.d(TAG, "📱 Processing: ${activity.type} for ${activity.smoker.name}")
-                            processQueuedActivityWithoutAutoAdvance(activity)
-                        }
-                    }
-                    activeJobs.addAll(newJobs)
-                    
-                    // Don't wait here - continue checking for more activities
-                    // But also don't let too many accumulate
-                    if (activeJobs.size > 20) {
-                        // Wait for some to complete before continuing
-                        activeJobs.awaitAll()
-                        activeJobs.clear()
+                    // Process activities serially (one by one) instead of concurrently
+                    for (activity in activitiesToProcess) {
+                        Log.d(TAG, "📱 Processing: ${activity.type} for ${activity.smoker.name}")
+                        processQueuedActivityWithoutAutoAdvance(activity)
                     }
                 }
                 
                 // NO auto-advance here - it already happened immediately after button press
                 
-                // Small delay for DB writes to complete
-                delay(100)
-                
-                // Now refresh from database if local session
-                if (currentShareCode == null) {
-                    isOptimisticMode = false // Allow DB refresh now
-                    Log.d(TAG, "📱 Refreshing stats after processing")
-                    refreshLocalSessionStatsIfNeeded()
-                }
-                
             } finally {
                 isProcessingQueue = false
                 isOptimisticMode = false
                 Log.d(TAG, "📱 Queue processing complete")
+                
+                // After all queued activities are processed, run a final refresh
+                // if this is a local session. Cloud sessions are updated by the room listener.
+                if (currentShareCode == null) {
+                    refreshLocalSessionStatsIfNeeded(forceRefresh = true)
+                }
             }
         }
     }
@@ -17495,7 +17478,7 @@ class MainActivity : AppCompatActivity() {
                             
                             // Store which smoker should get the carried-over bowls
                             Log.d(TAG, "🔄 CONTINUE_BOWL: Setting continue smoker ID: ${capturedSmoker.smokerId} (${capturedSmoker.name})")
-                            sessionStatsVM.setContinueBowlSmoker(capturedSmoker.smokerId)
+                            sessionStatsVM.setContinueBowlSmoker(capturedSmoker.smokerId, capturedSmoker.name)
                             
                             // Now call refresh to display the stats with continue mode active
                             withContext(Dispatchers.Main) {
