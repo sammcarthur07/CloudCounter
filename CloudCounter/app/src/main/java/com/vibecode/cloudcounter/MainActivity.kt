@@ -52,6 +52,7 @@ import android.content.IntentFilter
 import android.text.InputFilter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.FieldValue
 import android.graphics.Color
 import android.content.res.ColorStateList
 import android.widget.ImageView
@@ -5969,6 +5970,12 @@ class MainActivity : AppCompatActivity() {
                         currentRoomName = null
                         sessionStatsVM.clearRoomInfo()
                         
+                        // Clear stored room password
+                        getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+                            putString("currentRoomPasswordPlain", "")
+                            apply()
+                        }
+                        
                         // Update UI
                         withContext(Dispatchers.Main) {
                             updateUIForSessionState()
@@ -6176,6 +6183,12 @@ class MainActivity : AppCompatActivity() {
                     currentRoomName = null
                     sessionStatsVM.clearRoomInfo()
                     
+                    // Clear stored room password
+                    getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+                        putString("currentRoomPasswordPlain", "")
+                        apply()
+                    }
+                    
                     // Log pending activity if there is one
                     pendingActivityType?.let { type ->
                         Log.d(TAG, "🏠 Logging pending activity: $type")
@@ -6213,6 +6226,12 @@ class MainActivity : AppCompatActivity() {
         sharedActiveSmokerId = null
         currentRoomName = null
         sessionStatsVM.clearRoomInfo()
+        
+        // Clear stored room password
+        getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+            putString("currentRoomPasswordPlain", "")
+            apply()
+        }
 
         // Save session state
         saveSessionToPrefs()
@@ -7281,6 +7300,215 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun showEditRoomSettingsDialog() {
+        Log.d("EditRoomSettings", "showEditRoomSettingsDialog called")
+        
+        // Check if we're in a room
+        if (currentShareCode == null) {
+            Log.d("EditRoomSettings", "Not in a room, cannot edit settings")
+            Toast.makeText(this, "Not in a room", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val dialog = Dialog(this, R.style.TransparentDialog)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_room_settings, null)
+        dialog.setContentView(dialogView)
+        
+        val roomNameInput = dialogView.findViewById<EditText>(R.id.editRoomName)
+        val shareCodeInput = dialogView.findViewById<EditText>(R.id.editShareCode)
+        val passwordInput = dialogView.findViewById<EditText>(R.id.editRoomPassword)
+        val socialCheckbox = dialogView.findViewById<CheckBox>(R.id.checkboxSocialRoom)
+        val passwordToggle = dialogView.findViewById<ImageView>(R.id.togglePasswordVisibility)
+        
+        // Get current room settings from SharedPreferences
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        val currentRoomName = prefs.getString("currentRoomName", "") ?: ""
+        val currentShareCode = prefs.getString("currentShareCode", "") ?: ""
+        val currentPassword = prefs.getString("currentRoomPasswordPlain", "") ?: ""
+        val isSocialRoom = prefs.getBoolean("isSocialRoom", false)
+        
+        Log.d("EditRoomSettings", "Loading current settings - Room: $currentRoomName, Code: $currentShareCode, Social: $isSocialRoom, HasPassword: ${currentPassword.isNotEmpty()}")
+        
+        // Pre-fill with current values
+        roomNameInput.setText(currentRoomName)
+        shareCodeInput.setText(currentShareCode)
+        passwordInput.setText(currentPassword)
+        socialCheckbox.isChecked = isSocialRoom
+        
+        // Disable share code editing (can't change room code)
+        shareCodeInput.isEnabled = false
+        shareCodeInput.alpha = 0.5f
+        
+        // Limit share code length
+        shareCodeInput.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(20))
+        
+        // Set up password visibility toggle
+        var isPasswordVisible = false
+        passwordToggle.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            Log.d("PasswordToggle", "EditRoom: Password visibility toggled to $isPasswordVisible")
+            
+            if (isPasswordVisible) {
+                passwordInput.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                passwordToggle.setImageResource(R.drawable.ic_lock_open)
+                Log.d("PasswordToggle", "EditRoom: Password is now VISIBLE")
+            } else {
+                passwordInput.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                passwordToggle.setImageResource(R.drawable.ic_lock)
+                Log.d("PasswordToggle", "EditRoom: Password is now HIDDEN")
+            }
+            
+            // Keep cursor at the end
+            passwordInput.setSelection(passwordInput.text?.length ?: 0)
+        }
+        
+        // Disable/enable password based on social toggle
+        socialCheckbox.setOnCheckedChangeListener { _, isChecked ->
+            Log.d("EditRoomSettings", "Social checkbox toggled = $isChecked")
+            if (isChecked) {
+                passwordInput.setText("")
+                passwordInput.isEnabled = false
+                passwordInput.alpha = 0.5f
+                Log.d("EditRoomSettings", "Password cleared and disabled due to social mode")
+            } else {
+                passwordInput.isEnabled = true
+                passwordInput.alpha = 1f
+                Log.d("EditRoomSettings", "Password re-enabled")
+            }
+        }
+        
+        // Initialize password state based on current social setting
+        if (isSocialRoom) {
+            passwordInput.isEnabled = false
+            passwordInput.alpha = 0.5f
+        }
+        
+        // Set up save button
+        dialogView.findViewById<View>(R.id.btnSave).setOnClickListener {
+            val newRoomName = roomNameInput.text.toString().trim()
+            val enteredPassword = passwordInput.text.toString().trim()
+            val newIsSocial = socialCheckbox.isChecked
+            
+            // Handle password logic:
+            // - If social is checked, clear password
+            // - If password field is empty and room has existing password, keep existing
+            // - If password field has new value, update it
+            val newPassword = when {
+                newIsSocial -> {
+                    Log.d("EditRoomSettings", "Social mode enabled - clearing password")
+                    ""
+                }
+                enteredPassword.isNotEmpty() -> {
+                    Log.d("EditRoomSettings", "New password entered - will update")
+                    enteredPassword
+                }
+                else -> {
+                    // Keep existing password (pass empty string, backend will handle)
+                    Log.d("EditRoomSettings", "No new password entered - keeping existing")
+                    ""
+                }
+            }
+            
+            Log.d("EditRoomSettings", "Save clicked - New name: $newRoomName, Social: $newIsSocial, Password action: ${
+                when {
+                    newIsSocial -> "CLEARED"
+                    enteredPassword.isNotEmpty() -> "UPDATED"
+                    else -> "UNCHANGED"
+                }
+            }")
+            
+            if (newRoomName.isEmpty()) {
+                Toast.makeText(this, "Room name cannot be empty", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            
+            dialog.dismiss()
+            updateRoomSettings(newRoomName, currentShareCode, newPassword, newIsSocial, enteredPassword.isNotEmpty() || newIsSocial)
+        }
+        
+        // Set up cancel button
+        dialogView.findViewById<View>(R.id.btnCancel).setOnClickListener {
+            Log.d("EditRoomSettings", "Cancel clicked")
+            dialog.dismiss()
+        }
+        
+        // Configure dialog window
+        dialog.window?.apply {
+            setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        
+        // Set initial alpha to 0 for fade-in
+        dialogView.alpha = 0f
+        
+        dialog.show()
+        
+        // Apply fade-in animation
+        performDialogFadeIn(dialogView, 500L)
+        
+        // Focus on room name input
+        roomNameInput.requestFocus()
+        roomNameInput.selectAll()
+    }
+    
+    private fun updateRoomSettings(newRoomName: String, shareCode: String, newPassword: String, newIsSocial: Boolean, shouldUpdatePassword: Boolean = true) {
+        Log.d("EditRoomSettings", "updateRoomSettings - Name: $newRoomName, Code: $shareCode, Social: $newIsSocial, UpdatePassword: $shouldUpdatePassword")
+        
+        // Update local SharedPreferences
+        val prefs = getSharedPreferences("sesh", MODE_PRIVATE)
+        prefs.edit().apply {
+            putString("currentRoomName", newRoomName)
+            putString("currentRoomPasswordPlain", if (shouldUpdatePassword) newPassword else prefs.getString("currentRoomPasswordPlain", ""))
+            putBoolean("isSocialRoom", newIsSocial)
+            apply()
+        }
+        
+        // Update the current room name variable
+        currentRoomName = newRoomName
+        
+        // Update SessionStatsViewModel
+        sessionStatsVM.updateRoomInfo(newRoomName, shareCode)
+        
+        // Update Firebase if we're in a room
+        lifecycleScope.launch {
+            try {
+                Log.d("EditRoomSettings", "Updating Firebase room document via SessionSyncService")
+                
+                // Update the room via SessionSyncService
+                sessionSyncService.updateRoomSettings(
+                    shareCode = shareCode,
+                    roomName = newRoomName,
+                    password = newPassword,
+                    isSocial = newIsSocial,
+                    shouldUpdatePassword = shouldUpdatePassword,
+                    onSuccess = {
+                        Log.d("EditRoomSettings", "✅ Room settings updated in Firebase successfully")
+                        Toast.makeText(this@MainActivity, "Room settings updated", Toast.LENGTH_SHORT).show()
+                        
+                        // Update latestRoomData if available
+                        latestRoomData?.let { room ->
+                            latestRoomData = room.copy(
+                                name = newRoomName,
+                                passwordHash = if (newPassword.isEmpty()) null else newPassword,
+                                isSocialRoom = newIsSocial
+                            )
+                            Log.d("EditRoomSettings", "Updated latestRoomData with new settings")
+                        }
+                    },
+                    onFailure = { e ->
+                        Log.e("EditRoomSettings", "❌ Failed to update room settings", e)
+                        Toast.makeText(this@MainActivity, "Failed to update room settings", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("EditRoomSettings", "Error updating room settings", e)
+            }
+        }
+    }
+
     private fun promptNewRoom() {
         val dialog = Dialog(this, R.style.TransparentDialog)
         val dialogView = layoutInflater.inflate(R.layout.dialog_create_room, null)
@@ -7290,6 +7518,7 @@ class MainActivity : AppCompatActivity() {
         val shareCodeInput = dialogView.findViewById<EditText>(R.id.editShareCode)
         val passwordInput = dialogView.findViewById<EditText>(R.id.editRoomPassword)
         val socialCheckbox = dialogView.findViewById<CheckBox>(R.id.checkboxSocialRoom)
+        val passwordToggle = dialogView.findViewById<ImageView>(R.id.togglePasswordVisibility)
 
         // Pre-fill with auto-generated values
         roomNameInput.setText(getRandomRoomName())
@@ -7300,6 +7529,26 @@ class MainActivity : AppCompatActivity() {
 
         // Limit share code length
         shareCodeInput.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(20))
+        
+        // Set up password visibility toggle
+        var isPasswordVisible = false
+        passwordToggle.setOnClickListener {
+            isPasswordVisible = !isPasswordVisible
+            Log.d("PasswordToggle", "CreateRoom: Password visibility toggled to $isPasswordVisible")
+            
+            if (isPasswordVisible) {
+                passwordInput.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                passwordToggle.setImageResource(R.drawable.ic_lock_open)
+                Log.d("PasswordToggle", "CreateRoom: Password is now VISIBLE")
+            } else {
+                passwordInput.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                passwordToggle.setImageResource(R.drawable.ic_lock)
+                Log.d("PasswordToggle", "CreateRoom: Password is now HIDDEN")
+            }
+            
+            // Keep cursor at the end
+            passwordInput.setSelection(passwordInput.text?.length ?: 0)
+        }
 
         // Disable/enable password based on social toggle
         socialCheckbox.setOnCheckedChangeListener { _, isChecked ->
@@ -7806,6 +8055,13 @@ class MainActivity : AppCompatActivity() {
                 currentRoomName = room.name
                 currentRoom = room
                 refreshQueueIndicators()
+                
+                // Save room settings to SharedPreferences for edit dialog
+                getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+                    putString("currentRoomPasswordPlain", password ?: "")
+                    putBoolean("isSocialRoom", room.isSocialRoom)
+                    apply()
+                }
                 Log.d("SeshFlow", "createRoom: setting room info BEFORE startSession (name=${room.name}, code=${room.shareCode})")
                 startSession(room.startTime)
 
@@ -7944,6 +8200,12 @@ class MainActivity : AppCompatActivity() {
             .setView(input)
             .setPositiveButton("Join") { _, _ ->
                 val enteredPassword = input.text.toString()
+                // Store the plain password for later use in edit dialog
+                getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+                    putString("currentRoomPasswordPlain", enteredPassword)
+                    apply()
+                }
+                Log.d("EditRoomSettings", "Stored entered password for room ${room.shareCode}")
                 verifyRoomPassword(room, userId, enteredPassword)
             }
             .setNegativeButton("Cancel", null)
@@ -7995,6 +8257,14 @@ class MainActivity : AppCompatActivity() {
                     currentRoomName = room.name
                     currentRoom = room
                     refreshQueueIndicators()
+                    
+                    // Save room settings to SharedPreferences for edit dialog
+                    // For joined rooms without password, we won't have the plain password
+                    getSharedPreferences("sesh", MODE_PRIVATE).edit().apply {
+                        putString("currentRoomPasswordPlain", "") // No password for public room
+                        putBoolean("isSocialRoom", room.isSocialRoom)
+                        apply()
+                    }
                     Log.d("SeshFlow", "joinRoom: setting room info BEFORE startSession (name=${room.name}, code=$shareCode)")
                     startSession(room.startTime)
 

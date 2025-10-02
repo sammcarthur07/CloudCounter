@@ -93,13 +93,23 @@ class SeshFragment : Fragment() {
                 binding.textRoomCode.text = "Code: ${roomInfo.shareCode}"
                 binding.textRoomName.visibility = View.VISIBLE
                 binding.textRoomCode.visibility = View.VISIBLE
+                binding.btnEditRoomSettings.visibility = View.VISIBLE
                 Log.d("SeshFragment", "🏠 Room info displayed: ${roomInfo.roomName} (${roomInfo.shareCode})")
+                Log.d("EditRoomSettings", "Edit button visible for room: ${roomInfo.roomName}")
             } else {
                 binding.textRoomName.text = "Local Session"
                 binding.textRoomName.visibility = View.VISIBLE
                 binding.textRoomCode.visibility = View.GONE
+                binding.btnEditRoomSettings.visibility = View.GONE
                 Log.d("SeshFragment", "🏠 Local session - no room info")
+                Log.d("EditRoomSettings", "Edit button hidden - local session")
             }
+        }
+        
+        // Set up edit room settings button
+        binding.btnEditRoomSettings.setOnClickListener {
+            Log.d("EditRoomSettings", "Edit button clicked")
+            (activity as? MainActivity)?.showEditRoomSettingsDialog()
         }
 
         // Observe elapsed session time

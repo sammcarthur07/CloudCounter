@@ -121,6 +121,13 @@ class SessionStatsViewModel : ViewModel() {
         _roomName.value = roomName
         _shareCode.value = shareCode
     }
+    
+    fun updateRoomInfo(roomName: String, shareCode: String) {
+        Log.d(TAG, "🏠 Updating room info: $roomName ($shareCode)")
+        _roomInfo.value = RoomInfo(roomName, shareCode)
+        _roomName.value = roomName
+        _shareCode.value = shareCode
+    }
 
     fun clearRoomInfo() {
         Log.d(TAG, "🏠 Clearing room info")

@@ -1963,4 +1963,48 @@ class SessionSyncService(
         roomListeners.values.forEach { it.listener.remove() }
         roomListeners.clear()
     }
+    
+    // Add method to update room settings
+    fun updateRoomSettings(
+        shareCode: String,
+        roomName: String,
+        password: String,
+        isSocial: Boolean,
+        shouldUpdatePassword: Boolean = true,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
+        Log.d(TAG, "📝 Updating room settings for $shareCode, shouldUpdatePassword: $shouldUpdatePassword")
+        
+        val roomRef = roomsCollection.document(shareCode)
+        val updates = mutableMapOf<String, Any?>(
+            "name" to roomName,
+            "isSocialRoom" to isSocial,
+            "updatedAt" to System.currentTimeMillis()
+        )
+        
+        // Only update password if explicitly requested
+        if (shouldUpdatePassword) {
+            val passwordHash = if (password.isEmpty()) {
+                Log.d(TAG, "📝 Clearing password")
+                null
+            } else {
+                Log.d(TAG, "📝 Setting new password")
+                PasswordUtils.hashPassword(password)
+            }
+            updates["passwordHash"] = passwordHash
+        } else {
+            Log.d(TAG, "📝 Keeping existing password")
+        }
+        
+        roomRef.update(updates)
+            .addOnSuccessListener {
+                Log.d(TAG, "✅ Room settings updated successfully")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "❌ Failed to update room settings", e)
+                onFailure(e)
+            }
+    }
 }

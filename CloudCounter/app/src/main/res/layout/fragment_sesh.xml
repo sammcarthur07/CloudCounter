@@ -41,12 +41,13 @@
                 android:visibility="gone"
                 android:layout_marginBottom="4dp"/>
 
-            <!-- Session timer and code on same line -->
+            <!-- Session timer and code on same line with edit button -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="8dp">
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical">
 
                 <TextView
                     android:id="@+id/textThisSesh"
@@ -55,6 +56,17 @@
                     android:layout_weight="1"
                     android:text="00:00"
                     android:textSize="14sp"/>
+
+                <!-- Edit room settings button -->
+                <ImageButton
+                    android:id="@+id/btnEditRoomSettings"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_edit_room"
+                    android:contentDescription="Edit room settings"
+                    android:visibility="gone"/>
 
                 <TextView
                     android:id="@+id/textRoomCode"
